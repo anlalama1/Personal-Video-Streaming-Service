@@ -14,8 +14,6 @@ A self-hosted "mini Netflix": rip physical media I own, transcode it to adaptive
 |---|---|
 | [`streaming-project-glossary.md`](./streaming-project-glossary.md) | Plain-language definitions of every technology/term (HLS, DASH, DRM, codecs, ABR, captions, Android/architecture terms, Bedrock/GenAI), how each fits this project, and where to learn more. **Start here if a term is unfamiliar.** |
 | [`streaming-project-definition-of-done.md`](./streaming-project-definition-of-done.md) | The execution plan: the finish line, 10 sequenced milestones, a requirement→milestone coverage map, out-of-scope items, and cost guardrails. **The project tracker.** |
-| [`engineering-log.md`](./engineering-log.md) | Running record of decisions, tradeoffs, and learnings. Includes a key-decisions table and a depth-calibration table. **Update as I build — it's half the proof.** |
-| [`streaming-starter-kit/`](./streaming-starter-kit/) | Milestone 2 hands-on kit: FFmpeg transcode script, a local hls.js player, and a step-by-step README. **The cheapest way to validate the concept (free, local).** |
 
 ---
 

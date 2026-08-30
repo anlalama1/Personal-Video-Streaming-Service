@@ -32,11 +32,11 @@ The project is **done** when all of the following are true:
 - [X] Create a **personal AWS account** (own credit card, not corporate/internal). https://us-east-1.console.aws.amazon.com/console/home?region=us-east-1#
 - [X] Set an **AWS Budget alarm** (e.g., alert at $10). https://us-east-1.console.aws.amazon.com/costmanagement/home?region=us-east-1#/budgets/details?name=My%20Zero-Spend%20Budget
 - [X] Confirm internal policy if considering any employee account/credit (default: don't).
-- [ ] Install Android Studio, FFmpeg, and set up a Git repository for the project.
+- [X] Install Android Studio, FFmpeg, and set up a Git repository for the project.
 
 ### Milestone 1 — Android fundamentals (prerequisite learning)
-- [ ] Complete the first units of **Android Basics with Compose**.
-- [ ] Build 2-3 throwaway apps (counter, converter, static list + detail navigation).
+- [X ] Complete the first units of **Android Basics with Compose**.
+- [X ] Build 2-3 throwaway apps (counter, converter, static list + detail navigation).
 - [ ] Build a small **Room + ViewModel + Compose** list app (first taste of MVVM).
 
 ### Milestone 2 — Media pipeline spike (decoupled from any app)

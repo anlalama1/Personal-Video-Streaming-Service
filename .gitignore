@@ -1,0 +1,40 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.externalNativeBuild
+.cxx
+captures/
+output.json
+
+# Gradle files
+build/
+
+# Kotlin
+
+# IntelliJ
+*.iws
+out/
+
+# Android Studio
+*.keystore
+!debug.keystore
+*.jks
+*.bin
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -17,10 +17,12 @@ fun VideoPlayer(
     isPlaying: Boolean,
     currentPosition: Long,
     duration: Long,
+    isScreenTimeVisible: Boolean,
     onTogglePlay: () -> Unit,
     onSeek: (Long) -> Unit,
     onRewind: () -> Unit,
     onForward: () -> Unit,
+    onToggleScreenTime: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
@@ -40,10 +42,12 @@ fun VideoPlayer(
             isPlaying = isPlaying,
             currentPosition = currentPosition,
             duration = duration,
+            isScreenTimeVisible = isScreenTimeVisible,
             onTogglePlay = onTogglePlay,
             onSeek = onSeek,
             onRewind = onRewind,
             onForward = onForward,
+            onToggleScreenTime = onToggleScreenTime,
             modifier = Modifier.fillMaxSize()
         )
     }

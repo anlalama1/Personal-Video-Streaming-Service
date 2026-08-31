@@ -63,6 +63,20 @@ This document tracks the high-level collaboration between the human developer an
 - **AI Contribution**: Recommended moving the `REWIND_FORWARD_INCREMENT_MS` literal to a `companion object` as a `const val` and renaming it to `SKIP_INCREMENT_MS` to follow Kotlin's standard naming conventions for constants.
 - **Outcome**: Cleaner, more idiomatic Kotlin code that adheres to industry-standard styling.
 
+### 9. Parental Screen Time Tracker (Aug 30, 2026)
+- **Challenge**: Implement a dual-counter system (Session vs Daily) to help parents track usage, with a visibility toggle in the player.
+- **AI Contribution**: 
+    - Recommended **Jetpack DataStore** for high-frequency, thread-safe persistence.
+    - Designed a `Repository` pattern to separate storage logic from UI logic.
+    - Implemented a "Heartbeat" coroutine in the `ScreenTimeViewModel` to keep both clocks in sync.
+    - Layered a subtle, transparent overlay at the Activity level using Compose `Box` and `AnimatedVisibility`.
+- **Outcome**: A unique, "portfolio-plus" feature that demonstrates innovation and advanced data handling.
+
+### 10. UI Polish: Overlay Repositioning (Aug 30, 2026)
+- **Challenge**: The screen time counter was overlapping with the system clock in the top-right corner.
+- **AI Contribution**: Repositioned the `AnimatedVisibility` container from `Alignment.TopEnd` to `Alignment.TopCenter` within the root `Box` layout.
+- **Outcome**: Improved UI legibility and eliminated overlap with system-level elements.
+
 ## Future Work / Stretch Goals
 - **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

@@ -7,23 +7,34 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.videostreaming.ui.ScreenTimeViewModel
 import com.example.videostreaming.ui.VideoPlayer
 import com.example.videostreaming.ui.VideoPlayerViewModel
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
 
@@ -55,22 +66,48 @@ class MainActivity : ComponentActivity() {
                         color = Color.Transparent
                     ) {
                         if (hasPermission) {
-                            val viewModel: VideoPlayerViewModel = viewModel()
-                            val isPlaying by viewModel.isPlaying.collectAsState()
-                            val currentPosition by viewModel.currentPosition.collectAsState()
-                            val duration by viewModel.duration.collectAsState()
+                            val playerViewModel: VideoPlayerViewModel = viewModel()
+                            val screenTimeViewModel: ScreenTimeViewModel = viewModel()
 
-                            VideoPlayer(
-                                player = viewModel.exoPlayer,
-                                isPlaying = isPlaying,
-                                currentPosition = currentPosition,
-                                duration = duration,
-                                onTogglePlay = { viewModel.togglePlay() },
-                                onSeek = { viewModel.seekTo(it) },
-                                onRewind = { viewModel.rewind() },
-                                onForward = { viewModel.forward() },
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            val isPlaying by playerViewModel.isPlaying.collectAsState()
+                            val currentPosition by playerViewModel.currentPosition.collectAsState()
+                            val duration by playerViewModel.duration.collectAsState()
+
+                            val sessionSeconds by screenTimeViewModel.sessionSeconds.collectAsState()
+                            val dailySeconds by screenTimeViewModel.dailySeconds.collectAsState()
+                            val isCounterVisible by screenTimeViewModel.isCounterVisible.collectAsState()
+
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                VideoPlayer(
+                                    player = playerViewModel.exoPlayer,
+                                    isPlaying = isPlaying,
+                                    currentPosition = currentPosition,
+                                    duration = duration,
+                                    isScreenTimeVisible = isCounterVisible,
+                                    onTogglePlay = { playerViewModel.togglePlay() },
+                                    onSeek = { playerViewModel.seekTo(it) },
+                                    onRewind = { playerViewModel.rewind() },
+                                    onForward = { playerViewModel.forward() },
+                                    onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                // Parental Screen Time Overlay
+                                AnimatedVisibility(
+                                    visible = isCounterVisible,
+                                    enter = fadeIn(),
+                                    exit = fadeOut(),
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = "Session: ${formatSeconds(sessionSeconds)} | Daily: ${formatSeconds(dailySeconds)}",
+                                        color = Color.White.copy(alpha = 0.5f),
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
                         } else {
                             // In a real app, we'd show a UI to explain why we need permission
                         }
@@ -92,5 +129,11 @@ class MainActivity : ComponentActivity() {
         } else {
             requestPermissionLauncher.launch(permission)
         }
+    }
+
+    private fun formatSeconds(totalSeconds: Long): String {
+        val minutes = TimeUnit.SECONDS.toMinutes(totalSeconds)
+        val seconds = totalSeconds % 60
+        return String.format(Locale.getDefault(), "%02dm %02ds", minutes, seconds)
     }
 }

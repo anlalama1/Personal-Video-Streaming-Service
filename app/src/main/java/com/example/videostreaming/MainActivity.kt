@@ -7,13 +7,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.videostreaming.ui.VideoPlayer
@@ -36,18 +42,31 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    if (hasPermission) {
-                        val viewModel: VideoPlayerViewModel = viewModel()
-                        VideoPlayer(
-                            player = viewModel.exoPlayer,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        // In a real app, we'd show a UI to explain why we need permission
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Image(
+                        painter = painterResource(id = R.drawable.pixel9pro_background),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.5f
+                    )
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.Transparent
+                    ) {
+                        if (hasPermission) {
+                            val viewModel: VideoPlayerViewModel = viewModel()
+                            val isPlaying by viewModel.isPlaying.collectAsState()
+
+                            VideoPlayer(
+                                player = viewModel.exoPlayer,
+                                isPlaying = isPlaying,
+                                onTogglePlay = { viewModel.togglePlay() },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            // In a real app, we'd show a UI to explain why we need permission
+                        }
                     }
                 }
             }

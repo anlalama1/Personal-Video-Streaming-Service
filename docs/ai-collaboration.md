@@ -26,6 +26,22 @@ This document tracks the high-level collaboration between the human developer an
 - **AI Contribution**: Explained two options: the "Manifest Trick" vs. "ViewModel Hoisting." Advised that ViewModel hoisting is the superior architectural lesson for a Senior role.
 - **Outcome**: Refactored the app to an MVVM structure where the `ExoPlayer` instance survives Activity recreation in a `ViewModel`.
 
+### 4. UI Customization & Theming (Aug 30, 2026)
+- **Challenge**: Add a custom background image with specific transparency (50%).
+- **AI Contribution**: 
+    - Located the resource in the project.
+    - Implemented a `Box` layout to layer the `Image` behind the `Surface`.
+    - Applied `Color.Transparent` to the `Surface` and `alpha = 0.5f` to the `Image` to achieve the desired effect.
+- **Outcome**: Enhanced visual branding while maintaining functional media playback.
+
+### 5. Custom "Glass" Controls (Aug 30, 2026)
+- **Challenge**: Replace default Media3 controls with a custom, high-quality transparent overlay.
+- **AI Contribution**: 
+    - Designed a reactive architecture using `StateFlow` and `Player.Listener` to keep UI in sync with the media engine.
+    - Implemented a Compose-based overlay using `Box` layering and `AnimatedVisibility`.
+    - Guided the user through adding `material-icons-extended` and refactoring the `VideoPlayer` to be stateless.
+- **Outcome**: A professional, "Disney-tier" player experience with smooth animations and auto-hiding controls.
+
 ## Future Work / Stretch Goals
 - **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

@@ -42,6 +42,27 @@ This document tracks the high-level collaboration between the human developer an
     - Guided the user through adding `material-icons-extended` and refactoring the `VideoPlayer` to be stateless.
 - **Outcome**: A professional, "Disney-tier" player experience with smooth animations and auto-hiding controls.
 
+### 6. Reactive Progress Bar & Seeking (Aug 30, 2026)
+- **Challenge**: Add a functional, semi-transparent progress bar that updates in real-time and allows user seeking.
+- **AI Contribution**: 
+    - Designed a temporal reactive state model using 200ms polling in the ViewModel.
+    - Implemented a Compose `Slider` with "Glass" styling synced to the `ExoPlayer` engine.
+    - Added time formatting (MM:SS) for current position and total duration.
+- **Outcome**: Fully interactive media player with precise seeking and smooth visual feedback.
+
+### 7. Skip Buttons (Aug 30, 2026)
+- **Challenge**: Add "Rewind 10s" and "Forward 10s" buttons to the player controls.
+- **AI Contribution**: 
+    - Hoisted the skip logic into the ViewModel for better architectural separation.
+    - Implemented boundary safety (e.g., never seeking below 0s).
+    - Integrated professional `Replay10` and `Forward10` icons into the Compose UI.
+- **Outcome**: Enhanced navigation controls for a better user experience.
+
+### 8. Coding Standards & Linting (Aug 30, 2026)
+- **Challenge**: Resolved a lint warning regarding naming conventions for private properties.
+- **AI Contribution**: Recommended moving the `REWIND_FORWARD_INCREMENT_MS` literal to a `companion object` as a `const val` and renaming it to `SKIP_INCREMENT_MS` to follow Kotlin's standard naming conventions for constants.
+- **Outcome**: Cleaner, more idiomatic Kotlin code that adheres to industry-standard styling.
+
 ## Future Work / Stretch Goals
 - **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

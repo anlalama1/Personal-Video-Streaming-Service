@@ -57,11 +57,18 @@ class MainActivity : ComponentActivity() {
                         if (hasPermission) {
                             val viewModel: VideoPlayerViewModel = viewModel()
                             val isPlaying by viewModel.isPlaying.collectAsState()
+                            val currentPosition by viewModel.currentPosition.collectAsState()
+                            val duration by viewModel.duration.collectAsState()
 
                             VideoPlayer(
                                 player = viewModel.exoPlayer,
                                 isPlaying = isPlaying,
+                                currentPosition = currentPosition,
+                                duration = duration,
                                 onTogglePlay = { viewModel.togglePlay() },
+                                onSeek = { viewModel.seekTo(it) },
+                                onRewind = { viewModel.rewind() },
+                                onForward = { viewModel.forward() },
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {

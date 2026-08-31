@@ -15,18 +15,20 @@ import androidx.media3.ui.PlayerView
 fun VideoPlayer(
     player: Player,
     isPlaying: Boolean,
+    currentPosition: Long,
+    duration: Long,
     onTogglePlay: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onRewind: () -> Unit,
+    onForward: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 1. Layering with Box
-    // In Compose, a Box stacks its children on top of each other.
     Box(modifier = modifier) {
         // Bottom Layer: The Video
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     this.player = player
-                    // 2. Disable default Media3 controls so they don't fight with ours.
                     useController = false 
                 }
             },
@@ -36,7 +38,12 @@ fun VideoPlayer(
         // Top Layer: Our Custom "Glass" Controls
         PlayerControls(
             isPlaying = isPlaying,
+            currentPosition = currentPosition,
+            duration = duration,
             onTogglePlay = onTogglePlay,
+            onSeek = onSeek,
+            onRewind = onRewind,
+            onForward = onForward,
             modifier = Modifier.fillMaxSize()
         )
     }

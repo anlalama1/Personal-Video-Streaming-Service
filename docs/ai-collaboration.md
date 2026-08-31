@@ -85,6 +85,14 @@ This document tracks the high-level collaboration between the human developer an
     - Managed the physical filesystem move and directory cleanup.
 - **Outcome**: A polished, professionally-branded project identity ready for production-level evaluation.
 
+### 12. Legal & Regulatory Documentation (Aug 30, 2026)
+- **Challenge**: Addressing the legal complexities of a streaming service (Copyright, COPPA, DRM, Patent Royalties) for a professional portfolio.
+- **AI Contribution**: 
+    - Explained the legal risks associated with distribution and children's privacy (COPPA).
+    - Drafted a "Legal & Ethical Considerations" section for the project README.
+    - Emphasized "Privacy by Design" regarding the local-only storage of parental tracking data via DataStore.
+- **Outcome**: A professional, transparent project baseline that respects intellectual property and privacy laws—a vital trait for Lead Engineer candidates.
+
 ## Future Work / Stretch Goals
 - **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

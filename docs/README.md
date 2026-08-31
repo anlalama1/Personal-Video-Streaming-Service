@@ -68,6 +68,17 @@ Full mapping is in the definition-of-done. High level, this project demonstrates
 
 ---
 
+## Legal & Ethical Considerations (Private Spike Notice)
+
+This project is a **private portfolio spike** intended for technical demonstration only. It is not designed for public release or commercial use.
+
+1.  **Copyrighted Content**: Content used during development and testing is limited to legally obtained personal media (home videos) or open-source trailers. This system is intended only for the private, non-commercial viewing of personal media within a single household.
+2.  **Privacy by Design**: The "Parental Screen Time" feature utilizes **Jetpack DataStore** for local-only session tracking. Zero Personally Identifiable Information (PII) or usage data is transmitted to external servers or third parties.
+3.  **DRM Implementation**: DRM demonstrations (e.g., Widevine) are for the purpose of proving technical integration capability with licensed industry standards and do not involve the circumvention of existing protection measures.
+4.  **Intellectual Property**: This project is independent of any commercial entities and is built using personal infrastructure and standard public APIs.
+
+---
+
 ## Status
 
 - [x] Project scoped, documented, glossary + plan written

@@ -1,4 +1,4 @@
-package com.example.videostreaming
+package com.portfolio.videostreaming
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -30,9 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.videostreaming.ui.ScreenTimeViewModel
-import com.example.videostreaming.ui.VideoPlayer
-import com.example.videostreaming.ui.VideoPlayerViewModel
+import com.portfolio.videostreaming.ui.ScreenTimeViewModel
+import com.portfolio.videostreaming.ui.VideoPlayer
+import com.portfolio.videostreaming.ui.VideoPlayerViewModel
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 

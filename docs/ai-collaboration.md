@@ -77,6 +77,14 @@ This document tracks the high-level collaboration between the human developer an
 - **AI Contribution**: Repositioned the `AnimatedVisibility` container from `Alignment.TopEnd` to `Alignment.TopCenter` within the root `Box` layout.
 - **Outcome**: Improved UI legibility and eliminated overlap with system-level elements.
 
+### 11. Professional Rebranding (Aug 30, 2026)
+- **Challenge**: The project was using the generic `com.example` package name, which looked unprofessional for a Senior portfolio.
+- **AI Contribution**: 
+    - Orchestrated a full project rename from `com.example.videostreaming` to `com.portfolio.videostreaming`.
+    - Automated the update of `build.gradle.kts`, `AndroidManifest.xml`, and all source code headers.
+    - Managed the physical filesystem move and directory cleanup.
+- **Outcome**: A polished, professionally-branded project identity ready for production-level evaluation.
+
 ## Future Work / Stretch Goals
 - **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

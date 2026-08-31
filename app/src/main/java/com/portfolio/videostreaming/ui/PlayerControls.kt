@@ -1,4 +1,4 @@
-package com.example.videostreaming.ui
+package com.portfolio.videostreaming.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn

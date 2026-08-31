@@ -8,11 +8,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.example.videostreaming"
+    namespace = "com.portfolio.videostreaming"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.videostreaming"
+        applicationId = "com.portfolio.videostreaming"
         minSdk = 24
         targetSdk = 37
         versionCode = 1

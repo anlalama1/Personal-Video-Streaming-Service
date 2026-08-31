@@ -1,4 +1,4 @@
-package com.example.videostreaming.data
+package com.portfolio.videostreaming.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit

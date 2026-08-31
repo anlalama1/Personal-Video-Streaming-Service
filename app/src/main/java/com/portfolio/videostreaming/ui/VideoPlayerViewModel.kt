@@ -1,4 +1,4 @@
-package com.example.videostreaming.ui
+package com.portfolio.videostreaming.ui
 
 import android.app.Application
 import android.os.Environment

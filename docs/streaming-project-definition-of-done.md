@@ -19,6 +19,7 @@ The project is **done** when all of the following are true:
 - [ ] **DRM demonstrated** — Widevine-protected playback works on Android/web (stretch: AES-128 as a stepping stone; PlayReady understood conceptually; FairPlay explicitly out of scope).
 - [ ] **Adaptive bitrate demonstrated at the algorithm level** — I can observe, tune, and force the player's rendition-switching decisions (not just enable them).
 - [ ] **Captions rendered** — embedded CEA-608/708 captions display with a toggle.
+- [ ] **Custom Player Engine (Stretch)** — Create my own low-level video renderer using `MediaCodec` and `AudioTrack` instead of depending on the common `ExoPlayer` library.
 - [ ] **Codec matrix handled** — AVC + HEVC video and AAC + EAC3 audio all play, with active codecs visible in the overlay.
 - [ ] **(Optional) Bedrock-powered recommendations** — explainable "For You" suggestions over the catalog, validated against the real library.
 - [ ] I have **durable proof** captured (see "Proof Artifacts" below).
@@ -37,7 +38,7 @@ The project is **done** when all of the following are true:
 ### Milestone 1 — Android fundamentals (prerequisite learning)
 - [X ] Complete the first units of **Android Basics with Compose**.
 - [X ] Build 2-3 throwaway apps (counter, converter, static list + detail navigation).
-- [ ] Build a small **Room + ViewModel + Compose** list app (first taste of MVVM).
+- [X ] Build a small **Room + ViewModel + Compose** list app (first taste of MVVM).
 
 ### Milestone 2 — Media pipeline spike (decoupled from any app)
 - [ ] Rip **one** movie you own.

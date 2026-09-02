@@ -24,6 +24,9 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     private val _duration = MutableStateFlow(0L)
     val duration = _duration.asStateFlow()
 
+    // Track the currently loaded URI to prevent unnecessary resets on rotation
+    private var currentUri: String? = null
+
     // Single source of truth for the player engine
     val exoPlayer = ExoPlayer.Builder(application).build().apply {
         addListener(object : Player.Listener {
@@ -49,6 +52,9 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
      * It just takes a URI and works its magic.
      */
     fun playVideo(uriString: String) {
+        if (currentUri == uriString) return // Already playing this video! Prevents reset on rotation.
+        
+        currentUri = uriString
         val mediaItem = MediaItem.fromUri(uriString.toUri())
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()

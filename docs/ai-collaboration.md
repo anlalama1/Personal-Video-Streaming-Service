@@ -112,6 +112,23 @@ This document tracks the high-level collaboration between the human developer an
     - Explained the **Back Stack** and **Decoupling** principles (Lambda pattern).
 - **Outcome**: A type-safe, centralized navigation system that aligns with Lead Engineer architectural standards.
 
+### 15. Reactive Timer Orchestration (Sept 1, 2026)
+- **Challenge**: The screen time tracker was counting app uptime rather than actual watch time.
+- **AI Contribution**: 
+    - Designed a **Gate-based Coroutine** model in the `ScreenTimeViewModel`.
+    - Implemented a bridge in the `MainActivity` using `LaunchedEffect` and `DisposableEffect` to sync player state with the global timer.
+    - Explained the decoupling of global session data from transient player instances.
+- **Outcome**: Accurate parental monitoring that strictly measures active media playback.
+
+### 16. Persistent Data Integrity Fix (Sept 1, 2026)
+- **Challenge**: The "Daily" timer was showing stale data from previous days (the "149m" bug).
+- **AI Contribution**: 
+    - Identified "Midnight Bugs" and regional formatting risks.
+    - Implemented **Locale.US** for storage keys to ensure cross-region consistency.
+    - Designed a **Defensive Read Flow** that filters out stale data at the mapping layer before it reaches the UI.
+    - Added structured logging for system auditability.
+- **Outcome**: A robust, production-grade tracking system that correctly handles day rollovers and region-specific formatting.
+
 ## Future Work / Stretch Goals
 - **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

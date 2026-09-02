@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -107,12 +108,25 @@ class MainActivity : ComponentActivity() {
                                         val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
                                         val playerViewModel: VideoPlayerViewModel = viewModel()
 
+                                        // 1. Sync the global timer with this specific player's state
+                                        val isPlaying by playerViewModel.isPlaying.collectAsState()
+                                        
+                                        LaunchedEffect(isPlaying) {
+                                            screenTimeViewModel.setTicking(isPlaying)
+                                        }
+
+                                        // 2. Stop the timer immediately when this screen is destroyed
+                                        DisposableEffect(Unit) {
+                                            onDispose {
+                                                screenTimeViewModel.setTicking(false)
+                                            }
+                                        }
+
                                         // Start playing as soon as we enter this screen
                                         LaunchedEffect(videoUri) {
                                             playerViewModel.playVideo(videoUri)
                                         }
 
-                                        val isPlaying by playerViewModel.isPlaying.collectAsState()
                                         val currentPosition by playerViewModel.currentPosition.collectAsState()
                                         val duration by playerViewModel.duration.collectAsState()
 

@@ -32,6 +32,9 @@ class ScreenTimeViewModel(application: Application) : AndroidViewModel(applicati
     private val _isCounterVisible = MutableStateFlow(true)
     val isCounterVisible = _isCounterVisible.asStateFlow()
 
+    // 4. The Gate: Only increment if this is true
+    private var isTicking = false
+
     init {
         startHeartbeat()
     }
@@ -40,10 +43,16 @@ class ScreenTimeViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             while (true) {
                 delay(1.seconds)
-                _sessionSeconds.value += 1
-                repository.updateDailySeconds(1)
+                if (isTicking) {
+                    _sessionSeconds.value += 1
+                    repository.updateDailySeconds(1)
+                }
             }
         }
+    }
+
+    fun setTicking(active: Boolean) {
+        isTicking = active
     }
 
     fun toggleVisibility() {

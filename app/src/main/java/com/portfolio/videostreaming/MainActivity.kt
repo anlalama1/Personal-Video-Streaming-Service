@@ -140,6 +140,7 @@ class MainActivity : ComponentActivity() {
                                             onSeek = { playerViewModel.seekTo(it) },
                                             onRewind = { playerViewModel.rewind() },
                                             onForward = { playerViewModel.forward() },
+                                            onBack = { navController.popBackStack() },
                                             onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
                                             modifier = Modifier.fillMaxSize()
                                         )

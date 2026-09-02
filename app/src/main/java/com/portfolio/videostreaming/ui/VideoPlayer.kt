@@ -22,6 +22,7 @@ fun VideoPlayer(
     onSeek: (Long) -> Unit,
     onRewind: () -> Unit,
     onForward: () -> Unit,
+    onBack: () -> Unit,
     onToggleScreenTime: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -47,6 +48,7 @@ fun VideoPlayer(
             onSeek = onSeek,
             onRewind = onRewind,
             onForward = onForward,
+            onBack = onBack,
             onToggleScreenTime = onToggleScreenTime,
             modifier = Modifier.fillMaxSize()
         )

@@ -137,7 +137,15 @@ This document tracks the high-level collaboration between the human developer an
     - Provided clear instructions for environment bootstrapping and deployment via CDK CLI.
 - **Outcome**: Professional-grade documentation that ensures the cloud backend is reproducible and secure for external contributors.
 
-### 18. Architectural Visualization (Sept 1, 2026)
+### 18. UI Polish: Video Navigation (Sept 1, 2026)
+- **Challenge**: Users were "stuck" in the video player and had to use system gestures/buttons to return to the catalog.
+- **AI Contribution**: 
+    - Added a "Glass" styled Back button to the `PlayerControls` overlay using `Icons.AutoMirrored.Filled.ArrowBack`.
+    - Wired the button to `navController.popBackStack()` in the `MainActivity` routing logic.
+    - Ensured the button respects the same auto-hide/show lifecycle as the playback controls.
+- **Outcome**: Improved UX with intuitive, player-centric navigation.
+
+### 19. Architectural Visualization (Sept 1, 2026)
 - **Challenge**: Maintaining a clear, high-level overview of the full-stack system as complexity grows.
 - **AI Contribution**: 
     - Designed and authored `system-design.md` in the project root.

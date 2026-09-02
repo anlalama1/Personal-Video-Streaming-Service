@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -53,6 +54,7 @@ fun PlayerControls(
     onSeek: (Long) -> Unit,
     onRewind: () -> Unit,
     onForward: () -> Unit,
+    onBack: () -> Unit,
     onToggleScreenTime: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -83,6 +85,26 @@ fun PlayerControls(
             modifier = Modifier.fillMaxSize()
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
+                // Back Button (Top Left)
+                Surface(
+                    onClick = onBack,
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .padding(32.dp)
+                        .size(48.dp)
+                        .align(Alignment.TopStart)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Go Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
                 // Control Buttons in the Center
                 Row(
                     modifier = Modifier.align(Alignment.Center),

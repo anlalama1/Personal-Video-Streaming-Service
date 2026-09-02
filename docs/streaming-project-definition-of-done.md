@@ -108,6 +108,11 @@ The project is **done** when all of the following are true:
 - [ ] Client **"For You" row** in Compose (also a nice animation surface).
 - [ ] Keep Bedrock **server-side only** (never called directly from the client).
 
+### Milestone 11 — Knowledge Mastery & Audit
+- [ ] Complete the **[Knowledge Audit](./knowledge-audit.md)** self-assessment.
+- [ ] Achieve a 100% score on architectural and strategic reasoning.
+- [ ] **Lead Engineer Demonstration**: Prove that you "Own" the code and decisions by being able to defend them without AI assistance, mirroring the expectations of a technical lead interview at a Tier-1 company.
+
 ---
 
 ## Requirement Coverage Map

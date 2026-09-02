@@ -129,6 +129,22 @@ This document tracks the high-level collaboration between the human developer an
     - Added structured logging for system auditability.
 - **Outcome**: A robust, production-grade tracking system that correctly handles day rollovers and region-specific formatting.
 
+### 17. Cloud Infrastructure Documentation (Sept 1, 2026)
+- **Challenge**: Enabling other developers to deploy and test the backend infrastructure accurately.
+- **AI Contribution**: 
+    - Authored comprehensive setup guidance in `infrastructure/README.md`.
+    - Enforced security best practices (avoiding Root, using IAM profiles) in the documentation.
+    - Provided clear instructions for environment bootstrapping and deployment via CDK CLI.
+- **Outcome**: Professional-grade documentation that ensures the cloud backend is reproducible and secure for external contributors.
+
+### 18. Architectural Visualization (Sept 1, 2026)
+- **Challenge**: Maintaining a clear, high-level overview of the full-stack system as complexity grows.
+- **AI Contribution**: 
+    - Designed and authored `system-design.md` in the project root.
+    - Implemented a **Mermaid diagram** to visualize the interaction between Android components and AWS services.
+    - Documented core data flows and summarized strategic engineering decisions (BFF pattern, Reactive Polling, etc.).
+- **Outcome**: A "living" architectural blueprint that facilitates system understanding and onboarding—a standard requirement for Lead/Principal Engineering roles.
+
 ## Future Work / Stretch Goals
 - **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

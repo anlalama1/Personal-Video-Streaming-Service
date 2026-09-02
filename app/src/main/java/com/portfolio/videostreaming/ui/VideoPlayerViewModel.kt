@@ -1,7 +1,6 @@
 package com.portfolio.videostreaming.ui
 
 import android.app.Application
-import android.os.Environment
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,14 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * The ViewModel acts as the "persistent brain" of our player.
- * We use AndroidViewModel because we need a Context to build the ExoPlayer.
- */
 class VideoPlayerViewModel(application: Application) : AndroidViewModel(application) {
 
-    // 1. Reactive State
-    private val _isPlaying = MutableStateFlow(true)
+    private val _isPlaying = MutableStateFlow(false)
     val isPlaying = _isPlaying.asStateFlow()
 
     private val _currentPosition = MutableStateFlow(0L)
@@ -30,14 +24,8 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     private val _duration = MutableStateFlow(0L)
     val duration = _duration.asStateFlow()
 
-    // This instance will survive screen rotations!
+    // Single source of truth for the player engine
     val exoPlayer = ExoPlayer.Builder(application).build().apply {
-        val videoPath = "${Environment.getExternalStorageDirectory().path}/Movies/all_the_stars_kendrick_lamar.mp4"
-        val mediaItem = MediaItem.fromUri(videoPath.toUri())
-        setMediaItem(mediaItem)
-        prepare()
-        playWhenReady = true
-        
         addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
@@ -52,24 +40,34 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     init {
-        // Start polling for progress
+        startProgressPolling()
+    }
+
+    /**
+     * Senior Approach: Dynamic loading.
+     * The player doesn't care WHERE the video is from (Local, HLS, DASH).
+     * It just takes a URI and works its magic.
+     */
+    fun playVideo(uriString: String) {
+        val mediaItem = MediaItem.fromUri(uriString.toUri())
+        exoPlayer.setMediaItem(mediaItem)
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = true
+    }
+
+    private fun startProgressPolling() {
         viewModelScope.launch {
             while (true) {
                 if (exoPlayer.isPlaying) {
                     _currentPosition.value = exoPlayer.currentPosition
                 }
-                delay(200.milliseconds) // Poll every 200ms for smooth UI updates
+                delay(200.milliseconds)
             }
         }
     }
 
-    // 2. Handle User Intents
     fun togglePlay() {
-        if (exoPlayer.isPlaying) {
-            exoPlayer.pause()
-        } else {
-            exoPlayer.play()
-        }
+        if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
     }
 
     fun seekTo(position: Long) {
@@ -78,20 +76,15 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun rewind() {
-        val newPos = (exoPlayer.currentPosition - SKIP_INCREMENT_MS).coerceAtLeast(0)
-        seekTo(newPos)
+        seekTo((exoPlayer.currentPosition - SKIP_INCREMENT_MS).coerceAtLeast(0))
     }
 
     fun forward() {
-        val newPos = (exoPlayer.currentPosition + SKIP_INCREMENT_MS).coerceAtMost(exoPlayer.duration)
-        seekTo(newPos)
+        seekTo((exoPlayer.currentPosition + SKIP_INCREMENT_MS).coerceAtMost(exoPlayer.duration))
     }
 
-    /**
-     * onCleared is called when the user finishes the activity or the process is killed.
-     * This is the correct place to release expensive resources like the player engine.
-     */
     override fun onCleared() {
+        super.onCleared()
         exoPlayer.release()
     }
 

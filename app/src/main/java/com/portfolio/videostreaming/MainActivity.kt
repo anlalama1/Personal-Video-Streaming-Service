@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,11 +31,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.portfolio.videostreaming.ui.CatalogScreen
 import com.portfolio.videostreaming.ui.ScreenTimeViewModel
 import com.portfolio.videostreaming.ui.VideoPlayer
 import com.portfolio.videostreaming.ui.VideoPlayerViewModel
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
+/**
+ * Senior/Lead Approach: A Sealed Class or Object for Routes.
+ * This eliminates "Magic Strings" and provides a single source of truth for the whole app.
+ */
+sealed class Screen(val route: String) {
+    object Catalog : Screen("catalog")
+    object Player : Screen("player/{videoUri}") {
+        fun createRoute(videoUri: String): String {
+            val encoded = URLEncoder.encode(videoUri, StandardCharsets.UTF_8.toString())
+            return "player/$encoded"
+        }
+    }
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -66,31 +87,50 @@ class MainActivity : ComponentActivity() {
                         color = Color.Transparent
                     ) {
                         if (hasPermission) {
-                            val playerViewModel: VideoPlayerViewModel = viewModel()
                             val screenTimeViewModel: ScreenTimeViewModel = viewModel()
-
-                            val isPlaying by playerViewModel.isPlaying.collectAsState()
-                            val currentPosition by playerViewModel.currentPosition.collectAsState()
-                            val duration by playerViewModel.duration.collectAsState()
+                            val navController = rememberNavController()
 
                             val sessionSeconds by screenTimeViewModel.sessionSeconds.collectAsState()
                             val dailySeconds by screenTimeViewModel.dailySeconds.collectAsState()
                             val isCounterVisible by screenTimeViewModel.isCounterVisible.collectAsState()
 
                             Box(modifier = Modifier.fillMaxSize()) {
-                                VideoPlayer(
-                                    player = playerViewModel.exoPlayer,
-                                    isPlaying = isPlaying,
-                                    currentPosition = currentPosition,
-                                    duration = duration,
-                                    isScreenTimeVisible = isCounterVisible,
-                                    onTogglePlay = { playerViewModel.togglePlay() },
-                                    onSeek = { playerViewModel.seekTo(it) },
-                                    onRewind = { playerViewModel.rewind() },
-                                    onForward = { playerViewModel.forward() },
-                                    onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
-                                    modifier = Modifier.fillMaxSize()
-                                )
+                                NavHost(navController = navController, startDestination = Screen.Catalog.route) {
+                                    composable(Screen.Catalog.route) {
+                                        CatalogScreen(
+                                            onVideoSelected = { videoUri ->
+                                                navController.navigate(Screen.Player.createRoute(videoUri))
+                                            }
+                                        )
+                                    }
+                                    composable(Screen.Player.route) { backStackEntry ->
+                                        val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+                                        val playerViewModel: VideoPlayerViewModel = viewModel()
+
+                                        // Start playing as soon as we enter this screen
+                                        LaunchedEffect(videoUri) {
+                                            playerViewModel.playVideo(videoUri)
+                                        }
+
+                                        val isPlaying by playerViewModel.isPlaying.collectAsState()
+                                        val currentPosition by playerViewModel.currentPosition.collectAsState()
+                                        val duration by playerViewModel.duration.collectAsState()
+
+                                        VideoPlayer(
+                                            player = playerViewModel.exoPlayer,
+                                            isPlaying = isPlaying,
+                                            currentPosition = currentPosition,
+                                            duration = duration,
+                                            isScreenTimeVisible = isCounterVisible,
+                                            onTogglePlay = { playerViewModel.togglePlay() },
+                                            onSeek = { playerViewModel.seekTo(it) },
+                                            onRewind = { playerViewModel.rewind() },
+                                            onForward = { playerViewModel.forward() },
+                                            onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
 
                                 // Parental Screen Time Overlay
                                 AnimatedVisibility(

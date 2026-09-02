@@ -93,6 +93,25 @@ This document tracks the high-level collaboration between the human developer an
     - Emphasized "Privacy by Design" regarding the local-only storage of parental tracking data via DataStore.
 - **Outcome**: A professional, transparent project baseline that respects intellectual property and privacy laws—a vital trait for Lead Engineer candidates.
 
+### 13. Scalable Media Discovery & Navigation (Sept 1, 2026)
+- **Challenge**: Move from a hardcoded single-video app to a dynamic catalog.
+- **AI Contribution**: 
+    - Orchestrated the move to **Android MediaStore API** for high-performance discovery.
+    - Implemented **Jetpack Navigation** to manage multi-screen architecture.
+    - Compared **Intermediate vs. Senior** strategies: 
+        - Chose `LazyColumn` over `Column` for performance.
+        - Used `Dispatchers.IO` for non-blocking I/O.
+        - Safely passed URIs using `URLEncoder` to avoid route breakage.
+- **Outcome**: A professional "Browse -> Play" flow that mirrors commercial streaming platforms.
+
+### 14. Navigation Architecture Refactor (Sept 1, 2026)
+- **Challenge**: Raw strings for navigation routes are difficult to maintain and prone to typos.
+- **AI Contribution**: 
+    - Introduced a **Sealed Class (`Screen`)** to manage navigation routes.
+    - Encapsulated **URL Encoding** logic within the route creator to keep the UI clean.
+    - Explained the **Back Stack** and **Decoupling** principles (Lambda pattern).
+- **Outcome**: A type-safe, centralized navigation system that aligns with Lead Engineer architectural standards.
+
 ## Future Work / Stretch Goals
 - **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

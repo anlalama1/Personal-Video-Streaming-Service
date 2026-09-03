@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.portfolio.videostreaming.data.network.PlayEventRequest
+import com.portfolio.videostreaming.data.network.StreamingApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,10 +53,21 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
      * The player doesn't care WHERE the video is from (Local, HLS, DASH).
      * It just takes a URI and works its magic.
      */
-    fun playVideo(uriString: String) {
-        if (currentUri == uriString) return // Already playing this video! Prevents reset on rotation.
+    fun playVideo(videoId: String, uriString: String) {
+        if (currentUri == uriString) return 
         
         currentUri = uriString
+        
+        // Log the play event to CloudWatch via the BFF
+        viewModelScope.launch {
+            try {
+                StreamingApi.service.logPlayEvent(PlayEventRequest(videoId))
+            } catch (e: Exception) {
+                // SDE Tip: Telemetry failures should never crash the user experience
+                android.util.Log.e("VideoPlayerVM", "Failed to log play event", e)
+            }
+        }
+
         val mediaItem = MediaItem.fromUri(uriString.toUri())
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()

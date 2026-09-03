@@ -50,10 +50,10 @@ import java.nio.charset.StandardCharsets
  */
 sealed class Screen(val route: String) {
     object Catalog : Screen("catalog")
-    object Player : Screen("player/{videoUri}") {
-        fun createRoute(videoUri: String): String {
+    object Player : Screen("player/{videoId}/{videoUri}") {
+        fun createRoute(videoId: String, videoUri: String): String {
             val encoded = URLEncoder.encode(videoUri, StandardCharsets.UTF_8.toString())
-            return "player/$encoded"
+            return "player/$videoId/$encoded"
         }
     }
 }
@@ -99,12 +99,13 @@ class MainActivity : ComponentActivity() {
                                 NavHost(navController = navController, startDestination = Screen.Catalog.route) {
                                     composable(Screen.Catalog.route) {
                                         CatalogScreen(
-                                            onVideoSelected = { videoUri ->
-                                                navController.navigate(Screen.Player.createRoute(videoUri))
+                                            onVideoSelected = { videoId, videoUri ->
+                                                navController.navigate(Screen.Player.createRoute(videoId, videoUri))
                                             }
                                         )
                                     }
                                     composable(Screen.Player.route) { backStackEntry ->
+                                        val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
                                         val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
                                         val playerViewModel: VideoPlayerViewModel = viewModel()
 
@@ -123,8 +124,8 @@ class MainActivity : ComponentActivity() {
                                         }
 
                                         // Start playing as soon as we enter this screen
-                                        LaunchedEffect(videoUri) {
-                                            playerViewModel.playVideo(videoUri)
+                                        LaunchedEffect(videoId, videoUri) {
+                                            playerViewModel.playVideo(videoId, videoUri)
                                         }
 
                                         val currentPosition by playerViewModel.currentPosition.collectAsState()

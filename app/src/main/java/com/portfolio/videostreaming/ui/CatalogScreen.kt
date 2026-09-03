@@ -35,7 +35,7 @@ import coil.compose.AsyncImage
 
 @Composable
 fun CatalogScreen(
-    onVideoSelected: (String) -> Unit,
+    onVideoSelected: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MediaBrowserViewModel = viewModel()
 ) {
@@ -79,7 +79,7 @@ fun CatalogScreen(
                 items(videoList) { video ->
                     VideoItem(
                         video = video,
-                        onClick = { onVideoSelected(video.videoUrl) }
+                        onClick = { onVideoSelected(video.id, video.videoUrl) }
                     )
                 }
             }

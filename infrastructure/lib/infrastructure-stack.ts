@@ -7,6 +7,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as path from 'path';
 
 export class InfrastructureStack extends cdk.Stack {
@@ -134,11 +135,22 @@ export class InfrastructureStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       environment: {
         TABLE_NAME: table.tableName,
-        CLOUDFRONT_DOMAIN: distribution.distributionDomainName, // Now we pass the CDN domain
+        CLOUDFRONT_DOMAIN: distribution.distributionDomainName,
+      },
+    });
+
+    // 6b. Lambda Function for Logging Play Events
+    const logPlayLambda = new lambda.Function(this, 'LogPlayEventFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.logPlayHandler', // New handler in same file
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      environment: {
+        TABLE_NAME: table.tableName,
       },
     });
 
     table.grantReadData(catalogLambda);
+    table.grantReadData(logPlayLambda); // To verify videoId if needed
 
     // 7. API Gateway
     const api = new apigateway.RestApi(this, 'StreamingApi', {
@@ -151,6 +163,72 @@ export class InfrastructureStack extends cdk.Stack {
 
     const catalog = api.root.addResource('catalog');
     catalog.addMethod('GET', new apigateway.LambdaIntegration(catalogLambda));
+
+    const play = api.root.addResource('play');
+    play.addMethod('POST', new apigateway.LambdaIntegration(logPlayLambda));
+
+    // 8. CloudWatch Dashboard
+    // Senior Strategy: Define the dashboard in CDK for automated deployment and consistency.
+    const dashboard = new cloudwatch.Dashboard(this, 'StreamingServiceDashboard', {
+      dashboardName: 'StreamingService-Overview',
+    });
+
+    // Widget: Usage Overview (Catalog Requests)
+    dashboard.addWidgets(new cloudwatch.GraphWidget({
+      title: 'Catalog Requests',
+      left: [new cloudwatch.Metric({
+        namespace: 'StreamingService',
+        metricName: 'CatalogRequestCount',
+        dimensionsMap: { Service: 'CatalogService' },
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(1),
+      })],
+      width: 12
+    }));
+
+    // Widget: Top Content (Play Count)
+    // SDE Tip: We use a Log Query or a general metric if dimensions are dynamic.
+    // For now, we'll track the general play count.
+    dashboard.addWidgets(new cloudwatch.GraphWidget({
+      title: 'Video Playback Activity',
+      left: [new cloudwatch.Metric({
+        namespace: 'StreamingService',
+        metricName: 'VideoPlayCount',
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(1),
+      })],
+      width: 12
+    }));
+
+    // Widget: Top 10 Popular Videos
+    // Senior SDE Strategy: Use a Log Query Widget to aggregate dynamic dimensions (Video Titles).
+    // This allows the dashboard to scale automatically as you add new movies to DynamoDB.
+    dashboard.addWidgets(new cloudwatch.LogQueryWidget({
+      title: 'Top 10 Most Played Videos',
+      logGroupNames: [logPlayLambda.logGroup.logGroupName],
+      queryString: `
+        fields @timestamp, VideoPlayCount, Title
+        | filter ispresent(VideoPlayCount)
+        | stats sum(VideoPlayCount) as Plays by Title
+        | sort Plays desc
+        | limit 10
+      `,
+      width: 24,
+      height: 6
+    }));
+
+    // Widget: System Health (Errors)
+    dashboard.addWidgets(new cloudwatch.GraphWidget({
+      title: 'API Errors',
+      left: [new cloudwatch.Metric({
+        namespace: 'StreamingService',
+        metricName: 'ApiErrorCount',
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(1),
+        color: '#d62728'
+      })],
+      width: 24
+    }));
 
     // Outputs
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.url });

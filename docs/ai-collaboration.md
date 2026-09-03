@@ -137,7 +137,16 @@ This document tracks the high-level collaboration between the human developer an
     - Ensured the button respects the same auto-hide/show lifecycle as the playback controls.
 - **Outcome**: Improved UX with intuitive, player-centric navigation.
 
-### 18. Bug Fix: Idempotent Playback (Sept 1, 2026)
+### 19. Advanced Observability with CloudWatch EMF (Sept 2, 2026)
+- **Challenge**: Adding meaningful business metrics to the backend without increasing user-perceived latency.
+- **AI Contribution**: 
+    - Designed an **Embedded Metric Format (EMF)** logging strategy to emit custom metrics asynchronously.
+    - Implemented a new `/play` API and Lambda handler to track video playback events with high-granularity dimensions (VideoId, Title).
+    - Integrated error tracking metrics (`ApiErrorCount`) to monitor system health.
+    - Synchronized the Android UI to trigger telemetry events only on active playback starts.
+- **Outcome**: A professional, low-latency telemetry system that allows for real-time monitoring of user engagement and backend performance.
+
+### 20. Bug Fix: Idempotent Playback (Sept 1, 2026)
 - **Challenge**: Video was restarting on every screen rotation despite using a ViewModel.
 - **AI Contribution**: 
     - Identified that `LaunchedEffect` in the `NavHost` re-triggers on Activity recreation.

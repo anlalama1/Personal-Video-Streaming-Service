@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 
 /**
  * Senior/Lead Strategy: Use Data Transfer Objects (DTOs) for the API layer.
@@ -22,9 +24,17 @@ data class MediaItemDto(
     val videoUrl: String
 )
 
+@Serializable
+data class PlayEventRequest(
+    val videoId: String
+)
+
 interface StreamingApiService {
     @GET("catalog")
     suspend fun getCatalog(): List<MediaItemDto>
+
+    @POST("play")
+    suspend fun logPlayEvent(@Body request: PlayEventRequest)
 }
 
 /**

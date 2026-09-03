@@ -36,6 +36,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.portfolio.videostreaming.ui.CatalogScreen
+import com.portfolio.videostreaming.ui.PlayerIntent
 import com.portfolio.videostreaming.ui.ScreenTimeViewModel
 import com.portfolio.videostreaming.ui.VideoPlayer
 import com.portfolio.videostreaming.ui.VideoPlayerViewModel
@@ -109,11 +110,11 @@ class MainActivity : ComponentActivity() {
                                         val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
                                         val playerViewModel: VideoPlayerViewModel = viewModel()
 
+                                        val viewState by playerViewModel.viewState.collectAsState()
+
                                         // 1. Sync the global timer with this specific player's state
-                                        val isPlaying by playerViewModel.isPlaying.collectAsState()
-                                        
-                                        LaunchedEffect(isPlaying) {
-                                            screenTimeViewModel.setTicking(isPlaying)
+                                        LaunchedEffect(viewState.isPlaying) {
+                                            screenTimeViewModel.setTicking(viewState.isPlaying)
                                         }
 
                                         // 2. Stop the timer immediately when this screen is destroyed
@@ -125,22 +126,14 @@ class MainActivity : ComponentActivity() {
 
                                         // Start playing as soon as we enter this screen
                                         LaunchedEffect(videoId, videoUri) {
-                                            playerViewModel.playVideo(videoId, videoUri)
+                                            playerViewModel.processIntent(PlayerIntent.LoadVideo(videoId, videoUri))
                                         }
-
-                                        val currentPosition by playerViewModel.currentPosition.collectAsState()
-                                        val duration by playerViewModel.duration.collectAsState()
 
                                         VideoPlayer(
                                             player = playerViewModel.exoPlayer,
-                                            isPlaying = isPlaying,
-                                            currentPosition = currentPosition,
-                                            duration = duration,
+                                            state = viewState,
+                                            onIntent = { playerViewModel.processIntent(it) },
                                             isScreenTimeVisible = isCounterVisible,
-                                            onTogglePlay = { playerViewModel.togglePlay() },
-                                            onSeek = { playerViewModel.seekTo(it) },
-                                            onRewind = { playerViewModel.rewind() },
-                                            onForward = { playerViewModel.forward() },
                                             onBack = { navController.popBackStack() },
                                             onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
                                             modifier = Modifier.fillMaxSize()

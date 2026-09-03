@@ -14,14 +14,9 @@ import androidx.media3.ui.PlayerView
 @Composable
 fun VideoPlayer(
     player: Player,
-    isPlaying: Boolean,
-    currentPosition: Long,
-    duration: Long,
+    state: PlayerViewState,
+    onIntent: (PlayerIntent) -> Unit,
     isScreenTimeVisible: Boolean,
-    onTogglePlay: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onRewind: () -> Unit,
-    onForward: () -> Unit,
     onBack: () -> Unit,
     onToggleScreenTime: () -> Unit,
     modifier: Modifier = Modifier
@@ -40,14 +35,9 @@ fun VideoPlayer(
         
         // Top Layer: Our Custom "Glass" Controls
         PlayerControls(
-            isPlaying = isPlaying,
-            currentPosition = currentPosition,
-            duration = duration,
+            state = state,
+            onIntent = onIntent,
             isScreenTimeVisible = isScreenTimeVisible,
-            onTogglePlay = onTogglePlay,
-            onSeek = onSeek,
-            onRewind = onRewind,
-            onForward = onForward,
             onBack = onBack,
             onToggleScreenTime = onToggleScreenTime,
             modifier = Modifier.fillMaxSize()

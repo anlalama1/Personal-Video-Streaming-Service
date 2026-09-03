@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -44,24 +45,25 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
+/**
+ * Senior/Lead Strategy: MVI UI.
+ * This component is now a "Pure Function". It doesn't perform logic; 
+ * it only displays state and emits Intents.
+ */
 @Composable
 fun PlayerControls(
-    isPlaying: Boolean,
-    currentPosition: Long,
-    duration: Long,
+    state: PlayerViewState,
+    onIntent: (PlayerIntent) -> Unit,
     isScreenTimeVisible: Boolean,
-    onTogglePlay: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onRewind: () -> Unit,
-    onForward: () -> Unit,
     onBack: () -> Unit,
     onToggleScreenTime: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isVisible by remember { mutableStateOf(true) }
 
-    LaunchedEffect(isVisible, isPlaying) {
-        if (isVisible && isPlaying) {
+    // Auto-hide logic
+    LaunchedEffect(isVisible, state.isPlaying) {
+        if (isVisible && state.isPlaying) {
             delay(3.seconds)
             isVisible = false
         }
@@ -78,6 +80,11 @@ fun PlayerControls(
             },
         contentAlignment = Alignment.Center
     ) {
+        // Buffering Indicator (Added as a Senior refinement)
+        if (state.isBuffering) {
+            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(64.dp))
+        }
+
         AnimatedVisibility(
             visible = isVisible,
             enter = fadeIn(),
@@ -112,55 +119,31 @@ fun PlayerControls(
                     horizontalArrangement = Arrangement.spacedBy(32.dp)
                 ) {
                     // Rewind Button
-                    Surface(
-                        onClick = onRewind,
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.5f),
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Replay10,
-                                contentDescription = "Rewind 10s",
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                    }
+                    ControlIconButton(
+                        icon = Icons.Default.Replay10,
+                        contentDescription = "Rewind 10s",
+                        onClick = { onIntent(PlayerIntent.Rewind) },
+                        size = 56.dp,
+                        iconSize = 32.dp
+                    )
 
                     // Play/Pause Button
-                    Surface(
-                        onClick = onTogglePlay,
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.5f),
-                        modifier = Modifier.size(80.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    }
+                    ControlIconButton(
+                        icon = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        onClick = { onIntent(PlayerIntent.TogglePlay) },
+                        size = 80.dp,
+                        iconSize = 48.dp
+                    )
 
                     // Forward Button
-                    Surface(
-                        onClick = onForward,
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.5f),
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Forward10,
-                                contentDescription = "Forward 10s",
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                    }
+                    ControlIconButton(
+                        icon = Icons.Default.Forward10,
+                        contentDescription = "Forward 10s",
+                        onClick = { onIntent(PlayerIntent.Forward) },
+                        size = 56.dp,
+                        iconSize = 32.dp
+                    )
                 }
 
                 // Progress Bar and Time at the Bottom
@@ -171,9 +154,9 @@ fun PlayerControls(
                         .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
                 ) {
                     Slider(
-                        value = if (duration > 0) currentPosition.toFloat() else 0f,
-                        onValueChange = { onSeek(it.toLong()) },
-                        valueRange = 0f..(if (duration > 0) duration.toFloat() else 1f),
+                        value = if (state.duration > 0) state.currentPosition.toFloat() else 0f,
+                        onValueChange = { onIntent(PlayerIntent.SeekTo(it.toLong())) },
+                        valueRange = 0f..(if (state.duration > 0) state.duration.toFloat() else 1f),
                         colors = SliderDefaults.colors(
                             thumbColor = Color.White,
                             activeTrackColor = Color.White,
@@ -186,12 +169,12 @@ fun PlayerControls(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = formatTime(currentPosition),
+                            text = formatTime(state.currentPosition),
                             color = Color.White,
                             fontSize = 14.sp
                         )
                         Text(
-                            text = formatTime(duration),
+                            text = formatTime(state.duration),
                             color = Color.White,
                             fontSize = 14.sp
                         )
@@ -202,24 +185,44 @@ fun PlayerControls(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        Surface(
+                        ControlIconButton(
+                            icon = if (isScreenTimeVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = "Toggle Screen Time",
                             onClick = onToggleScreenTime,
-                            shape = CircleShape,
-                            color = Color.Black.copy(alpha = 0.5f),
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = if (isScreenTimeVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = "Toggle Screen Time",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
+                            size = 40.dp,
+                            iconSize = 20.dp
+                        )
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Senior Approach: Reusable UI components.
+ */
+@Composable
+private fun ControlIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    size: androidx.compose.ui.unit.Dp,
+    iconSize: androidx.compose.ui.unit.Dp
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = Color.Black.copy(alpha = 0.5f),
+        modifier = Modifier.size(size)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = Color.White,
+                modifier = Modifier.size(iconSize)
+            )
         }
     }
 }

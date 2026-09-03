@@ -1,6 +1,7 @@
 package com.portfolio.videostreaming.ui
 
 import android.app.Application
+import android.util.Log
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,33 +13,36 @@ import com.portfolio.videostreaming.core.data.network.StreamingApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class VideoPlayerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying = _isPlaying.asStateFlow()
+    /**
+     * Senior Strategy: Single State Management.
+     * Instead of 3-4 separate flows, we have one. This makes the UI 
+     * incredibly predictable and easy to test.
+     */
+    private val _viewState = MutableStateFlow(PlayerViewState())
+    val viewState = _viewState.asStateFlow()
 
-    private val _currentPosition = MutableStateFlow(0L)
-    val currentPosition = _currentPosition.asStateFlow()
-
-    private val _duration = MutableStateFlow(0L)
-    val duration = _duration.asStateFlow()
-
-    // Track the currently loaded URI to prevent unnecessary resets on rotation
+    // Internal engine state
     private var currentUri: String? = null
 
-    // Single source of truth for the player engine
     val exoPlayer = ExoPlayer.Builder(application).build().apply {
         addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _isPlaying.value = isPlaying
+                // Update only the isPlaying part of the state
+                _viewState.update { it.copy(isPlaying = isPlaying) }
             }
 
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) {
-                    _duration.value = duration
+                _viewState.update { 
+                    it.copy(
+                        isBuffering = state == Player.STATE_BUFFERING,
+                        duration = if (state == Player.STATE_READY) duration else it.duration
+                    )
                 }
             }
         })
@@ -49,22 +53,31 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     /**
-     * Senior Approach: Dynamic loading.
-     * The player doesn't care WHERE the video is from (Local, HLS, DASH).
-     * It just takes a URI and works its magic.
+     * The ONLY entry point for the UI.
+     * Senior Approach: Use a single "processIntent" function to centralize all logic.
      */
-    fun playVideo(videoId: String, uriString: String) {
-        if (currentUri == uriString) return 
+    fun processIntent(intent: PlayerIntent) {
+        when (intent) {
+            is PlayerIntent.LoadVideo -> handleLoadVideo(intent.videoId, intent.videoUri)
+            is PlayerIntent.TogglePlay -> handleTogglePlay()
+            is PlayerIntent.SeekTo -> handleSeekTo(intent.position)
+            is PlayerIntent.Rewind -> handleRewind()
+            is PlayerIntent.Forward -> handleForward()
+        }
+    }
+
+    private fun handleLoadVideo(videoId: String, uriString: String) {
+        if (currentUri == uriString) return
         
         currentUri = uriString
+        _viewState.update { it.copy(videoId = videoId, videoUri = uriString) }
         
-        // Log the play event to CloudWatch via the BFF
+        // Log telemetry (BFF)
         viewModelScope.launch {
             try {
                 StreamingApi.service.logPlayEvent(PlayEventRequest(videoId))
             } catch (e: Exception) {
-                // SDE Tip: Telemetry failures should never crash the user experience
-                android.util.Log.e("VideoPlayerVM", "Failed to log play event", e)
+                Log.e("VideoPlayerVM", "Failed to log play event", e)
             }
         }
 
@@ -74,32 +87,34 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
         exoPlayer.playWhenReady = true
     }
 
+    private fun handleTogglePlay() {
+        if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+    }
+
+    private fun handleSeekTo(position: Long) {
+        exoPlayer.seekTo(position)
+        _viewState.update { it.copy(currentPosition = position) }
+    }
+
+    private fun handleRewind() {
+        val newPos = (exoPlayer.currentPosition - SKIP_INCREMENT_MS).coerceAtLeast(0)
+        handleSeekTo(newPos)
+    }
+
+    private fun handleForward() {
+        val newPos = (exoPlayer.currentPosition + SKIP_INCREMENT_MS).coerceAtMost(exoPlayer.duration)
+        handleSeekTo(newPos)
+    }
+
     private fun startProgressPolling() {
         viewModelScope.launch {
             while (true) {
                 if (exoPlayer.isPlaying) {
-                    _currentPosition.value = exoPlayer.currentPosition
+                    _viewState.update { it.copy(currentPosition = exoPlayer.currentPosition) }
                 }
                 delay(200.milliseconds)
             }
         }
-    }
-
-    fun togglePlay() {
-        if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
-    }
-
-    fun seekTo(position: Long) {
-        exoPlayer.seekTo(position)
-        _currentPosition.value = position
-    }
-
-    fun rewind() {
-        seekTo((exoPlayer.currentPosition - SKIP_INCREMENT_MS).coerceAtLeast(0))
-    }
-
-    fun forward() {
-        seekTo((exoPlayer.currentPosition + SKIP_INCREMENT_MS).coerceAtMost(exoPlayer.duration))
     }
 
     override fun onCleared() {

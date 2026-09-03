@@ -137,16 +137,7 @@ This document tracks the high-level collaboration between the human developer an
     - Ensured the button respects the same auto-hide/show lifecycle as the playback controls.
 - **Outcome**: Improved UX with intuitive, player-centric navigation.
 
-### 19. Advanced Observability with CloudWatch EMF (Sept 2, 2026)
-- **Challenge**: Adding meaningful business metrics to the backend without increasing user-perceived latency.
-- **AI Contribution**: 
-    - Designed an **Embedded Metric Format (EMF)** logging strategy to emit custom metrics asynchronously.
-    - Implemented a new `/play` API and Lambda handler to track video playback events with high-granularity dimensions (VideoId, Title).
-    - Integrated error tracking metrics (`ApiErrorCount`) to monitor system health.
-    - Synchronized the Android UI to trigger telemetry events only on active playback starts.
-- **Outcome**: A professional, low-latency telemetry system that allows for real-time monitoring of user engagement and backend performance.
-
-### 20. Bug Fix: Idempotent Playback (Sept 1, 2026)
+### 18. Bug Fix: Idempotent Playback (Sept 1, 2026)
 - **Challenge**: Video was restarting on every screen rotation despite using a ViewModel.
 - **AI Contribution**: 
     - Identified that `LaunchedEffect` in the `NavHost` re-triggers on Activity recreation.
@@ -162,7 +153,16 @@ This document tracks the high-level collaboration between the human developer an
     - Integrated the **BFF (Backend-for-Frontend)** pattern to decouple the client from cloud service details.
 - **Outcome**: A professional, scalable cloud-native backend that allows for dynamic media discovery and remote streaming.
 
-### 20. Architectural Visualization (Sept 1, 2026)
+### 20. Advanced Observability with CloudWatch EMF (Sept 2, 2026)
+- **Challenge**: Adding meaningful business metrics to the backend without increasing user-perceived latency.
+- **AI Contribution**: 
+    - Designed an **Embedded Metric Format (EMF)** logging strategy to emit custom metrics asynchronously.
+    - Implemented a new `/play` API and Lambda handler to track video playback events with high-granularity dimensions (VideoId, Title).
+    - Integrated error tracking metrics (`ApiErrorCount`) to monitor system health.
+    - Synchronized the Android UI to trigger telemetry events only on active playback starts.
+- **Outcome**: A professional, low-latency telemetry system that allows for real-time monitoring of user engagement and backend performance.
+
+### 21. Architectural Visualization (Sept 1, 2026)
 - **Challenge**: Maintaining a clear, high-level overview of the full-stack system as complexity grows.
 - **AI Contribution**: 
     - Designed and authored `system-design.md` in the project root.
@@ -170,7 +170,7 @@ This document tracks the high-level collaboration between the human developer an
     - Documented core data flows and summarized strategic engineering decisions (BFF pattern, Reactive Polling, etc.).
 - **Outcome**: A "living" architectural blueprint that facilitates system understanding and onboarding—a standard requirement for Lead/Principal Engineering roles.
 
-### 21. Knowledge Audit & Mastery System (Sept 1, 2026)
+### 22. Knowledge Audit & Mastery System (Sept 1, 2026)
 - **Challenge**: Overcoming "AI Knowledge Dependency" and ensuring the developer can independently defend architectural decisions.
 - **AI Contribution**: 
     - Designed a comprehensive 12-question **Multiple-Choice Knowledge Audit**.
@@ -178,11 +178,12 @@ This document tracks the high-level collaboration between the human developer an
     - Emphasized "Self-Determination" and "Engineering Debt" prevention in the docs.
 - **Outcome**: A mechanism for verifying system mastery and ensuring the developer "Owns" the system design.
 
-### 22. Content Ingestion Strategy (Sept 1, 2026)
+### 23. Content Ingestion Strategy (Sept 1, 2026)
 - **Challenge**: Moving away from manual AWS CLI/Console operations for content management to a scalable, mobile-first approach.
 - **AI Contribution**: 
     - Introduced a new milestone for a dedicated **Android Administrator App**.
     - Designed the high-level architecture for mobile content ingestion: local file picking, metadata entry, and multi-part cloud uploads.
+    - Updated the `system-design.md` and `definition-of-done.md` to reflect the multi-app ecosystem.
 - **Outcome**: A strategic roadmap for internal tool development, proving the ability to engineer full-lifecycle systems for media platforms.
 
 ### 24. Multi-Module Architectural Refactor (Sept 2, 2026)
@@ -194,7 +195,15 @@ This document tracks the high-level collaboration between the human developer an
     - Refactored 6+ files to new package structures while maintaining system stability.
 - **Outcome**: A scalable, "SDE-Grade" project structure that supports parallel feature development and maximizes build efficiency.
 
+### 25. MVI Architectural Refactor (Sept 2, 2026)
+- **Challenge**: Managing complex, overlapping UI states in a video player (playback, buffering, time tracking) without race conditions.
+- **AI Contribution**: 
+    - Designed and implemented a strict **MVI (Model-View-Intent)** architecture.
+    - Centralized all screen logic into a single **"Reducer"** in the `VideoPlayerViewModel`.
+    - Introduced **Atomic State Management** using a single `PlayerViewState` object.
+    - Decoupled the UI by converting Composables into "Pure Functions" of the state.
+- **Outcome**: A "bulletproof" UI layer that matches the engineering standards of world-class streaming services like Disney+ and Netflix.
+
 ## Future Work / Stretch Goals
-- **MVI Refactor**: Transition from MVVM to MVI for more robust reactive state management.
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

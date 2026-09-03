@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.portfolio.videostreaming.core.data.model.MediaFile
 
 @Composable
 fun CatalogScreen(

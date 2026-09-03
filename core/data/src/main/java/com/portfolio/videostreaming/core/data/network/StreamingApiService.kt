@@ -1,6 +1,5 @@
-package com.portfolio.videostreaming.data.network
+package com.portfolio.videostreaming.core.data.network
 
-import com.portfolio.videostreaming.ui.MediaFile
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

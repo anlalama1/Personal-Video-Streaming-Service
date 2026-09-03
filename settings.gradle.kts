@@ -27,3 +27,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Personal Video Streaming Service"
 include(":app")
+include(":core:data")

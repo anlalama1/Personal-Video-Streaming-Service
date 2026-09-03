@@ -1,4 +1,4 @@
-package com.portfolio.videostreaming.data
+package com.portfolio.videostreaming.core.data.storage
 
 import android.content.Context
 import android.util.Log

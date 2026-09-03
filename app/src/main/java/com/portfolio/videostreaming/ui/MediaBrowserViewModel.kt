@@ -4,24 +4,13 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.portfolio.videostreaming.data.network.StreamingApi
+import com.portfolio.videostreaming.core.data.model.MediaFile
+import com.portfolio.videostreaming.core.data.network.StreamingApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-/**
- * Updated Data Model for Cloud Integration.
- */
-data class MediaFile(
-    val id: String,
-    val title: String,
-    val genre: String,
-    val releaseYear: Int,
-    val thumbnailUrl: String,
-    val videoUrl: String
-)
 
 class MediaBrowserViewModel(application: Application) : AndroidViewModel(application) {
 

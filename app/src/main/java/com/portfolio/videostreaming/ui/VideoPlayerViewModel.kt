@@ -7,8 +7,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.portfolio.videostreaming.data.network.PlayEventRequest
-import com.portfolio.videostreaming.data.network.StreamingApi
+import com.portfolio.videostreaming.core.data.network.PlayEventRequest
+import com.portfolio.videostreaming.core.data.network.StreamingApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

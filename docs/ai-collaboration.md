@@ -204,6 +204,14 @@ This document tracks the high-level collaboration between the human developer an
     - Decoupled the UI by converting Composables into "Pure Functions" of the state.
 - **Outcome**: A "bulletproof" UI layer that matches the engineering standards of world-class streaming services like Disney+ and Netflix.
 
+### 26. CDK Infrastructure Modularization (Sept 2, 2026)
+- **Challenge**: The monolithic `infrastructure-stack.ts` was becoming difficult to manage and violated SDE "Separation of Concerns" standards.
+- **AI Contribution**: 
+    - Redesigned the backend into 4 isolated domain stacks: `Storage`, `Database`, `Api`, and `Observability`.
+    - Implemented **Cross-Stack Dependency Injection**, allowing stacks to securely share resource references.
+    - Automated the transition from a single orchestrator to a multi-stack orchestration model in `infrastructure.ts`.
+- **Outcome**: A professional, enterprise-grade infrastructure codebase that maximizes maintainability and minimizes deployment blast radius.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

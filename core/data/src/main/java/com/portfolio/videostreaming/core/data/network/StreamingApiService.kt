@@ -1,5 +1,6 @@
 package com.portfolio.videostreaming.core.data.network
 
+import com.portfolio.videostreaming.core.data.BuildConfig
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -40,8 +41,8 @@ interface StreamingApiService {
  * Senior/Lead Strategy: Use a dedicated object or Dependency Injection (Hilt) to manage Singletons.
  */
 object StreamingApi {
-    // Live API URL from your CDK deployment
-    private const val BASE_URL = "https://r89608hogk.execute-api.us-east-1.amazonaws.com/prod/"
+    // Lead Strategy: URL is now injected from build.gradle.kts
+    private const val BASE_URL = BuildConfig.BASE_URL
 
     private val json = Json { 
         ignoreUnknownKeys = true 

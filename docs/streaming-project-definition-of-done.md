@@ -41,6 +41,9 @@ The project is **done** when all of the following are true:
 - [X ] Build a small **Room + ViewModel + Compose** list app (first taste of MVVM).
 
 ### Milestone 2 — Media pipeline spike (decoupled from any app)
+> [!NOTE]
+> **Architectural Decision: Local Transcoding.** Full-length movie transcoding is CPU-intensive and exceeds the **AWS Lambda 15-minute timeout**. While **AWS Elemental MediaConvert** is the industry standard, it is costly for a personal spike. We will use **local FFmpeg** to prove understanding of GOP sizes, segmenting, and manifest structures without cloud overhead.
+
 - [ ] Rip **one** movie you own.
 - [ ] Transcode it into **3 renditions** (e.g., 1080p/720p/480p) with **FFmpeg**.
 - [ ] Handle a **codec matrix**: AVC (H.264) and HEVC (H.265) video; keep/handle **EAC3** (Dolby Digital Plus) audio from the rip alongside **AAC**.
@@ -113,6 +116,15 @@ The project is **done** when all of the following are true:
 - [ ] Achieve a 100% score on architectural and strategic reasoning.
 - [ ] **Lead Engineer Demonstration**: Prove that you "Own" the code and decisions by being able to defend them without AI assistance, mirroring the expectations of a technical lead interview at a Tier-1 company.
 
+### Milestone 12 — Android "Administrator" App (Content Ingestion)
+- [ ] New Android Module/Project: `streaming-admin-app`.
+- [ ] **Content Picker**: select local MP4 files and JPG thumbnails from the device.
+- [ ] **Ingestion Flow**:
+  - [ ] Multi-part upload to S3 directly (or via pre-signed URLs from Lambda).
+  - [ ] Metadata entry form: Title, Genre, Year.
+  - [ ] DynamoDB entry creation via the BFF (API Gateway/Lambda).
+- [ ] **Lead Engineer Demonstration**: prove the ability to build internal tools for content management, a key part of large-scale streaming systems.
+
 ---
 
 ## Requirement Coverage Map
@@ -140,7 +152,10 @@ Confirm each résumé requirement is provably demonstrated:
 ## Out of Scope (deliberately, to control cost & time)
 
 - Native iOS app / FairPlay DRM (use Safari HLS instead — avoids $99/yr Apple fee)
-- AWS MediaConvert (transcode locally with FFmpeg — avoids per-minute charges)
+- **Cloud-based Transcoding**: (AWS MediaConvert/Lambda)
+  - Lambda is excluded due to the **15-minute execution limit**.
+  - MediaConvert is excluded to avoid per-minute usage charges.
+  - Custom ECS/Fargate FFmpeg clusters are avoided to keep the "Video Science" proofs (FFmpeg parameters) visible and local.
 - Custom domain name (use raw CloudFront domain — avoids registration fee)
 - Large media library (3-5 titles is enough to prove capability)
 - Long-term hosting / maintenance (tear down after proof captured)

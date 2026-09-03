@@ -6,22 +6,28 @@ This document provides a high-level visual and technical overview of the archite
 
 ```mermaid
 graph TD
-    subgraph "Android Client (Kotlin/Compose)"
+    subgraph "Android Client (Consumer App)"
         UI[Compose UI Layers]
         VM[ViewModels: Browser, Player, Timer]
         REPO[Repositories: DataStore, Network]
         ENGINE[Media3 ExoPlayer Engine]
     end
 
+    subgraph "Android Administrator App"
+        A_UI[Admin UI: Metadata Form]
+        A_VM[Admin ViewModel: Uploader]
+        A_NET[Network: S3 Multi-part Upload]
+    end
+
     subgraph "AWS Backend (CDK/TypeScript)"
         API[API Gateway]
-        LAMBDA[Lambda: GetCatalog]
+        LAMBDA[Lambda: BFF / Catalog API]
         DB[(DynamoDB: Metadata)]
         S3_M[S3: Media Bucket]
         S3_T[S3: Thumbnail Bucket]
     end
 
-    %% Interactions
+    %% Interactions - Consumer
     UI --> VM
     VM --> REPO
     REPO -->|REST/JSON| API
@@ -30,24 +36,31 @@ graph TD
     VM --> ENGINE
     ENGINE -->|Stream| S3_M
     UI -->|Async Load| S3_T
+
+    %% Interactions - Administrator
+    A_UI --> A_VM
+    A_VM --> A_NET
+    A_NET -->|PUT Item| API
+    LAMBDA -->|Write| DB
+    A_NET -->|Direct Upload / Signed URL| S3_M
+    A_NET -->|Direct Upload / Signed URL| S3_T
 ```
 
 ---
 
 ## 2. Component Breakdown
 
-### A. Android Client
-*   **UI Layer**: Built with **Jetpack Compose**. Uses a `NavHost` for professional screen transitions and `LazyColumn` for a high-performance catalog menu.
-*   **Logic Layer (MVVM)**: 
-    *   `MediaBrowserViewModel`: Orchestrates media discovery from the cloud.
-    *   `VideoPlayerViewModel`: Manages the lifecycle of the ExoPlayer engine.
-    *   `ScreenTimeViewModel`: Global session manager for parental tracking.
-*   **Data Layer**:
-    *   **Retrofit**: Type-safe REST client for fetching movie metadata.
-    *   **DataStore**: Thread-safe persistent storage for local usage statistics.
-    *   **Coil**: Optimized, edge-cached image loading for thumbnails.
+### A. Android Clients
+*   **Consumer App**: Built with **Jetpack Compose**. Uses a `NavHost` for professional screen transitions and `LazyColumn` for a high-performance catalog menu.
+*   **Administrator App (Milestone 11)**: A specialized tool for content ingestion. It handles selecting local high-res files, entering metadata, and managing the multi-part upload process to the cloud.
 
-### B. Cloud Backend (Serverless)
+### B. Logic Layer (MVVM)
+*   `MediaBrowserViewModel`: Orchestrates media discovery from the cloud.
+*   `VideoPlayerViewModel`: Manages the lifecycle of the ExoPlayer engine.
+*   `ScreenTimeViewModel`: Global session manager for parental tracking.
+*   `UploadViewModel (Future)`: Logic for content validation and upload status tracking.
+
+### C. Cloud Backend (Serverless)
 *   **Infrastructure as Code (CDK)**: Entire backend is defined in TypeScript, allowing for 1-click deployments and teardowns.
 *   **BFF (Backend-for-Frontend)**: The Lambda function acts as a proxy, cleaning and formatting DynamoDB data specifically for the Android app's needs.
 *   **Storage Strategy**: Direct S3 access for Milestone 1; transitioning to **CloudFront** (CDN) for Milestone 2 to support Adaptive Bitrate Streaming (ABR).
@@ -78,3 +91,4 @@ graph TD
 | **Reactive Polling** | Used a 200ms coroutine loop for progress tracking to balance visual smoothness with battery life. |
 | **Locale Invariance** | Forced `Locale.US` for storage keys to prevent "Midnight Bugs" in different regions. |
 | **State Gates** | Implemented a "Switch" in the ScreenTime timer to ensure tracking only occurs during active playback. |
+| **Local Transcoding**| Bypasses the AWS Lambda 15-minute timeout and avoids MediaConvert costs while keeping low-level FFmpeg parameters (GOP, ABR) visible for audit. |

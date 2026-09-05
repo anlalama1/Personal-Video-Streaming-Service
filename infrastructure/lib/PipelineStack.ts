@@ -28,15 +28,14 @@ export class PipelineStack extends cdk.Stack {
           'echo "BUILD LOG: ANDROID_HOME is $ANDROID_HOME"',
 
           // 2. Conditional Setup: Only download if cache is empty
-          'if [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then',
-          '  echo "BUILD LOG: SDK not found in cache. Downloading tools..."',
-          '  mkdir -p $ANDROID_HOME/cmdline-tools',
-          '  wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/tools.zip',
-          '  unzip -q /tmp/tools.zip -d $ANDROID_HOME/cmdline-tools',
-          '  mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
-          'else',
-          '  echo "BUILD LOG: Found SDK in cache. Skipping download."',
-          'fi',
+          // Lead Strategy: Use a single string block for complex shell logic to avoid syntax errors
+          '[ -d "$ANDROID_HOME/cmdline-tools/latest" ] && echo "BUILD LOG: Found SDK in cache. Skipping download." || { ' +
+          'echo "BUILD LOG: SDK not found in cache. Downloading tools..."; ' +
+          'mkdir -p $ANDROID_HOME/cmdline-tools; ' +
+          'wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/tools.zip; ' +
+          'unzip -q /tmp/tools.zip -d $ANDROID_HOME/cmdline-tools; ' +
+          'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest; ' +
+          'echo "BUILD LOG: Tools installed."; }',
 
           // 3. Install Components
           'echo "BUILD LOG: Ensuring licenses and platform 37.1 are present..."',

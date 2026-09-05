@@ -7,6 +7,8 @@ import { MediaProcessingStack } from './MediaProcessingStack';
 import { ObservabilityStack } from './ObservabilityStack';
 
 export class StreamingAppStage extends cdk.Stage {
+  public readonly appDistributionBucketName: cdk.CfnOutput;
+
   constructor(scope: Construct, id: string, props?: cdk.StageProps) {
     super(scope, id, props);
 
@@ -16,6 +18,7 @@ export class StreamingAppStage extends cdk.Stage {
     };
 
     const storage = new StorageStack(this, 'StorageStack', { env });
+    this.appDistributionBucketName = storage.node.findChild('AppDistributionBucketName') as cdk.CfnOutput;
     const database = new DatabaseStack(this, 'DatabaseStack', { env });
 
     const api = new ApiStack(this, 'ApiStack', {

@@ -293,6 +293,17 @@ This document tracks the high-level collaboration between the human developer an
     - Implemented **Temporary MP4 Pinning**: Forced the Lambda to return raw `.mp4` URLs even if HLS artifacts exist, ensuring app stability while the client-side HLS logic is under review.
 - **Outcome**: A more descriptive database schema that provides direct access to derivative assets while maintaining a safe fallback for the client application.
 
+- **Outcome**: A fully automated, "Git-Ops" deployment workflow where a single `git push` triggers the entire cloud infrastructure update.
+
+### 35. Unified Android Distribution Channel (Sept 4, 2026)
+- **Challenge**: Local Android builds were difficult to distribute to physical devices without manual transfer (USB/Google Drive).
+- **AI Contribution**: 
+    - Extended the CI/CD pipeline to include an **Android Build Stage** using AWS CodeBuild (Java 17).
+    - Integrated a secure **Distribution Channel** via Amazon S3 and CloudFront.
+    - Automated the post-deployment upload of `app-debug.apk` to a dedicated distribution bucket.
+    - Configured a new CloudFront path (`/download/*`) for direct, secure mobile installs.
+- **Outcome**: A professional, end-to-end release pipeline where a single `git push` updates the backend and delivers a downloadable APK directly to physical testing devices.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

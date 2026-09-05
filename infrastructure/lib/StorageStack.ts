@@ -9,6 +9,7 @@ export class StorageStack extends cdk.Stack {
   public readonly mediaBucket: s3.IBucket;
   public readonly thumbnailBucket: s3.IBucket;
   public readonly hlsBucket: s3.IBucket;
+  public readonly appDistributionBucket: s3.IBucket;
   public readonly distribution: cloudfront.IDistribution;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -20,7 +21,7 @@ export class StorageStack extends cdk.Stack {
       autoDeleteObjects: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
-      eventBridgeEnabled: true, // Lead Strategy: Enable EventBridge to decouple triggers
+      eventBridgeEnabled: true,
       cors: [{
         allowedMethods: [s3.HttpMethods.GET],
         allowedOrigins: ['*'],
@@ -52,6 +53,14 @@ export class StorageStack extends cdk.Stack {
       }],
     });
 
+    // Lead Strategy: Dedicated bucket for Android APK distribution
+    this.appDistributionBucket = new s3.Bucket(this, 'AppDistributionBucket', {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+    });
+
     // 2. CloudFront OAC
     const oac = new cloudfront.CfnOriginAccessControl(this, 'StreamingOAC', {
       originAccessControlConfig: {
@@ -63,7 +72,7 @@ export class StorageStack extends cdk.Stack {
     });
 
     // 3. Edge Functions
-    const rewriteFunction = new cloudfront.Function(this, 'RewriteThumbnails', {
+    const rewriteFunction = new cloudfront.Function(this, 'RewritePath', {
       code: cloudfront.FunctionCode.fromInline(`
         function handler(event) {
           var request = event.request;
@@ -73,6 +82,9 @@ export class StorageStack extends cdk.Stack {
           }
           if (uri.startsWith('/hls/')) {
             request.uri = uri.replace('/hls/', '/');
+          }
+          if (uri.startsWith('/download/')) {
+            request.uri = uri.replace('/download/', '/');
           }
           return request;
         }
@@ -105,18 +117,27 @@ export class StorageStack extends cdk.Stack {
             function: rewriteFunction,
             eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
           }],
+        },
+        // Lead Strategy: Distribution path for Android APKs
+        '/download/*': {
+          origin: new origins.S3Origin(this.appDistributionBucket),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // Don't cache beta APKs
+          functionAssociations: [{
+            function: rewriteFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          }],
         }
       }
     });
 
     // OAC Attachment (L1 Escape Hatch)
     const cfnDistribution = this.distribution.node.defaultChild as cloudfront.CfnDistribution;
-    cfnDistribution.addPropertyOverride('DistributionConfig.Origins.0.OriginAccessControlId', oac.attrId);
-    cfnDistribution.addPropertyOverride('DistributionConfig.Origins.0.S3OriginConfig.OriginAccessIdentity', '');
-    cfnDistribution.addPropertyOverride('DistributionConfig.Origins.1.OriginAccessControlId', oac.attrId);
-    cfnDistribution.addPropertyOverride('DistributionConfig.Origins.1.S3OriginConfig.OriginAccessIdentity', '');
-    cfnDistribution.addPropertyOverride('DistributionConfig.Origins.2.OriginAccessControlId', oac.attrId);
-    cfnDistribution.addPropertyOverride('DistributionConfig.Origins.2.S3OriginConfig.OriginAccessIdentity', '');
+    const origins_list = [0, 1, 2, 3]; // Media, Thumbnails, HLS, App
+    origins_list.forEach(i => {
+        cfnDistribution.addPropertyOverride(`DistributionConfig.Origins.${i}.OriginAccessControlId`, oac.attrId);
+        cfnDistribution.addPropertyOverride(`DistributionConfig.Origins.${i}.S3OriginConfig.OriginAccessIdentity`, '');
+    });
 
     // 5. Bucket Policies
     const allowCloudFront = (bucket: s3.IBucket) => {
@@ -135,7 +156,9 @@ export class StorageStack extends cdk.Stack {
     allowCloudFront(this.mediaBucket);
     allowCloudFront(this.thumbnailBucket);
     allowCloudFront(this.hlsBucket);
+    allowCloudFront(this.appDistributionBucket);
 
     new cdk.CfnOutput(this, 'CloudFrontDomain', { value: this.distribution.distributionDomainName });
+    new cdk.CfnOutput(this, 'AppDistributionBucketName', { value: this.appDistributionBucket.bucketName });
   }
 }

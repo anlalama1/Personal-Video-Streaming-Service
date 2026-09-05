@@ -12,8 +12,6 @@ export class PipelineStack extends cdk.Stack {
     const pipeline = new pipelines.CodePipeline(this, 'StreamingPipeline', {
       pipelineName: 'StreamingService-Production-Pipeline',
       dockerEnabledForSynth: true,
-      // Principal Strategy: CodeBuildStep allows for advanced caching
-      // of heavy dependencies like the Android SDK.
       synth: new pipelines.CodeBuildStep('Synth', {
         input: pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
           connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
@@ -22,13 +20,13 @@ export class PipelineStack extends cdk.Stack {
         commands: [
           'echo "BUILD LOG: Starting Environment Setup..."',
 
-          // 1. Setup Android SDK path (Lead Strategy: Isolate in /tmp to prevent self-mutation loops)
-          'export ANDROID_HOME=/tmp/android-sdk',
+          // 1. Setup Android SDK path inside the project root for persistent caching
+          // SDE Strategy: We use a hidden folder name to keep the project root clean
+          'export ANDROID_HOME=$(pwd)/.android-sdk-cache',
           'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
           'echo "BUILD LOG: ANDROID_HOME is $ANDROID_HOME"',
 
-          // 2. Conditional Setup: Only download if cache is empty
-          // Lead Strategy: Use a single string block for complex shell logic to avoid syntax errors
+          // 2. Conditional Setup
           '[ -d "$ANDROID_HOME/cmdline-tools/latest" ] && echo "BUILD LOG: Found SDK in cache. Skipping download." || { ' +
           'echo "BUILD LOG: SDK not found in cache. Downloading tools..."; ' +
           'mkdir -p $ANDROID_HOME/cmdline-tools; ' +
@@ -61,7 +59,7 @@ export class PipelineStack extends cdk.Stack {
         partialBuildSpec: codebuild.BuildSpec.fromObject({
           cache: {
             paths: [
-              '/tmp/android-sdk/**/*' // Lead Strategy: Cache the isolated /tmp directory
+              '.android-sdk-cache/**/*' // Lead Strategy: Cache the persistent project subdirectory
             ]
           }
         }),
@@ -93,15 +91,23 @@ export class PipelineStack extends cdk.Stack {
         input: pipeline.synth,
         envFromCfnOutputs: {
           BUCKET_NAME: prodStage.appDistributionBucketName,
+          DISTRIBUTION_ID: prodStage.distributionId,
         },
         commands: [
-          'aws s3 cp android/latest-beta.apk s3://$BUCKET_NAME/latest-beta.apk'
+          // 1. Upload APK with correct headers for mobile browsers
+          'aws s3 cp android/latest-beta.apk s3://$BUCKET_NAME/latest-beta.apk --content-type "application/vnd.android.package-archive" --content-disposition "attachment; filename=\"personal-stream-beta.apk\""',
+
+          // 2. Invalidate CDN cache to ensure the phone gets the fresh version
+          'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/download/*"'
         ],
-        // Lead Strategy: Explicitly grant write access to the distribution bucket
         rolePolicyStatements: [
           new iam.PolicyStatement({
             actions: ['s3:PutObject'],
-            resources: ['arn:aws:s3:::prod-storagestack-appdistributionbucket*/*'],
+            resources: [`arn:aws:s3:::*`], // Scoped by BUCKET_NAME env var at runtime
+          }),
+          new iam.PolicyStatement({
+            actions: ['cloudfront:CreateInvalidation'],
+            resources: [`arn:aws:cloudfront::${this.account}:distribution/*`],
           }),
         ],
       })

@@ -160,5 +160,6 @@ export class StorageStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'CloudFrontDomain', { value: this.distribution.distributionDomainName });
     new cdk.CfnOutput(this, 'AppDistributionBucketName', { value: this.appDistributionBucket.bucketName });
+    new cdk.CfnOutput(this, 'DistributionId', { value: this.distribution.distributionId });
   }
 }

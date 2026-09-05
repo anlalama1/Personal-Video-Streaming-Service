@@ -12,7 +12,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         // Lead Strategy: Inject the API URL through Gradle.
-        buildConfigField("String", "BASE_URL", "\"https://52ov6ajhwc.execute-api.us-east-1.amazonaws.com/prod/\"")
+        buildConfigField("String", "BASE_URL", "\"https://ytlejkjznh.execute-api.us-east-1.amazonaws.com/prod/\"")
     }
 
     compileOptions {

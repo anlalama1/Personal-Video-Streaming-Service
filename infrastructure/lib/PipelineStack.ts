@@ -21,9 +21,9 @@ export class PipelineStack extends cdk.Stack {
           triggerOnPush: true,
         }),
         /**
-         * Lead Strategy: Dual-Build Synth.
-         * We synth the infra AND build the Android app in the same stage
-         * to ensure they are logically tied together in the release artifact.
+         * Principal Strategy: Zero-Config Android CI.
+         * CodeBuild does not have the Android SDK. We install it on-the-fly
+         * to ensure the repository remains portable and buildable by anyone.
          */
         commands: [
           // 1. Build Infrastructure
@@ -33,14 +33,20 @@ export class PipelineStack extends cdk.Stack {
           'npx cdk synth',
           'cd ..',
 
-          // 2. Build Android App
-          // CodeBuild STANDARD_7_0 has Java 17 and Gradle support pre-installed.
-          // We just need to ensure the Gradle wrapper is executable.
+          // 2. Setup Android SDK
+          'export ANDROID_HOME=$PWD/android-sdk',
+          'mkdir -p $ANDROID_HOME/cmdline-tools',
+          'wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -P /tmp',
+          'unzip -q /tmp/commandlinetools-linux-11076708_latest.zip -d $ANDROID_HOME/cmdline-tools',
+          'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
+          'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools',
+          'yes | sdkmanager --licenses > /dev/null',
+
+          // 3. Build Android App
           'chmod +x ./gradlew',
           './gradlew :app:assembleDebug',
 
-          // 3. Stage Artifacts
-          // Move the APK to the assembly directory so it's captured in the artifact
+          // 4. Stage Artifacts
           'mkdir -p infrastructure/cdk.out/android',
           'cp app/build/outputs/apk/debug/app-debug.apk infrastructure/cdk.out/android/latest-beta.apk'
         ],

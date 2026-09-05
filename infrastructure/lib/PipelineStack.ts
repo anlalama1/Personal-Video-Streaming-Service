@@ -18,45 +18,58 @@ export class PipelineStack extends cdk.Stack {
           triggerOnPush: true,
         }),
         /**
-         * Principal Strategy: Deterministic Environment Setup.
-         * We build the App BEFORE the Infra so the APK is ready for the assembly.
+         * Principal Strategy: High-Performance Cloud Build.
+         * We bump the compute type and add exhaustive logging to solve the
+         * environment-drift issues in the cloud.
          */
         commands: [
-          // 1. Setup Android Environment
-          'export ANDROID_HOME=$(pwd)/android-sdk',
+          'echo "BUILD LOG: Starting Environment Setup..."',
+
+          // 1. Setup Android SDK path
+          'export ANDROID_HOME=$(readlink -f ./android-sdk)',
+          'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
+          'echo "BUILD LOG: ANDROID_HOME is $ANDROID_HOME"',
+
+          // 2. Download and Extract Tools (No silence)
           'mkdir -p $ANDROID_HOME/cmdline-tools',
           'wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/tools.zip',
           'unzip -q /tmp/tools.zip -d $ANDROID_HOME/cmdline-tools',
           'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
-          'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
 
-          // 2. Install SDK Components
-          'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses > /dev/null',
-          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null',
+          // 3. Install Components (Explicit logging)
+          'echo "BUILD LOG: Accepting licenses..."',
+          'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses',
+          'echo "BUILD LOG: Installing Platform 35..."',
+          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0"',
 
-          // 3. Explicitly provide SDK to Gradle
+          // 4. Create local.properties
           'echo "sdk.dir=$ANDROID_HOME" > local.properties',
+          'echo "BUILD LOG: local.properties content:" && cat local.properties',
 
-          // 4. Build the Android App
+          // 5. Build Android App
+          'echo "BUILD LOG: Launching Gradle..."',
           'chmod +x ./gradlew',
           './gradlew :app:assembleDebug --no-daemon',
 
-          // 5. Build Infrastructure
+          // 6. Build Infrastructure
+          'echo "BUILD LOG: Starting Infrastructure Synth..."',
           'cd infrastructure',
           'npm install',
           'npm run build',
           'npx cdk synth',
           'cd ..',
 
-          // 6. Stage Artifacts
+          // 7. Stage Artifacts
           'mkdir -p infrastructure/cdk.out/android',
-          'cp app/build/outputs/apk/debug/app-debug.apk infrastructure/cdk.out/android/latest-beta.apk'
+          'cp app/build/outputs/apk/debug/app-debug.apk infrastructure/cdk.out/android/latest-beta.apk',
+          'echo "BUILD LOG: All stages complete."'
         ],
         primaryOutputDirectory: 'infrastructure/cdk.out',
       }),
       codeBuildDefaults: {
         buildEnvironment: {
           buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
+          computeType: codebuild.ComputeType.MEDIUM, // Boost to 7GB RAM
           privileged: true,
         },
         rolePolicy: [

@@ -38,10 +38,14 @@ export class PipelineStack extends cdk.Stack {
           'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
 
           // 3. Install Components (Explicit logging)
+          'echo "BUILD LOG: Listing available SDK packages..."',
+          'sdkmanager --sdk_root=$ANDROID_HOME --list | grep "platforms;" || true',
+
           'echo "BUILD LOG: Accepting licenses..."',
           'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses',
-          'echo "BUILD LOG: Installing Platform 37..."',
-          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-37" "build-tools;35.0.0"',
+          'echo "BUILD LOG: Installing Platform..."',
+          // Attempt to install 35 as a fallback if 37 is missing, but we really need to see the list
+          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0"',
 
           // 4. Create local.properties
           'echo "sdk.dir=$ANDROID_HOME" > local.properties',

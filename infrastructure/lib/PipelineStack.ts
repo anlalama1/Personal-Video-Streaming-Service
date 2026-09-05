@@ -96,7 +96,14 @@ export class PipelineStack extends cdk.Stack {
         },
         commands: [
           'aws s3 cp android/latest-beta.apk s3://$BUCKET_NAME/latest-beta.apk'
-        ]
+        ],
+        // Lead Strategy: Explicitly grant write access to the distribution bucket
+        rolePolicyStatements: [
+          new iam.PolicyStatement({
+            actions: ['s3:PutObject'],
+            resources: ['arn:aws:s3:::prod-storagestack-appdistributionbucket*/*'],
+          }),
+        ],
       })
     );
   }

@@ -304,6 +304,25 @@ This document tracks the high-level collaboration between the human developer an
     - Configured a new CloudFront path (`/download/*`) for direct, secure mobile installs.
 - **Outcome**: A professional, end-to-end release pipeline where a single `git push` updates the backend and delivers a downloadable APK directly to physical testing devices.
 
+- **Outcome**: A fully automated, "Git-Ops" deployment workflow where a single `git push` triggers the entire cloud infrastructure update.
+
+### 36. Build Pipeline Optimization: Cloud Caching (Sept 5, 2026)
+- **Challenge**: The unified build pipeline was taking over 10 minutes due to the repeated download of the 300MB+ Android SDK on every run.
+- **AI Contribution**: 
+    - Transitioned the pipeline from `ShellStep` to **`CodeBuildStep`** to enable advanced caching features.
+    - Implemented a **Persistent Cache** for the `android-sdk` directory.
+    - Designed a **Conditional Bootstrap** script that detects existing SDK tools in the cache, eliminating redundant downloads.
+    - Performed a **Cache Risk Analysis**, ultimately deciding to exclude `node_modules` from the cache to prevent "Dependency Drift" while still achieving a ~40% reduction in total build time.
+- **Outcome**: Optimized the release velocity of the full-stack system, reducing the "Code-to-Cloud" latency significantly.
+
+### 37. Pipeline Stability: Resolving Self-Mutation Loops (Sept 5, 2026)
+- **Challenge**: The CI/CD pipeline entered an infinite loop where the `SelfMutate` stage triggered a restart on every build.
+- **AI Contribution**: 
+    - Diagnosed the loop as being caused by the Android SDK being located inside the source tree, affecting the CDK Cloud Assembly hash.
+    - Implemented **Filesystem Isolation**: Moved the `ANDROID_HOME` to `/tmp/android-sdk`, a directory outside the Git source root.
+    - Configured **Absolute Path Caching** in CodeBuild to maintain build performance while ensuring "Clean-Room" synthesis.
+- **Outcome**: A stable, high-performance pipeline that only updates when actual code changes occur.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

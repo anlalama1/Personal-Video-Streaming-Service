@@ -1,10 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
 
 interface ObservabilityStackProps extends cdk.StackProps {
-  logPlayLambda: lambda.Function;
+  logGroup: logs.ILogGroup;
 }
 
 export class ObservabilityStack extends cdk.Stack {
@@ -40,7 +40,7 @@ export class ObservabilityStack extends cdk.Stack {
 
     dashboard.addWidgets(new cloudwatch.LogQueryWidget({
       title: 'Top 10 Most Played Videos',
-      logGroupNames: [props.logPlayLambda.logGroup.logGroupName],
+      logGroupNames: [props.logGroup.logGroupName],
       queryString: `
         fields @timestamp, VideoPlayCount, Title
         | filter ispresent(VideoPlayCount)

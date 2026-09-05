@@ -21,15 +21,15 @@ export class PipelineStack extends cdk.Stack {
         input: pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
           connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
         }),
-        // Lead Strategy: Run synth and output the assembly to the root
-        // to simplify the artifact structure for the SelfMutate stage.
+        // Lead Strategy: Keep the synth output local to the infrastructure folder.
+        // This ensures the internal manifest.json metadata remains consistent.
         commands: [
           'cd infrastructure',
           'npm install',
           'npm run build',
-          'npx cdk synth -o ../cdk.out'
+          'npx cdk synth'
         ],
-        primaryOutputDirectory: 'cdk.out',
+        primaryOutputDirectory: 'infrastructure/cdk.out',
       }),
       codeBuildDefaults: {
         buildEnvironment: {

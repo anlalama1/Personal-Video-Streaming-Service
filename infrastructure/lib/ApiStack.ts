@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
 
 interface ApiStackProps extends cdk.StackProps {
@@ -12,6 +13,7 @@ interface ApiStackProps extends cdk.StackProps {
 
 export class ApiStack extends cdk.Stack {
   public readonly logPlayLambda: lambda.Function;
+  public readonly logGroup: logs.ILogGroup;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -36,6 +38,8 @@ export class ApiStack extends cdk.Stack {
         TABLE_NAME: props.table.tableName,
       },
     });
+
+    this.logGroup = this.logPlayLambda.logGroup;
 
     // Permissions
     props.table.grantReadData(catalogLambda);

@@ -7,12 +7,6 @@ import { MediaProcessingStack } from './MediaProcessingStack';
 import { ObservabilityStack } from './ObservabilityStack';
 import { ImageBuilderStack } from './ImageBuilderStack';
 
-/**
- * Senior Strategy: The Application Stage.
- * In a professional CI/CD environment, we wrap our related stacks in a "Stage".
- * This allows the pipeline to deploy the entire application as a single unit
- * into different environments (e.g., Staging, Production).
- */
 export class StreamingAppStage extends cdk.Stage {
   constructor(scope: Construct, id: string, props?: cdk.StageProps) {
     super(scope, id, props);
@@ -22,18 +16,15 @@ export class StreamingAppStage extends cdk.Stage {
       region: props?.env?.region || 'us-east-1'
     };
 
-    // 1. Foundation
     const storage = new StorageStack(this, 'StorageStack', { env });
     const database = new DatabaseStack(this, 'DatabaseStack', { env });
 
-    // 2. Logic
     const api = new ApiStack(this, 'ApiStack', {
       env,
       table: database.table,
       cdnDomain: storage.distribution.distributionDomainName
     });
 
-    // 3. Media Processing
     const builder = new ImageBuilderStack(this, 'ImageBuilderStack', { env });
 
     new MediaProcessingStack(this, 'MediaProcessingStack', {
@@ -44,10 +35,9 @@ export class StreamingAppStage extends cdk.Stage {
       repository: builder.repository
     });
 
-    // 4. Monitoring
     new ObservabilityStack(this, 'ObservabilityStack', {
       env,
-      logPlayLambda: api.logPlayLambda
+      logGroup: api.logGroup
     });
   }
 }

@@ -15,6 +15,7 @@ export class PipelineStack extends cdk.Stack {
       synth: new pipelines.ShellStep('Synth', {
         input: pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
           connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
+          triggerOnPush: true, // Explicitly tell CDK to set up the push trigger
         }),
         // Principal Strategy: Standard directory alignment.
         // We run everything inside 'infrastructure' and point the output to 'infrastructure/cdk.out'.

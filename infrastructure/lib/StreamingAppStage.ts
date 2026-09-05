@@ -5,7 +5,6 @@ import { DatabaseStack } from './DatabaseStack';
 import { ApiStack } from './ApiStack';
 import { MediaProcessingStack } from './MediaProcessingStack';
 import { ObservabilityStack } from './ObservabilityStack';
-import { ImageBuilderStack } from './ImageBuilderStack';
 
 export class StreamingAppStage extends cdk.Stage {
   constructor(scope: Construct, id: string, props?: cdk.StageProps) {
@@ -25,14 +24,11 @@ export class StreamingAppStage extends cdk.Stage {
       cdnDomain: storage.distribution.distributionDomainName
     });
 
-    const builder = new ImageBuilderStack(this, 'ImageBuilderStack', { env });
-
     new MediaProcessingStack(this, 'MediaProcessingStack', {
       env,
       sourceBucket: storage.mediaBucket,
       hlsBucket: storage.hlsBucket,
       metadataTable: database.table,
-      repository: builder.repository
     });
 
     new ObservabilityStack(this, 'ObservabilityStack', {

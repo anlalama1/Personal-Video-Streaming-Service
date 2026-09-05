@@ -40,8 +40,8 @@ export class PipelineStack extends cdk.Stack {
           // 3. Install Components (Explicit logging)
           'echo "BUILD LOG: Accepting licenses..."',
           'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses',
-          'echo "BUILD LOG: Installing Platform 35..."',
-          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0"',
+          'echo "BUILD LOG: Installing Platform 37..."',
+          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-37" "build-tools;35.0.0"',
 
           // 4. Create local.properties
           'echo "sdk.dir=$ANDROID_HOME" > local.properties',

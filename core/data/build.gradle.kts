@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.portfolio.videostreaming.core.data"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 24

@@ -33,27 +33,11 @@ export class PipelineStack extends cdk.Stack {
           'npx cdk synth',
           'cd ..',
 
-          // 2. Setup Android SDK (Lead Strategy: Explicit Rooting)
-          'export ANDROID_HOME=$(pwd)/android-sdk',
-          'mkdir -p $ANDROID_HOME/cmdline-tools',
-          'wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip',
-          'unzip -q /tmp/cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools',
-          'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
-          'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
+          // 2. Build Android App using the standalone CI script
+          'chmod +x ./ci-build.sh',
+          './ci-build.sh',
 
-          // Accept licenses and install platform components
-          'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses > /dev/null',
-          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null',
-
-          // Create local.properties with absolute path
-          'echo "sdk.dir=$ANDROID_HOME" > local.properties',
-          'echo "BUILD LOG: Created local.properties with content:" && cat local.properties',
-
-          // 3. Build Android App
-          'chmod +x ./gradlew',
-          './gradlew :app:assembleDebug',
-
-          // 4. Stage Artifacts
+          // 3. Stage Artifacts
           'mkdir -p infrastructure/cdk.out/android',
           'cp app/build/outputs/apk/debug/app-debug.apk infrastructure/cdk.out/android/latest-beta.apk'
         ],

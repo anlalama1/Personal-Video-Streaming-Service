@@ -1,0 +1,12 @@
+{
+  "name": "media-transcoder",
+  "version": "1.0.0",
+  "description": "Fargate worker to transcode MP4 to HLS",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "mime-types": "^2.1.35"
+  }
+}

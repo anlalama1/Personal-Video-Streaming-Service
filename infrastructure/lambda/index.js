@@ -135,11 +135,31 @@ exports.logPlayHandler = async (event) => {
 };
 
 function transformUrl(rawUrl, cdnDomain, prefix = "") {
-    if (!rawUrl || !rawUrl.includes("amazonaws.com")) return rawUrl;
+    if (!rawUrl) return rawUrl;
+
+    // Support both HTTPS S3 URLs and our internal s3:// format
+    if (!rawUrl.includes("amazonaws.com") && !rawUrl.startsWith("s3://")) return rawUrl;
+
     try {
-        const url = new URL(rawUrl);
-        const key = url.pathname;
-        const path = prefix ? `/${prefix}${key}` : key;
+        let key = "";
+        let finalPrefix = prefix;
+
+        if (rawUrl.startsWith("s3://")) {
+            // Handle s3://bucket-name/key format
+            const parts = rawUrl.replace("s3://", "").split("/");
+            const bucketName = parts.shift();
+            key = "/" + parts.join("/");
+
+            // Auto-detect prefix based on bucket name
+            if (bucketName.toLowerCase().includes("hls")) finalPrefix = "hls";
+            if (bucketName.toLowerCase().includes("thumbnail")) finalPrefix = "thumbnails";
+        } else {
+            // Handle standard https://bucket.s3.amazonaws.com/key format
+            const url = new URL(rawUrl);
+            key = url.pathname;
+        }
+
+        const path = finalPrefix ? `/${finalPrefix}${key}` : key;
         return `https://${cdnDomain}${path}`;
     } catch (e) {
         return rawUrl;

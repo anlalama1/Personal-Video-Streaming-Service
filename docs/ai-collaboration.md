@@ -212,6 +212,24 @@ This document tracks the high-level collaboration between the human developer an
     - Automated the transition from a single orchestrator to a multi-stack orchestration model in `infrastructure.ts`.
 - **Outcome**: A professional, enterprise-grade infrastructure codebase that maximizes maintainability and minimizes deployment blast radius.
 
+### 27. Event-Driven HLS Transcoding Pipeline (Sept 4, 2026)
+- **Challenge**: Automating the conversion of raw MP4 uploads into professional HLS adaptive streaming artifacts.
+- **AI Contribution**: 
+    - Architected a **Cloud-Native Media Pipeline** using **AWS ECS Fargate** and **FFmpeg**.
+    - Designed an event-driven flow: **S3 -> SQS -> Lambda Orchestrator -> Fargate Task**.
+    - Implemented a professional **3-tier Bitrate Ladder** (1080p, 720p, 480p) to support varied network conditions.
+    - Integrated **CloudFront OAC** for the new HLS output bucket, maintaining a "Zero-Public-Access" security posture.
+- **Outcome**: A fully automated, scalable transcoding engine that powers modern adaptive bitrate streaming, mirroring the internal infrastructure of major streaming platforms.
+
+### 28. Transcoder Performance Optimization (Sept 4, 2026)
+- **Challenge**: Initial transcoding was prohibitively slow (30 mins for a 3 min clip), leading to poor developer and user experience.
+- **AI Contribution**: 
+    - Performed a **Bottleneck Analysis** identifying vCPU starvation as the primary cause.
+    - Optimized infrastructure spec: Increased Fargate task to **4 vCPUs / 8GB RAM**.
+    - Optimized FFmpeg logic: Implemented the **`veryfast` encoder preset**.
+    - Explained the **Speed-Cost-Quality Triangle**, demonstrating how higher compute specs can paradoxically lead to lower total AWS costs by reducing execution duration.
+- **Outcome**: Reduced transcode time by ~90%, achieving "Near-Real-Time" media processing.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

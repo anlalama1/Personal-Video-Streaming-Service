@@ -39,8 +39,15 @@ export class PipelineStack extends cdk.Stack {
           'wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -P /tmp',
           'unzip -q /tmp/commandlinetools-linux-11076708_latest.zip -d $ANDROID_HOME/cmdline-tools',
           'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
-          'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools',
+          'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
+
+          // Lead Strategy: Explicitly write local.properties to bypass environment variable lookup issues
+          'echo "sdk.dir=$ANDROID_HOME" > local.properties',
+
           'yes | sdkmanager --licenses > /dev/null',
+
+          // Install necessary components (using standard API 35 for compatibility)
+          'sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"',
 
           // 3. Build Android App
           'chmod +x ./gradlew',

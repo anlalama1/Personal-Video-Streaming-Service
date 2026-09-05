@@ -5,9 +5,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { StreamingAppStage } from './StreamingAppStage';
 
-/**
- * Principal SDE Strategy: Unified Pipeline (Infra + App).
- */
 export class PipelineStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -21,23 +18,37 @@ export class PipelineStack extends cdk.Stack {
           triggerOnPush: true,
         }),
         /**
-         * Principal Strategy: Zero-Config Android CI.
-         * CodeBuild does not have the Android SDK. We install it on-the-fly
-         * to ensure the repository remains portable and buildable by anyone.
+         * Principal Strategy: Deterministic Environment Setup.
+         * We build the App BEFORE the Infra so the APK is ready for the assembly.
          */
         commands: [
-          // 1. Build Infrastructure
+          // 1. Setup Android Environment
+          'export ANDROID_HOME=$(pwd)/android-sdk',
+          'mkdir -p $ANDROID_HOME/cmdline-tools',
+          'wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/tools.zip',
+          'unzip -q /tmp/tools.zip -d $ANDROID_HOME/cmdline-tools',
+          'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
+          'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
+
+          // 2. Install SDK Components
+          'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses > /dev/null',
+          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null',
+
+          // 3. Explicitly provide SDK to Gradle
+          'echo "sdk.dir=$ANDROID_HOME" > local.properties',
+
+          // 4. Build the Android App
+          'chmod +x ./gradlew',
+          './gradlew :app:assembleDebug --no-daemon',
+
+          // 5. Build Infrastructure
           'cd infrastructure',
           'npm install',
           'npm run build',
           'npx cdk synth',
           'cd ..',
 
-          // 2. Build Android App using the standalone CI script
-          'chmod +x ./ci-build.sh',
-          './ci-build.sh',
-
-          // 3. Stage Artifacts
+          // 6. Stage Artifacts
           'mkdir -p infrastructure/cdk.out/android',
           'cp app/build/outputs/apk/debug/app-debug.apk infrastructure/cdk.out/android/latest-beta.apk'
         ],
@@ -46,7 +57,7 @@ export class PipelineStack extends cdk.Stack {
       codeBuildDefaults: {
         buildEnvironment: {
           buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
-          privileged: true, // Needed for Docker and Android builds
+          privileged: true,
         },
         rolePolicy: [
           new iam.PolicyStatement({
@@ -63,11 +74,6 @@ export class PipelineStack extends cdk.Stack {
 
     pipeline.addStage(prodStage);
 
-    /**
-     * Lead Strategy: Post-Deployment Distribution.
-     * After the stacks are updated (and the bucket is created), we upload
-     * the new APK to the distribution bucket.
-     */
     pipeline.addWave('Distribution').addPost(
       new pipelines.ShellStep('UploadAndroidApk', {
         envFromCfnOutputs: {

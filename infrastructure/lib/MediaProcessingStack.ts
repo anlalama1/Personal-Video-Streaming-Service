@@ -37,6 +37,14 @@ export class MediaProcessingStack extends cdk.Stack {
     vpc.addInterfaceEndpoint('EcrDockerEndpoint', { service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER });
     vpc.addInterfaceEndpoint('LogsEndpoint', { service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS });
 
+    // Lead Strategy: Dedicated Security Group for the Transcoder
+    // This allows us to control exactly what the task can talk to.
+    const taskSecurityGroup = new ec2.SecurityGroup(this, 'TranscoderSecurityGroup', {
+      vpc,
+      description: 'Allow outbound traffic for transcoding',
+      allowAllOutbound: true,
+    });
+
     const cluster = new ecs.Cluster(this, 'TranscoderCluster', { vpc });
 
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'TranscodeTask', {
@@ -84,6 +92,7 @@ export class MediaProcessingStack extends cdk.Stack {
         CLUSTER_NAME: cluster.clusterName,
         TASK_DEFINITION: taskDefinition.taskDefinitionArn,
         SUBNETS: JSON.stringify(vpc.publicSubnets.map(s => s.subnetId)),
+        SECURITY_GROUPS: JSON.stringify([taskSecurityGroup.securityGroupId]),
         CONTAINER_NAME: container.containerName,
       },
     });

@@ -257,6 +257,14 @@ This document tracks the high-level collaboration between the human developer an
     - Updated the `primaryOutputDirectory` to align the artifact structure with the CDK CLI's deployment expectations.
 - **Outcome**: Enabled successful pipeline self-updates and streamlined the CI/CD artifact flow.
 
+### 32. Bug Fix: Missing Orchestrator Environment Variables (Sept 4, 2026)
+- **Challenge**: The `Orchestrator` Lambda failed with a `SyntaxError: "undefined" is not valid JSON` when attempting to parse security groups.
+- **AI Contribution**: 
+    - Identified a regression in the `MediaProcessingStack` where the `SECURITY_GROUPS` environment variable was omitted during a refactor.
+    - Re-implemented a dedicated `SecurityGroup` for the Fargate transcoder task.
+    - Updated the Lambda configuration to correctly pass the security group ID to the ECS `RunTask` command.
+- **Outcome**: Restored the automated event-driven transcoding trigger, ensuring the pipeline can successfully launch Fargate workers.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

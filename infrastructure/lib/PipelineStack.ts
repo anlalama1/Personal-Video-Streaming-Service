@@ -12,27 +12,27 @@ export class PipelineStack extends cdk.Stack {
     const pipeline = new pipelines.CodePipeline(this, 'StreamingPipeline', {
       pipelineName: 'StreamingService-Production-Pipeline',
       dockerEnabledForSynth: true,
+      selfMutation: true, // Lead Strategy: Explicitly manage the self-update logic
       synth: new pipelines.ShellStep('Synth', {
         input: pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
           connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
           triggerOnPush: true,
         }),
         /**
-         * Principal Strategy: High-Performance Cloud Build.
-         * We bump the compute type and add exhaustive logging to solve the
-         * environment-drift issues in the cloud.
+         * Principal Strategy: Clean-Room Building.
+         * We move the Android SDK to /tmp to prevent it from being
+         * included in the Cloud Assembly, which breaks self-mutation hashing.
          */
         commands: [
           'echo "BUILD LOG: Starting Environment Setup..."',
 
-          // 1. Setup Android SDK path
-          'mkdir -p ./android-sdk',
-          'export ANDROID_HOME=$(pwd)/android-sdk',
+          // 1. Setup Android SDK path (Outside the source root!)
+          'export ANDROID_HOME=/tmp/android-sdk',
+          'mkdir -p $ANDROID_HOME/cmdline-tools',
           'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
           'echo "BUILD LOG: ANDROID_HOME is $ANDROID_HOME"',
 
-          // 2. Download and Extract Tools (No silence)
-          'mkdir -p $ANDROID_HOME/cmdline-tools',
+          // 2. Download and Extract Tools
           'wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/tools.zip',
           'unzip -q /tmp/tools.zip -d $ANDROID_HOME/cmdline-tools',
           'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',

@@ -33,21 +33,21 @@ export class PipelineStack extends cdk.Stack {
           'npx cdk synth',
           'cd ..',
 
-          // 2. Setup Android SDK
-          'export ANDROID_HOME=$PWD/android-sdk',
+          // 2. Setup Android SDK (Lead Strategy: Explicit Rooting)
+          'export ANDROID_HOME=$(pwd)/android-sdk',
           'mkdir -p $ANDROID_HOME/cmdline-tools',
-          'wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -P /tmp',
-          'unzip -q /tmp/commandlinetools-linux-11076708_latest.zip -d $ANDROID_HOME/cmdline-tools',
+          'wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip',
+          'unzip -q /tmp/cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools',
           'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
           'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
 
-          // Lead Strategy: Explicitly write local.properties to bypass environment variable lookup issues
+          // Accept licenses and install platform components
+          'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses > /dev/null',
+          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null',
+
+          // Create local.properties with absolute path
           'echo "sdk.dir=$ANDROID_HOME" > local.properties',
-
-          'yes | sdkmanager --licenses > /dev/null',
-
-          // Install necessary components (using standard API 35 for compatibility)
-          'sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"',
+          'echo "BUILD LOG: Created local.properties with content:" && cat local.properties',
 
           // 3. Build Android App
           'chmod +x ./gradlew',

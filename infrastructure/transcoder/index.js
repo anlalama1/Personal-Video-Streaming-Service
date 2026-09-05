@@ -72,15 +72,14 @@ async function run() {
         await uploadFolder(outputDir, `${videoId}_hls`);
 
         console.log("Updating DynamoDB...");
-        const masterUrl = `s3://${DEST_BUCKET}/${videoId}_hls/master.m3u8`;
+        const hlsKey = `${videoId}_hls`;
 
         await db.send(new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { videoId: videoId },
-            UpdateExpression: "set videoUrl = :u, isHls = :h",
+            UpdateExpression: "set hlsKey = :h", // Store directory path instead of boolean
             ExpressionAttributeValues: {
-                ":u": masterUrl,
-                ":h": true
+                ":h": hlsKey
             }
         }));
 

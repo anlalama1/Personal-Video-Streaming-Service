@@ -14,9 +14,6 @@ function emitMetric(name, value, unit, dimensions = {}, namespace = "StreamingSe
             "Timestamp": Date.now(),
             "CloudWatchMetrics": [{
                 "Namespace": namespace,
-                // Senior SDE Tip: By providing two dimension sets (specific and empty),
-                // we allow CloudWatch to track both the individual video stats AND
-                // the total aggregate across the entire service simultaneously.
                 "Dimensions": [dimensionKeys, []],
                 "Metrics": [{ "Name": name, "Unit": unit }]
             }]
@@ -30,7 +27,6 @@ function emitMetric(name, value, unit, dimensions = {}, namespace = "StreamingSe
 exports.handler = async (event) => {
     console.log("Fetching catalog from DynamoDB...");
 
-    // Emit EMF Metric for Catalog Request
     emitMetric("CatalogRequestCount", 1, "Count", { Service: "CatalogService" });
 
     const tableName = process.env.TABLE_NAME;
@@ -41,30 +37,28 @@ exports.handler = async (event) => {
         const response = await docClient.send(command);
         const items = response.Items || [];
 
+        /**
+         * Lead Strategy: Late Binding.
+         * The database now only stores 'Key' paths (e.g., 'movie.mp4').
+         * The Lambda constructs the full CloudFront URL at runtime.
+         * This makes the data portable across different buckets/domains.
+         */
         const mapToCdn = (item) => {
+            // Lead Strategy: HLS Key presence acts as the switch
+            const videoUrl = item.hlsKey
+                ? `https://${cdnDomain}/hls/${item.hlsKey}/master.m3u8`
+                : `https://${cdnDomain}/${item.videoKey}`;
+
+            const thumbnailUrl = item.thumbnailKey
+                ? `https://${cdnDomain}/thumbnails/${item.thumbnailKey}`
+                : "https://via.placeholder.com/150";
+
             return {
                 ...item,
-                thumbnailUrl: transformUrl(item.thumbnailUrl, cdnDomain, "thumbnails"),
-                videoUrl: transformUrl(item.videoUrl, cdnDomain)
+                videoUrl,
+                thumbnailUrl
             };
         };
-
-        if (items.length === 0) {
-            return {
-                statusCode: 200,
-                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-                body: JSON.stringify([
-                    {
-                        videoId: "mock-1",
-                        title: "Fortress Deployment Successful",
-                        genre: "Security",
-                        releaseYear: "2026",
-                        thumbnailUrl: "https://via.placeholder.com/150",
-                        videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-                    }
-                ]),
-            };
-        }
 
         return {
             statusCode: 200,
@@ -73,13 +67,10 @@ exports.handler = async (event) => {
         };
     } catch (error) {
         console.error("Error scanning DynamoDB:", error);
-
-        // SDE Logic: Track backend errors
         emitMetric("ApiErrorCount", 1, "Count", {
             Service: "CatalogService",
             ErrorCode: "DynamoDBScanError"
         });
-
         return {
             statusCode: 500,
             body: JSON.stringify({ message: "Internal Server Error", error: error.message }),
@@ -87,9 +78,6 @@ exports.handler = async (event) => {
     }
 };
 
-/**
- * Handler for logging play events and emitting video-specific metrics.
- */
 exports.logPlayHandler = async (event) => {
     console.log("Logging play event...");
 
@@ -102,7 +90,6 @@ exports.logPlayHandler = async (event) => {
     }
 
     try {
-        // Fetch metadata to get a clean title for the metric dimension
         const response = await docClient.send(new GetCommand({
             TableName: tableName,
             Key: { videoId: videoId }
@@ -111,7 +98,6 @@ exports.logPlayHandler = async (event) => {
         const video = response.Item;
         const title = video ? video.title : "Unknown Title";
 
-        // Emit EMF Metric with Video Dimensions
         emitMetric("VideoPlayCount", 1, "Count", {
             VideoId: videoId,
             Title: title
@@ -124,44 +110,10 @@ exports.logPlayHandler = async (event) => {
         };
     } catch (error) {
         console.error("Error logging play event:", error);
-
         emitMetric("ApiErrorCount", 1, "Count", {
             Service: "PlayLogService",
             ErrorCode: "LoggingFailure"
         });
-
         return { statusCode: 500, body: JSON.stringify({ message: "Error logging event" }) };
     }
 };
-
-function transformUrl(rawUrl, cdnDomain, prefix = "") {
-    if (!rawUrl) return rawUrl;
-
-    // Support both HTTPS S3 URLs and our internal s3:// format
-    if (!rawUrl.includes("amazonaws.com") && !rawUrl.startsWith("s3://")) return rawUrl;
-
-    try {
-        let key = "";
-        let finalPrefix = prefix;
-
-        if (rawUrl.startsWith("s3://")) {
-            // Handle s3://bucket-name/key format
-            const parts = rawUrl.replace("s3://", "").split("/");
-            const bucketName = parts.shift();
-            key = "/" + parts.join("/");
-
-            // Auto-detect prefix based on bucket name
-            if (bucketName.toLowerCase().includes("hls")) finalPrefix = "hls";
-            if (bucketName.toLowerCase().includes("thumbnail")) finalPrefix = "thumbnails";
-        } else {
-            // Handle standard https://bucket.s3.amazonaws.com/key format
-            const url = new URL(rawUrl);
-            key = url.pathname;
-        }
-
-        const path = finalPrefix ? `/${finalPrefix}${key}` : key;
-        return `https://${cdnDomain}${path}`;
-    } catch (e) {
-        return rawUrl;
-    }
-}

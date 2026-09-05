@@ -265,6 +265,26 @@ This document tracks the high-level collaboration between the human developer an
     - Updated the Lambda configuration to correctly pass the security group ID to the ECS `RunTask` command.
 - **Outcome**: Restored the automated event-driven transcoding trigger, ensuring the pipeline can successfully launch Fargate workers.
 
+- **Outcome**: A fully automated, "Git-Ops" deployment workflow where a single `git push` triggers the entire cloud infrastructure update.
+
+### 30. Infrastructure Hardening: GitHub Webhooks & V2 Triggers (Sept 4, 2026)
+- **Challenge**: The CI/CD pipeline failed to react to GitHub pushes due to misconfigured webhooks and permission gaps in the GitHub App connector.
+- **AI Contribution**: 
+    - Performed an end-to-end audit of the **GitHub-to-AWS handshake**.
+    - Guided the developer through authorizing the **AWS Connector for GitHub** App for specific repository access.
+    - Updated `PipelineStack` to explicitly enable `triggerOnPush` for the V2 connection.
+    - Debugged and resolved a "null stack" deployment error caused by monorepo path misalignment in the Cloud Assembly.
+- **Outcome**: A robust, reactive CI/CD pipeline that provides near-instant deployments upon code changes.
+
+### 33. Architectural Decoupling: Late Binding URLs (Sept 4, 2026)
+- **Challenge**: Hardcoded S3 URLs in DynamoDB created a fragile dependency on specific bucket IDs, making the database non-portable.
+- **AI Contribution**: 
+    - Implemented a **"Late Binding"** strategy for media delivery.
+    - Refactored the DynamoDB schema to store only **Logical Keys** (`videoKey`, `thumbnailKey`) instead of physical URLs.
+    - Updated the **Lambda BFF** to construct CloudFront URLs at runtime using environment variables.
+    - Updated the **Fargate Transcoder** to persist relative paths, ensuring the system remains resilient to infrastructure migrations.
+- **Outcome**: A robust, infrastructure-agnostic data layer that allows for seamless bucket rotations and regional migrations without data modification.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

@@ -32,10 +32,8 @@ export class MediaProcessingStack extends cdk.Stack {
       service: ec2.GatewayVpcEndpointAwsService.S3,
     });
 
-    // Private endpoints for ECR and Logs (Required for Fargate to pull images without a NAT)
-    vpc.addInterfaceEndpoint('EcrEndpoint', { service: ec2.InterfaceVpcEndpointAwsService.ECR });
-    vpc.addInterfaceEndpoint('EcrDockerEndpoint', { service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER });
-    vpc.addInterfaceEndpoint('LogsEndpoint', { service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS });
+    // Senior Strategy: Removed Paid Interface Endpoints to achieve $0.00 idle cost.
+    // The task will now pull its image over the Public Internet Gateway instead.
 
     // Lead Strategy: Dedicated Security Group for the Transcoder
     // This allows us to control exactly what the task can talk to.

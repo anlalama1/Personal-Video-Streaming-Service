@@ -323,6 +323,26 @@ This document tracks the high-level collaboration between the human developer an
     - Configured **Absolute Path Caching** in CodeBuild to maintain build performance while ensuring "Clean-Room" synthesis.
 - **Outcome**: A stable, high-performance pipeline that only updates when actual code changes occur.
 
+- **Outcome**: A stable, high-performance pipeline that only updates when actual code changes occur.
+
+### 38. Robust Artifact Distribution & CDN Invalidation (Sept 5, 2026)
+- **Challenge**: Mobile browsers often hang during APK downloads if MIME types are missing, and CDN caching can lead to stale builds on user devices.
+- **AI Contribution**: 
+    - Refactored the distribution stage to explicitly set the **`application/vnd.android.package-archive`** MIME type and **`attachment`** disposition.
+    - Automated **CloudFront Invalidation** for the `/download/*` path, ensuring immediate global availability of the latest build.
+    - Upgraded the build environment to **`ComputeType.MEDIUM`** to provide the 7GB RAM required for stable Android compilation.
+    - Orchestrated secure, cross-stack artifact transfers by injecting the **`input: pipeline.synth`** property into post-deployment build steps.
+- **Outcome**: A professional, reliable distribution channel that delivers fresh application binaries to physical devices in seconds.
+
+### 39. Cost Optimization: Zero-Idle VPC Architecture (Sept 5, 2026)
+- **Challenge**: The project was incurring ~$21/month in idle costs due to VPC Interface Endpoints.
+- **AI Contribution**: 
+    - Performed a **Cloud Billing Audit**, identifying VPC Endpoints as the primary cost driver.
+    - Evaluated alternatives (NAT Gateway vs. Public IP Pulls).
+    - Refactored `MediaProcessingStack` to remove paid Interface Endpoints (ECR, Logs) while retaining the free S3 Gateway Endpoint.
+    - Reconfigured the Fargate task to pull container images over the Public Internet Gateway, leveraging the AWS Free Tier for data transfer.
+- **Outcome**: Achieved a **$0.00 idle cost** for the networking layer without compromising the availability of the transcoding pipeline.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

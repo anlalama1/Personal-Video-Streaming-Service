@@ -38,14 +38,10 @@ export class PipelineStack extends cdk.Stack {
           'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest',
 
           // 3. Install Components (Explicit logging)
-          'echo "BUILD LOG: Listing available SDK packages..."',
-          'sdkmanager --sdk_root=$ANDROID_HOME --list | grep "platforms;" || true',
-
           'echo "BUILD LOG: Accepting licenses..."',
           'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses',
-          'echo "BUILD LOG: Installing Platform..."',
-          // Attempt to install 35 as a fallback if 37 is missing, but we really need to see the list
-          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0"',
+          'echo "BUILD LOG: Installing Platform 37.1..."',
+          'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-37.1" "build-tools;35.0.0"',
 
           // 4. Create local.properties
           'echo "sdk.dir=$ANDROID_HOME" > local.properties',
@@ -94,6 +90,10 @@ export class PipelineStack extends cdk.Stack {
 
     pipeline.addWave('Distribution').addPost(
       new pipelines.ShellStep('UploadAndroidApk', {
+        // Principal Strategy: Connect the Artifacts.
+        // We explicitly pass the synth output (which contains the APK)
+        // to this post-deployment step.
+        input: pipeline.synth,
         envFromCfnOutputs: {
           BUCKET_NAME: prodStage.appDistributionBucketName,
         },

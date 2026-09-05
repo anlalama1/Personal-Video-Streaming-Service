@@ -230,6 +230,33 @@ This document tracks the high-level collaboration between the human developer an
     - Explained the **Speed-Cost-Quality Triangle**, demonstrating how higher compute specs can paradoxically lead to lower total AWS costs by reducing execution duration.
 - **Outcome**: Reduced transcode time by ~90%, achieving "Near-Real-Time" media processing.
 
+- **Outcome**: Reduced transcode time by ~90%, achieving "Near-Real-Time" media processing.
+
+### 29. Self-Mutating CI/CD Pipeline (Sept 4, 2026)
+- **Challenge**: Manual deployments were tedious, error-prone, and required local environment setup (AWS CLI, credentials).
+- **AI Contribution**: 
+    - Architected a professional **CDK Pipeline** with GitHub integration.
+    - Implemented a **"Self-Mutating"** logic where the pipeline updates its own structure automatically upon code changes.
+    - Designed the **`StreamingAppStage`** to allow atomic, multi-stack deployments across environments.
+    - Decoupled the build process from the local developer machine, enabling "Zero-Config" onboarding.
+- **Outcome**: A fully automated, "Git-Ops" deployment workflow where a single `git push` triggers the entire cloud infrastructure update.
+
+### 30. Pipeline Troubleshooting: VPC Lookup Permissions (Sept 4, 2026)
+- **Challenge**: The CI/CD pipeline failed during the `synth` phase with an `ec2:DescribeAvailabilityZones` authorization error.
+- **AI Contribution**: 
+    - Identified that CDK requires EC2 lookup permissions during synthesis to determine VPC networking structure.
+    - Updated `PipelineStack` to explicitly grant `ec2:DescribeAvailabilityZones` and `sts:AssumeRole` (for lookup roles) to the CodeBuild service role.
+    - Enabled `dockerEnabledForSynth` and `privileged` mode to ensure the pipeline can handle containerized assets.
+- **Outcome**: Resolved the "Chicken and Egg" permission issue, allowing the pipeline to successfully self-mutate and orchestrate multi-stack deployments.
+
+### 31. Pipeline Fix: Cloud Assembly Path Alignment (Sept 4, 2026)
+- **Challenge**: The pipeline failed in the `SelfMutate` stage with `No stacks match the name StreamingPipelineStack`.
+- **AI Contribution**: 
+    - Diagnosed the issue as a directory mismatch between the subdirectory `synth` output and the pipeline's expected assembly root.
+    - Refactored the `Synth` step to output the cloud assembly to the repository root (`cdk.out`) while running commands from the `infrastructure/` folder.
+    - Updated the `primaryOutputDirectory` to align the artifact structure with the CDK CLI's deployment expectations.
+- **Outcome**: Enabled successful pipeline self-updates and streamlined the CI/CD artifact flow.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

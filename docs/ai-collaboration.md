@@ -285,6 +285,14 @@ This document tracks the high-level collaboration between the human developer an
     - Updated the **Fargate Transcoder** to persist relative paths, ensuring the system remains resilient to infrastructure migrations.
 - **Outcome**: A robust, infrastructure-agnostic data layer that allows for seamless bucket rotations and regional migrations without data modification.
 
+### 34. Database Refinement: Directory-Based HLS Keys (Sept 4, 2026)
+- **Challenge**: The initial `isHls` boolean provided limited information, requiring the client or Lambda to "guess" the HLS directory structure.
+- **AI Contribution**: 
+    - Replaced the boolean flag with a directory-based **`hlsKey`** (e.g., `video_id_hls`).
+    - Updated the Lambda URL builder to use the presence of `hlsKey` as the logic switch.
+    - Implemented **Temporary MP4 Pinning**: Forced the Lambda to return raw `.mp4` URLs even if HLS artifacts exist, ensuring app stability while the client-side HLS logic is under review.
+- **Outcome**: A more descriptive database schema that provides direct access to derivative assets while maintaining a safe fallback for the client application.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

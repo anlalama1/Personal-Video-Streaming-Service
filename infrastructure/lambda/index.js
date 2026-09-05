@@ -44,10 +44,13 @@ exports.handler = async (event) => {
          * This makes the data portable across different buckets/domains.
          */
         const mapToCdn = (item) => {
-            // Lead Strategy: HLS Key presence acts as the switch
-            const videoUrl = item.hlsKey
-                ? `https://${cdnDomain}/hls/${item.hlsKey}/master.m3u8`
-                : `https://${cdnDomain}/${item.videoKey}`;
+            /**
+             * Principal Strategy: Temporary MP4 Pinning.
+             * Even though HLS artifacts are being created, we are pinning the
+             * 'videoUrl' to the raw .mp4 for now to ensure system stability
+             * while the HLS client-side logic is being reviewed.
+             */
+            const videoUrl = `https://${cdnDomain}/${item.videoKey}`;
 
             const thumbnailUrl = item.thumbnailKey
                 ? `https://${cdnDomain}/thumbnails/${item.thumbnailKey}`

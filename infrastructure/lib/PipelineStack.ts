@@ -26,7 +26,8 @@ export class PipelineStack extends cdk.Stack {
           'echo "BUILD LOG: Starting Environment Setup..."',
 
           // 1. Setup Android SDK path
-          'export ANDROID_HOME=$(readlink -f ./android-sdk)',
+          'mkdir -p ./android-sdk',
+          'export ANDROID_HOME=$(pwd)/android-sdk',
           'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
           'echo "BUILD LOG: ANDROID_HOME is $ANDROID_HOME"',
 

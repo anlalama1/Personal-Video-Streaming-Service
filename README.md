@@ -49,6 +49,26 @@ The following files contain account-specific values that **must** be updated:
 
 ---
 
+## 💰 Cost Transparency & FinOps
+
+This project is architected for **Minimum Idle Cost**. However, as a production-grade system, it incurs costs during active development and as data grows.
+
+### 1. The "Cup of Coffee" Rule
+- **Idle Cost**: **$0.00 / month**. By removing VPC Interface Endpoints and using a Public IGW, the system costs nothing to sit idle.
+- **Cost per Deployment**: **~$0.13**. Each `git push` triggers parallel CodeBuild instances (Android + Docker). You can push ~30 times for the price of a latte.
+
+### 2. Linear Scaling (S3 Storage)
+> [!CAUTION]
+> **S3 storage costs increase linearly with your media library.** 
+> - **Standard Storage**: ~$0.023 per GB/month.
+> - **Multi-Quality Overhead**: HLS transcoding creates three versions of every video (1080p, 720p, 480p). This triples the storage footprint of your raw MP4.
+> - **Large Libraries**: While 5 videos cost pennies, a 1TB library will cost **~$23.00/month** in storage alone.
+
+### 3. Compute (Fargate)
+- **Transcoding**: High-performance 4-vCPU tasks run only during the transcoding phase. Costs are billed per-second and are negligible for small libraries.
+
+---
+
 ## 📚 Project Documentation
 
 ### Core Architecture & Strategy

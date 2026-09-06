@@ -3,14 +3,27 @@ import { Construct } from 'constructs';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { StreamingAppStage } from './StreamingAppStage';
 
 export class PipelineStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Lead Strategy: Define the source once to avoid 'NodeDuplicate' errors
-    // and ensure both synth and parallel builds use the exact same commit.
+    const account = props?.env?.account || '575992668616';
+    const region = props?.env?.region || 'us-east-1';
+
+    // Lead Strategy: Persistent S3-based cache for the Android SDK
+    // By placing this in the PipelineStack, the bucket is created during bootstrapping
+    // and is ready for use by the parallel build stages.
+    const sdkCacheBucket = new s3.Bucket(this, 'AndroidSdkCacheBucket', {
+      bucketName: `android-sdk-cache-${account}-${region}`,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      autoDeleteObjects: false,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+    });
+
     const source = pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
       connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
       triggerOnPush: true,
@@ -44,16 +57,10 @@ export class PipelineStack extends cdk.Stack {
       }
     });
 
-    /**
-     * Lead Strategy: The Parallel Android Build.
-     * We use a hardcoded bucket name to break the dependency cycle.
-     */
-    const sdkCacheBucketName = `android-sdk-cache-575992668616-us-east-1`;
-
     const androidBuildStep = new pipelines.CodeBuildStep('BuildAndroidApp', {
-      input: source, // Reuse the same source artifact
+      input: source,
       env: {
-        SDK_CACHE_BUCKET: sdkCacheBucketName,
+        SDK_CACHE_BUCKET: sdkCacheBucket.bucketName,
       },
       commands: [
         'echo "BUILD LOG: Starting Parallel Android Build..."',
@@ -86,14 +93,14 @@ export class PipelineStack extends cdk.Stack {
       rolePolicyStatements: [
         new iam.PolicyStatement({
           actions: ['s3:Get*', 's3:List*', 's3:Put*', 's3:Delete*'],
-          resources: [`arn:aws:s3:::${sdkCacheBucketName}*`],
+          resources: [sdkCacheBucket.bucketArn, sdkCacheBucket.arnForObjects('*')],
         }),
       ],
       primaryOutputDirectory: 'artifacts'
     });
 
     const prodStage = new StreamingAppStage(this, 'Prod', {
-      env: { account: '575992668616', region: 'us-east-1' }
+      env: { account, region }
     });
 
     const buildWave = pipeline.addWave('ParallelBuilds');
@@ -119,7 +126,7 @@ export class PipelineStack extends cdk.Stack {
           }),
           new iam.PolicyStatement({
             actions: ['cloudfront:CreateInvalidation'],
-            resources: [`arn:aws:cloudfront::${this.account}:distribution/*`],
+            resources: [`arn:aws:cloudfront::${account}:distribution/*`],
           }),
         ],
       })

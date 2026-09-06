@@ -5,17 +5,16 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { StreamingAppStage } from './StreamingAppStage';
+import { Config } from '../bin/config';
 
 export class PipelineStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const account = props?.env?.account || '575992668616';
-    const region = props?.env?.region || 'us-east-1';
+    const account = Config.account;
+    const region = Config.region;
 
     // Lead Strategy: Persistent S3-based cache for the Android SDK
-    // By placing this in the PipelineStack, the bucket is created during bootstrapping
-    // and is ready for use by the parallel build stages.
     const sdkCacheBucket = new s3.Bucket(this, 'AndroidSdkCacheBucket', {
       bucketName: `android-sdk-cache-${account}-${region}`,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
@@ -24,13 +23,13 @@ export class PipelineStack extends cdk.Stack {
       enforceSSL: true,
     });
 
-    const source = pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
-      connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
+    const source = pipelines.CodePipelineSource.connection(Config.githubRepo, Config.githubBranch, {
+      connectionArn: Config.githubConnectionArn,
       triggerOnPush: true,
     });
 
     const pipeline = new pipelines.CodePipeline(this, 'StreamingPipeline', {
-      pipelineName: 'StreamingService-Production-Pipeline',
+      pipelineName: `${Config.projectPrefix}-Production-Pipeline`,
       dockerEnabledForSynth: true,
       synth: new pipelines.CodeBuildStep('Synth', {
         input: source,

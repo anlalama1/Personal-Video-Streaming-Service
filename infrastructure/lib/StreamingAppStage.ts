@@ -5,7 +5,12 @@ import { DatabaseStack } from './DatabaseStack';
 import { ApiStack } from './ApiStack';
 import { MediaProcessingStack } from './MediaProcessingStack';
 import { ObservabilityStack } from './ObservabilityStack';
+import { Config } from '../bin/config';
 
+/**
+ * Senior Strategy: The Application Stage.
+ * Centralizes the environment configuration for the production stacks.
+ */
 export class StreamingAppStage extends cdk.Stage {
   public readonly appDistributionBucketName: cdk.CfnOutput;
   public readonly distributionId: cdk.CfnOutput;
@@ -14,8 +19,8 @@ export class StreamingAppStage extends cdk.Stage {
     super(scope, id, props);
 
     const env = {
-      account: props?.env?.account || '575992668616',
-      region: props?.env?.region || 'us-east-1'
+      account: Config.account,
+      region: Config.region
     };
 
     const storage = new StorageStack(this, 'StorageStack', { env });

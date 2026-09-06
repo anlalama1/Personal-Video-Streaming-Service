@@ -343,6 +343,17 @@ This document tracks the high-level collaboration between the human developer an
     - Reconfigured the Fargate task to pull container images over the Public Internet Gateway, leveraging the AWS Free Tier for data transfer.
 - **Outcome**: Achieved a **$0.00 idle cost** for the networking layer without compromising the availability of the transcoding pipeline.
 
+- **Outcome**: Achieved a **$0.00 idle cost** for the networking layer without compromising the availability of the transcoding pipeline.
+
+### 40. Pipeline Optimization: Parallel Build Waves (Sept 5, 2026)
+- **Challenge**: Sequential build steps (Infra Synth -> Android Build -> Docker Build) created a significant bottleneck, resulting in 12-15 minute deployment cycles.
+- **AI Contribution**: 
+    - Refactored the CI/CD pipeline to use a **Fork-Join Parallelism** model.
+    - Introduced **AWS CodePipeline Waves** to execute the Android APK build and the FFmpeg Docker image build simultaneously on independent hardware.
+    - Decoupled the Android build from the infrastructure synthesis, reducing "Code-to-Cloud" latency by ~40%.
+    - Orchestrated secure artifact handover between parallel build stages and the final distribution wave.
+- **Outcome**: Reduced total release time to ~7-8 minutes while maintaining strict dependency safety.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

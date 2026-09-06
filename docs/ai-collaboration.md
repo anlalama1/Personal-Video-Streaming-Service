@@ -373,6 +373,25 @@ This document tracks the high-level collaboration between the human developer an
     - Implemented a **Permission Restoration Step**: Added `find` and `chmod` commands to the parallel build process to manually restore execution permissions for SDK binaries (`sdkmanager`, `avdmanager`) post-sync.
 - **Outcome**: Successfully bridged the gap between S3 object storage and Linux build requirements, ensuring a reliable cached build process.
 
+- **Outcome**: Optimized the release velocity of the full-stack system, reducing the "Code-to-Cloud" latency significantly.
+
+### 43. Self-Healing Infrastructure: Transcoding Sweeper & Atomic Locking (Sept 5, 2026)
+- **Challenge**: The media pipeline was vulnerable to silent failures (lost S3 events or Fargate crashes) and potential race conditions (double-processing same video).
+- **AI Contribution**: 
+    - Architected a **Reconciliation Loop** using a scheduled **Sweeper Lambda** to automatically detect and retry failed transcodes.
+    - Implemented a **State Machine** in DynamoDB (`INGESTED`, `TRANSCODING`, `COMPLETED`, `FAILED`, `FATAL`).
+    - Engineered an **Atomic State Lock** in the Orchestrator using DynamoDB conditional updates, preventing concurrent Fargate tasks for the same resource.
+    - Integrated **Fatal Failure Guardrails**: Automatically marks videos as `FATAL` after 3 retries and triggers a **CloudWatch Alarm** for manual intervention.
+- **Outcome**: A "Battle-Hardened" media pipeline that ensures eventual consistency, prevents resource duplication, and provides automated alerting for persistent issues.
+
+### 44. Operations & Observability: Library Status Monitoring (Sept 5, 2026)
+- **Challenge**: Lack of high-level visibility into the health of the media library and transcoding progress.
+- **AI Contribution**: 
+    - Refactored the **Sweeper Lambda** to act as a telemetry engine, performing periodic library counts of all transcoding states.
+    - Integrated a new **CloudWatch Dashboard Widget**: Visualizes `TOTAL`, `COMPLETED`, `TRANSCODING`, `FAILED`, and `FATAL` video counts in real-time.
+    - Guaranteed **Backward Compatibility**: Implemented fallback logic to gracefully handle legacy database entries missing the new `transcodeStatus` field.
+- **Outcome**: Achieved full "System Pulse" visibility, allowing the administrator to monitor the end-to-end health of the media library from a single dashboard.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

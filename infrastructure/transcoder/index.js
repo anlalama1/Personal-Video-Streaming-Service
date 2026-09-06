@@ -28,6 +28,7 @@ async function run() {
     });
 
     try {
+        // 1. Download source MP4
         console.log("Downloading source from S3...");
         const response = await s3.send(new GetObjectCommand({
             Bucket: SOURCE_BUCKET,
@@ -35,13 +36,8 @@ async function run() {
         }));
         await pipeline(response.Body, fs.createWriteStream(localInput));
 
+        // 2. Transcode to HLS ladder
         console.log("Running FFmpeg...");
-
-        /**
-         * Lead Strategy: Correct Filtergraph Chaining.
-         * The labels [v1], [v2], [v3] must be explicitly wrapped in brackets
-         * when being passed as inputs to the scale filters.
-         */
         const filter = "[0:v]split=3[v1][v2][v3];[v1]scale=w=1920:h=1080[v1out];[v2]scale=w=1280:h=720[v2out];[v3]scale=w=854:h=480[v3out]";
 
         const ffmpegCmd = [
@@ -65,27 +61,45 @@ async function run() {
             `${outputDir}/stream_%v/playlist.m3u8`
         ].join(' ');
 
-        console.log(`Executing: ${ffmpegCmd}`);
         execSync(ffmpegCmd, { stdio: 'inherit' });
 
+        // 3. Upload Artifacts to S3
         console.log("Uploading HLS artifacts to S3...");
         await uploadFolder(outputDir, `${videoId}_hls`);
 
-        console.log("Updating DynamoDB...");
+        // 4. Update DynamoDB to COMPLETED
+        console.log("Updating DynamoDB to COMPLETED...");
         const hlsKey = `${videoId}_hls`;
-
         await db.send(new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { videoId: videoId },
-            UpdateExpression: "set hlsKey = :h", // Store directory path instead of boolean
+            UpdateExpression: "SET hlsKey = :h, transcodeStatus = :s, lastUpdated = :t",
             ExpressionAttributeValues: {
-                ":h": hlsKey
+                ":h": hlsKey,
+                ":s": "COMPLETED",
+                ":t": Date.now()
             }
         }));
 
         console.log("Transcode pipeline completed successfully!");
     } catch (err) {
         console.error("Transcode failed:", err);
+
+        // Update DynamoDB to FAILED
+        try {
+            await db.send(new UpdateCommand({
+                TableName: TABLE_NAME,
+                Key: { videoId: videoId },
+                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t",
+                ExpressionAttributeValues: {
+                    ":s": "FAILED",
+                    ":t": Date.now()
+                }
+            }));
+        } catch (dbErr) {
+            console.error("Failed to update status to FAILED:", dbErr);
+        }
+
         process.exit(1);
     }
 }

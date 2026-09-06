@@ -92,10 +92,32 @@ export class MediaProcessingStack extends cdk.Stack {
         SUBNETS: JSON.stringify(vpc.publicSubnets.map(s => s.subnetId)),
         SECURITY_GROUPS: JSON.stringify([taskSecurityGroup.securityGroupId]),
         CONTAINER_NAME: container.containerName,
+        TABLE_NAME: props.metadataTable.tableName, // Added for atomic lock logic
       },
     });
 
     orchestratorLambda.addEventSource(new SqsEventSource(transcodeQueue));
+    props.metadataTable.grantReadWriteData(orchestratorLambda); // Permission for lock
+
+    // 7. The Sweeper: 15-minute sanity check for stuck transcodes
+    const sweeperLambda = new lambda.Function(this, 'TranscodingSweeper', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'sweeper.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      environment: {
+        TABLE_NAME: props.metadataTable.tableName,
+        QUEUE_URL: transcodeQueue.queueUrl,
+      },
+    });
+
+    props.metadataTable.grantReadWriteData(sweeperLambda);
+    transcodeQueue.grantSendMessages(sweeperLambda);
+
+    // Trigger sweeper every 15 minutes
+    const sweepRule = new events.Rule(this, 'SweeperRule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(15)),
+    });
+    sweepRule.addTarget(new targets.LambdaFunction(sweeperLambda));
     orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ecs:RunTask'],
       resources: [taskDefinition.taskDefinitionArn],

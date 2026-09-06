@@ -10,6 +10,7 @@ export class StorageStack extends cdk.Stack {
   public readonly thumbnailBucket: s3.IBucket;
   public readonly hlsBucket: s3.IBucket;
   public readonly appDistributionBucket: s3.IBucket;
+  public readonly sdkCacheBucket: s3.IBucket;
   public readonly distribution: cloudfront.IDistribution;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -57,6 +58,16 @@ export class StorageStack extends cdk.Stack {
     this.appDistributionBucket = new s3.Bucket(this, 'AppDistributionBucket', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+    });
+
+    // Principal Strategy: Persistent S3-based cache for the Android SDK
+    // Lead Strategy: Use a deterministic name to break pipeline dependency cycles.
+    this.sdkCacheBucket = new s3.Bucket(this, 'AndroidSdkCacheBucket', {
+      bucketName: `android-sdk-cache-${this.account}-${this.region}`, // Fixed name
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      autoDeleteObjects: false,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
     });
@@ -133,7 +144,7 @@ export class StorageStack extends cdk.Stack {
 
     // OAC Attachment (L1 Escape Hatch)
     const cfnDistribution = this.distribution.node.defaultChild as cloudfront.CfnDistribution;
-    const origins_list = [0, 1, 2, 3]; // Media, Thumbnails, HLS, App
+    const origins_list = [0, 1, 2, 3]; // Media, Thumbnails, HLS, App (SDK Cache is internal)
     origins_list.forEach(i => {
         cfnDistribution.addPropertyOverride(`DistributionConfig.Origins.${i}.OriginAccessControlId`, oac.attrId);
         cfnDistribution.addPropertyOverride(`DistributionConfig.Origins.${i}.S3OriginConfig.OriginAccessIdentity`, '');
@@ -160,6 +171,7 @@ export class StorageStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'CloudFrontDomain', { value: this.distribution.distributionDomainName });
     new cdk.CfnOutput(this, 'AppDistributionBucketName', { value: this.appDistributionBucket.bucketName });
+    new cdk.CfnOutput(this, 'SdkCacheBucketName', { value: this.sdkCacheBucket.bucketName });
     new cdk.CfnOutput(this, 'DistributionId', { value: this.distribution.distributionId });
   }
 }

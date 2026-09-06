@@ -354,6 +354,16 @@ This document tracks the high-level collaboration between the human developer an
     - Orchestrated secure artifact handover between parallel build stages and the final distribution wave.
 - **Outcome**: Reduced total release time to ~7-8 minutes while maintaining strict dependency safety.
 
+- **Outcome**: Reduced total release time to ~7-8 minutes while maintaining strict dependency safety.
+
+### 41. Pipeline Hardening: Dependency Cycle & Node Duplication (Sept 5, 2026)
+- **Challenge**: The parallel build refactor introduced a circular dependency between build stages and CloudFormation outputs, followed by a duplicate node error in the CDK construct tree.
+- **AI Contribution**: 
+    - Diagnosed the circular dependency: Identified that parallel build steps cannot depend on environment variables from stacks they are responsible for deploying.
+    - Implemented **Deterministic Resource Naming**: Refactored the SDK cache bucket to use a predictable name, allowing the build stage to interact with S3 without runtime output dependencies.
+    - Resolved `NodeDuplicate` error: Refactored the `PipelineStack` to define the GitHub source as a single shared artifact, preventing duplicate construct IDs in the stack scope.
+- **Outcome**: A stable, high-performance parallel pipeline that adheres to CDK best practices for artifact reuse and dependency management.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

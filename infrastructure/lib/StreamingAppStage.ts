@@ -21,6 +21,7 @@ export class StreamingAppStage extends cdk.Stage {
     const storage = new StorageStack(this, 'StorageStack', { env });
     this.appDistributionBucketName = storage.node.findChild('AppDistributionBucketName') as cdk.CfnOutput;
     this.distributionId = storage.node.findChild('DistributionId') as cdk.CfnOutput;
+
     const database = new DatabaseStack(this, 'DatabaseStack', { env });
 
     const api = new ApiStack(this, 'ApiStack', {

@@ -9,19 +9,18 @@ export class PipelineStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // Lead Strategy: Define the source once to avoid 'NodeDuplicate' errors
+    // and ensure both synth and parallel builds use the exact same commit.
+    const source = pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
+      connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
+      triggerOnPush: true,
+    });
+
     const pipeline = new pipelines.CodePipeline(this, 'StreamingPipeline', {
       pipelineName: 'StreamingService-Production-Pipeline',
       dockerEnabledForSynth: true,
       synth: new pipelines.CodeBuildStep('Synth', {
-        input: pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
-          connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
-          triggerOnPush: true,
-        }),
-        /**
-         * Principal Strategy: Fast Synth.
-         * We stripped out the Android build from the Synth step.
-         * This makes the pipeline update itself almost instantly.
-         */
+        input: source,
         commands: [
           'cd infrastructure',
           'npm install',
@@ -47,19 +46,25 @@ export class PipelineStack extends cdk.Stack {
 
     /**
      * Lead Strategy: The Parallel Android Build.
-     * We create a standalone build step for the app.
+     * We use a hardcoded bucket name to break the dependency cycle.
      */
+    const sdkCacheBucketName = `android-sdk-cache-575992668616-us-east-1`;
+
     const androidBuildStep = new pipelines.CodeBuildStep('BuildAndroidApp', {
-      input: pipelines.CodePipelineSource.connection('anlalama1/Personal-Video-Streaming-Service', 'main', {
-        connectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
-      }),
+      input: source, // Reuse the same source artifact
+      env: {
+        SDK_CACHE_BUCKET: sdkCacheBucketName,
+      },
       commands: [
         'echo "BUILD LOG: Starting Parallel Android Build..."',
         'export ANDROID_HOME=$(pwd)/.android-sdk-cache',
         'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
 
-        '[ -d "$ANDROID_HOME/cmdline-tools/latest" ] && echo "BUILD LOG: SDK in cache." || { ' +
-        'echo "BUILD LOG: Downloading SDK..."; ' +
+        'echo "BUILD LOG: Syncing SDK from S3 Cache..."',
+        'aws s3 sync s3://$SDK_CACHE_BUCKET .android-sdk-cache || echo "BUILD LOG: S3 Cache empty."',
+
+        '[ -d "$ANDROID_HOME/cmdline-tools/latest" ] && echo "BUILD LOG: SDK tools found." || { ' +
+        'echo "BUILD LOG: Tools not in cache. Downloading..."; ' +
         'mkdir -p $ANDROID_HOME/cmdline-tools; ' +
         'wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/tools.zip; ' +
         'unzip -q /tmp/tools.zip -d $ANDROID_HOME/cmdline-tools; ' +
@@ -68,6 +73,9 @@ export class PipelineStack extends cdk.Stack {
         'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses',
         'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-37.1" "build-tools;35.0.0"',
 
+        'echo "BUILD LOG: Syncing updated SDK back to S3 Cache..."',
+        'aws s3 sync .android-sdk-cache s3://$SDK_CACHE_BUCKET --delete',
+
         'echo "sdk.dir=$ANDROID_HOME" > local.properties',
         'chmod +x ./gradlew',
         './gradlew :app:assembleDebug --no-daemon',
@@ -75,9 +83,12 @@ export class PipelineStack extends cdk.Stack {
         'mkdir -p artifacts',
         'cp app/build/outputs/apk/debug/app-debug.apk artifacts/latest-beta.apk'
       ],
-      partialBuildSpec: codebuild.BuildSpec.fromObject({
-        cache: { paths: ['.android-sdk-cache/**/*'] }
-      }),
+      rolePolicyStatements: [
+        new iam.PolicyStatement({
+          actions: ['s3:Get*', 's3:List*', 's3:Put*', 's3:Delete*'],
+          resources: [`arn:aws:s3:::${sdkCacheBucketName}*`],
+        }),
+      ],
       primaryOutputDirectory: 'artifacts'
     });
 
@@ -85,7 +96,6 @@ export class PipelineStack extends cdk.Stack {
       env: { account: '575992668616', region: 'us-east-1' }
     });
 
-    // We add the parallel builds as a Wave
     const buildWave = pipeline.addWave('ParallelBuilds');
     buildWave.addPost(androidBuildStep);
 

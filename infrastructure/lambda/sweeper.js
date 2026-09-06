@@ -32,13 +32,28 @@ exports.handler = async (event) => {
         const fullScan = await ddb.send(new ScanCommand({ TableName: TABLE_NAME }));
         const allItems = fullScan.Items || [];
 
-        // 2. Count statuses for the Dashboard
+        // 2. Count statuses for the Dashboard & Backfill missing statuses
         const counts = { TOTAL: allItems.length, COMPLETED: 0, TRANSCODING: 0, FAILED: 0, FATAL: 0, INGESTED: 0 };
 
-        allItems.forEach(item => {
-            const status = item.transcodeStatus || (item.hlsKey ? "COMPLETED" : "INGESTED");
-            if (counts[status] !== undefined) counts[status]++;
-        });
+        for (const item of allItems) {
+            let status = item.transcodeStatus;
+
+            // Lead Strategy: Proactive Backfill.
+            // If HLS is done but status is missing, update the DB.
+            if (!status && item.hlsKey) {
+                console.log(`Backfilling COMPLETED status for ${item.videoId}...`);
+                status = "COMPLETED";
+                await ddb.send(new UpdateCommand({
+                    TableName: TABLE_NAME,
+                    Key: { videoId: item.videoId },
+                    UpdateExpression: "SET transcodeStatus = :s",
+                    ExpressionAttributeValues: { ":s": "COMPLETED" }
+                }));
+            }
+
+            const effectiveStatus = status || "INGESTED";
+            if (counts[effectiveStatus] !== undefined) counts[effectiveStatus]++;
+        }
 
         // Emit counts as EMF metrics
         Object.keys(counts).forEach(status => {

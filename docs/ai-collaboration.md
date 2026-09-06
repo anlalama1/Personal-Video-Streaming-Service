@@ -364,6 +364,15 @@ This document tracks the high-level collaboration between the human developer an
     - Resolved `NodeDuplicate` error: Refactored the `PipelineStack` to define the GitHub source as a single shared artifact, preventing duplicate construct IDs in the stack scope.
 - **Outcome**: A stable, high-performance parallel pipeline that adheres to CDK best practices for artifact reuse and dependency management.
 
+- **Outcome**: A stable, high-performance parallel pipeline that adheres to CDK best practices for artifact reuse and dependency management.
+
+### 42. Pipeline Fix: S3 Cache Permission Restoration (Sept 5, 2026)
+- **Challenge**: The Android build failed with `Permission denied` when attempting to run `sdkmanager` after a cache restore from S3.
+- **AI Contribution**: 
+    - Identified that S3 does not preserve Linux execution bits (`+x`) for synchronized objects.
+    - Implemented a **Permission Restoration Step**: Added `find` and `chmod` commands to the parallel build process to manually restore execution permissions for SDK binaries (`sdkmanager`, `avdmanager`) post-sync.
+- **Outcome**: Successfully bridged the gap between S3 object storage and Linux build requirements, ensuring a reliable cached build process.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

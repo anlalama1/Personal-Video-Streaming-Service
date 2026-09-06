@@ -69,6 +69,11 @@ export class PipelineStack extends cdk.Stack {
         'echo "BUILD LOG: Syncing SDK from S3 Cache..."',
         'aws s3 sync s3://$SDK_CACHE_BUCKET .android-sdk-cache || echo "BUILD LOG: S3 Cache empty."',
 
+        // Lead Strategy: Restore execution permissions.
+        // S3 does not preserve the executable bit, so we must manually restore it for the SDK tools.
+        'find .android-sdk-cache -type f -name "sdkmanager" -exec chmod +x {} +',
+        'find .android-sdk-cache -type f -name "avdmanager" -exec chmod +x {} +',
+
         '[ -d "$ANDROID_HOME/cmdline-tools/latest" ] && echo "BUILD LOG: SDK tools found." || { ' +
         'echo "BUILD LOG: Tools not in cache. Downloading..."; ' +
         'mkdir -p $ANDROID_HOME/cmdline-tools; ' +

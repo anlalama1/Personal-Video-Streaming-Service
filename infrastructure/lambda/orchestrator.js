@@ -23,11 +23,6 @@ exports.handler = async (event) => {
 
         if (!bucket || !key) continue;
 
-        /**
-         * Principal Strategy: Hierarchical Path Parsing.
-         * Expected: <ShopID>/<FamilyID>/<VideoName>.mp4
-         * Default: GLOBAL/PUBLIC/<VideoName>.mp4
-         */
         const parts = key.split('/');
         let tenantId = 'GLOBAL';
         let familyId = 'PUBLIC';
@@ -66,10 +61,51 @@ exports.handler = async (event) => {
                 }
             }));
         } catch (err) {
-            if (err.name === "ConditionalCheckFailedException") continue;
+            if (err.name === "ConditionalCheckFailedException") {
+                console.warn(`Lock failed for ${videoId}. Task likely already in progress.`);
+                continue;
+            }
             throw err;
         }
 
-        // Start Fargate... (passing TENANT_ID and VIDEO_ID to the container)
+        const params = {
+            cluster: process.env.CLUSTER_NAME,
+            taskDefinition: process.env.TASK_DEFINITION,
+            launchType: "FARGATE",
+            networkConfiguration: {
+                awsvpcConfiguration: {
+                    subnets: JSON.parse(process.env.SUBNETS),
+                    securityGroups: JSON.parse(process.env.SECURITY_GROUPS),
+                    assignPublicIp: "ENABLED",
+                },
+            },
+            overrides: {
+                containerOverrides: [
+                    {
+                        name: process.env.CONTAINER_NAME,
+                        environment: [
+                            { name: "INPUT_KEY", value: key },
+                            { name: "TENANT_ID", value: tenantId },
+                            { name: "VIDEO_ID", value: videoId }
+                        ],
+                    },
+                ],
+            },
+        };
+
+        try {
+            console.log("Starting Fargate Task...");
+            const data = await ecsClient.send(new RunTaskCommand(params));
+            console.log("Fargate Task started successfully:", data.tasks[0].taskArn);
+        } catch (err) {
+            console.error("Error starting Fargate Task:", err);
+            await ddb.send(new UpdateCommand({
+                TableName: process.env.TABLE_NAME,
+                Key: { PK: `TENANT#${tenantId}`, SK: `FAMILY#${familyId}#VIDEO#${videoId}` },
+                UpdateExpression: "SET transcodeStatus = :f, lastUpdated = :t",
+                ExpressionAttributeValues: { ":f": "FAILED", ":t": Date.now() }
+            }));
+            throw err;
+        }
     }
 };

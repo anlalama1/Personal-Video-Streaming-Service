@@ -14,7 +14,6 @@ export class PipelineStack extends cdk.Stack {
     const account = Config.account;
     const region = Config.region;
 
-    // Lead Strategy: Persistent S3-based cache for the Android SDK
     const sdkCacheBucket = new s3.Bucket(this, 'AndroidSdkCacheBucket', {
       bucketName: `android-sdk-cache-${account}-${region}`,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
@@ -36,6 +35,7 @@ export class PipelineStack extends cdk.Stack {
         commands: [
           'cd infrastructure',
           'npm install',
+          'cd lambda && npm install && cd ..',
           'npm run build',
           'npx cdk synth'
         ],
@@ -65,32 +65,21 @@ export class PipelineStack extends cdk.Stack {
         'echo "BUILD LOG: Starting Parallel Android Build..."',
         'export ANDROID_HOME=$(pwd)/.android-sdk-cache',
         'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin',
-
-        'echo "BUILD LOG: Syncing SDK from S3 Cache..."',
         'aws s3 sync s3://$SDK_CACHE_BUCKET .android-sdk-cache || echo "BUILD LOG: S3 Cache empty."',
-
-        // Lead Strategy: Restore execution permissions.
-        // S3 does not preserve the executable bit, so we must manually restore it for the SDK tools.
         'find .android-sdk-cache -type f -name "sdkmanager" -exec chmod +x {} +',
         'find .android-sdk-cache -type f -name "avdmanager" -exec chmod +x {} +',
-
         '[ -d "$ANDROID_HOME/cmdline-tools/latest" ] && echo "BUILD LOG: SDK tools found." || { ' +
         'echo "BUILD LOG: Tools not in cache. Downloading..."; ' +
         'mkdir -p $ANDROID_HOME/cmdline-tools; ' +
         'wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/tools.zip; ' +
         'unzip -q /tmp/tools.zip -d $ANDROID_HOME/cmdline-tools; ' +
         'mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest; }',
-
         'yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses',
         'sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-37.1" "build-tools;35.0.0"',
-
-        'echo "BUILD LOG: Syncing updated SDK back to S3 Cache..."',
         'aws s3 sync .android-sdk-cache s3://$SDK_CACHE_BUCKET --delete',
-
         'echo "sdk.dir=$ANDROID_HOME" > local.properties',
         'chmod +x ./gradlew',
         './gradlew :app:assembleDebug --no-daemon',
-
         'mkdir -p artifacts',
         'cp app/build/outputs/apk/debug/app-debug.apk artifacts/latest-beta.apk'
       ],
@@ -112,8 +101,15 @@ export class PipelineStack extends cdk.Stack {
 
     pipeline.addStage(prodStage);
 
-    pipeline.addWave('Distribution').addPost(
-      new pipelines.CodeBuildStep('UploadAndroidApk', {
+    /**
+     * Lead Strategy: Multi-Asset Distribution Wave.
+     * We deploy both the Android APK and the Demetrius Web Portal in parallel
+     * after the infrastructure stacks have stabilized.
+     */
+    const distroWave = pipeline.addWave('Distribution');
+
+    // 1. Android APK Distribution
+    distroWave.addPost(new pipelines.CodeBuildStep('UploadAndroidApk', {
         input: androidBuildStep,
         envFromCfnOutputs: {
           BUCKET_NAME: prodStage.appDistributionBucketName,
@@ -126,6 +122,34 @@ export class PipelineStack extends cdk.Stack {
         rolePolicyStatements: [
           new iam.PolicyStatement({
             actions: ['s3:PutObject'],
+            resources: [`arn:aws:s3:::*`],
+          }),
+          new iam.PolicyStatement({
+            actions: ['cloudfront:CreateInvalidation'],
+            resources: [`arn:aws:cloudfront::${account}:distribution/*`],
+          }),
+        ],
+      })
+    );
+
+    // 2. Demetrius Partner Portal Distribution
+    distroWave.addPost(new pipelines.CodeBuildStep('DeployDemetriusPortal', {
+        input: source,
+        envFromCfnOutputs: {
+          VITE_API_BASE_URL: prodStage.apiUrl,
+          ADMIN_BUCKET: prodStage.adminPortalBucketName,
+          DISTRIBUTION_ID: prodStage.distributionId,
+        },
+        commands: [
+          'cd app-admin',
+          'npm install',
+          'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',
+          'aws s3 sync dist s3://$ADMIN_BUCKET --delete',
+          'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/admin/*"'
+        ],
+        rolePolicyStatements: [
+          new iam.PolicyStatement({
+            actions: ['s3:PutObject', 's3:ListBucket', 's3:DeleteObject'],
             resources: [`arn:aws:s3:::*`],
           }),
           new iam.PolicyStatement({

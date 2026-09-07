@@ -10,6 +10,7 @@ export class StorageStack extends cdk.Stack {
   public readonly thumbnailBucket: s3.IBucket;
   public readonly hlsBucket: s3.IBucket;
   public readonly appDistributionBucket: s3.IBucket;
+  public readonly adminPortalBucket: s3.IBucket;
   public readonly distribution: cloudfront.IDistribution;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -23,8 +24,8 @@ export class StorageStack extends cdk.Stack {
       enforceSSL: true,
       eventBridgeEnabled: true,
       cors: [{
-        allowedMethods: [s3.HttpMethods.GET],
-        allowedOrigins: ['*'],
+        allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
+        allowedOrigins: ['*'], // Will scope down once domain is static
         allowedHeaders: ['*'],
       }],
     });
@@ -61,6 +62,14 @@ export class StorageStack extends cdk.Stack {
       enforceSSL: true,
     });
 
+    // Principal Strategy: Admin Portal Static Hosting (Demetrius)
+    this.adminPortalBucket = new s3.Bucket(this, 'AdminPortalBucket', {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+    });
+
     // 2. CloudFront OAC
     const oac = new cloudfront.CfnOriginAccessControl(this, 'StreamingOAC', {
       originAccessControlConfig: {
@@ -86,6 +95,13 @@ export class StorageStack extends cdk.Stack {
           if (uri.startsWith('/download/')) {
             request.uri = uri.replace('/download/', '/');
           }
+          if (uri.startsWith('/admin/')) {
+            request.uri = uri.replace('/admin/', '/');
+            // If the URI doesn't look like a file, serve index.html for SPA routing
+            if (!request.uri.includes('.')) {
+              request.uri = '/index.html';
+            }
+          }
           return request;
         }
       `),
@@ -93,7 +109,7 @@ export class StorageStack extends cdk.Stack {
 
     // 4. Distribution
     this.distribution = new cloudfront.Distribution(this, 'StreamingDistribution', {
-      comment: 'CDN for Portfolio Streaming Service',
+      comment: 'CDN for Alexandria+ Ecosystem',
       defaultBehavior: {
         origin: new origins.S3Origin(this.mediaBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -118,11 +134,19 @@ export class StorageStack extends cdk.Stack {
             eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
           }],
         },
-        // Lead Strategy: Distribution path for Android APKs
         '/download/*': {
           origin: new origins.S3Origin(this.appDistributionBucket),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // Don't cache beta APKs
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          functionAssociations: [{
+            function: rewriteFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          }],
+        },
+        '/admin/*': {
+          origin: new origins.S3Origin(this.adminPortalBucket),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
           functionAssociations: [{
             function: rewriteFunction,
             eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
@@ -133,7 +157,7 @@ export class StorageStack extends cdk.Stack {
 
     // OAC Attachment (L1 Escape Hatch)
     const cfnDistribution = this.distribution.node.defaultChild as cloudfront.CfnDistribution;
-    const origins_list = [0, 1, 2, 3]; // Media, Thumbnails, HLS, App (SDK Cache is internal)
+    const origins_list = [0, 1, 2, 3, 4]; // Media, Thumbnails, HLS, App, Admin
     origins_list.forEach(i => {
         cfnDistribution.addPropertyOverride(`DistributionConfig.Origins.${i}.OriginAccessControlId`, oac.attrId);
         cfnDistribution.addPropertyOverride(`DistributionConfig.Origins.${i}.S3OriginConfig.OriginAccessIdentity`, '');
@@ -157,9 +181,10 @@ export class StorageStack extends cdk.Stack {
     allowCloudFront(this.thumbnailBucket);
     allowCloudFront(this.hlsBucket);
     allowCloudFront(this.appDistributionBucket);
+    allowCloudFront(this.adminPortalBucket);
 
     new cdk.CfnOutput(this, 'CloudFrontDomain', { value: this.distribution.distributionDomainName });
-    new cdk.CfnOutput(this, 'AppDistributionBucketName', { value: this.appDistributionBucket.bucketName });
+    new cdk.CfnOutput(this, 'AdminBucketName', { value: this.adminPortalBucket.bucketName });
     new cdk.CfnOutput(this, 'DistributionId', { value: this.distribution.distributionId });
   }
 }

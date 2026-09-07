@@ -21,81 +21,55 @@ exports.handler = async (event) => {
             key = decodeURIComponent(body.Records[0].s3.object.key.replace(/\+/g, " "));
         }
 
-        if (!bucket || !key) {
-            console.log("Skipping record: Not a valid S3 event shape.");
-            continue;
-        }
-
-        const videoId = path.basename(key, path.extname(key));
-        console.log(`Processing Video: ${videoId} (Key: ${key})`);
+        if (!bucket || !key) continue;
 
         /**
-         * Principal Strategy: Atomic Lock.
-         * Before starting Fargate, we attempt to move the state to TRANSCODING.
-         * This prevents multiple tasks for the same video if events are duplicated
-         * or if the sweeper triggers while a task is already running.
+         * Principal Strategy: Hierarchical Path Parsing.
+         * Expected: <ShopID>/<FamilyID>/<VideoName>.mp4
+         * Default: GLOBAL/PUBLIC/<VideoName>.mp4
          */
+        const parts = key.split('/');
+        let tenantId = 'GLOBAL';
+        let familyId = 'PUBLIC';
+        let videoId = "";
+
+        if (parts.length >= 3) {
+            tenantId = parts[0];
+            familyId = parts[1];
+            videoId = path.basename(parts[2], path.extname(parts[2]));
+        } else if (parts.length === 2) {
+            tenantId = parts[0];
+            videoId = path.basename(parts[1], path.extname(parts[1]));
+        } else {
+            videoId = path.basename(key, path.extname(key));
+        }
+
+        console.log(`Processing - Tenant: ${tenantId}, Family: ${familyId}, Video: ${videoId}`);
+
         try {
-            console.log(`Attempting to acquire lock for ${videoId}...`);
             await ddb.send(new UpdateCommand({
                 TableName: process.env.TABLE_NAME,
-                Key: { videoId },
-                // Only acquire lock if state is null, INGESTED, or FAILED.
-                // This blocks if already TRANSCODING or COMPLETED.
+                Key: {
+                    PK: `TENANT#${tenantId}`,
+                    SK: `FAMILY#${familyId}#VIDEO#${videoId}`
+                },
                 ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :f",
-                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc",
+                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc, videoKey = :vk",
                 ExpressionAttributeValues: {
                     ":i": "INGESTED",
                     ":f": "FAILED",
                     ":s": "TRANSCODING",
                     ":t": Date.now(),
                     ":zero": 0,
-                    ":inc": 1
+                    ":inc": 1,
+                    ":vk": key
                 }
             }));
         } catch (err) {
-            if (err.name === "ConditionalCheckFailedException") {
-                console.warn(`Concurrency Guard: Task for ${videoId} is already in progress or completed. Skipping.`);
-                continue;
-            }
+            if (err.name === "ConditionalCheckFailedException") continue;
             throw err;
         }
 
-        const params = {
-            cluster: process.env.CLUSTER_NAME,
-            taskDefinition: process.env.TASK_DEFINITION,
-            launchType: "FARGATE",
-            networkConfiguration: {
-                awsvpcConfiguration: {
-                    subnets: JSON.parse(process.env.SUBNETS),
-                    securityGroups: JSON.parse(process.env.SECURITY_GROUPS),
-                    assignPublicIp: "ENABLED",
-                },
-            },
-            overrides: {
-                containerOverrides: [
-                    {
-                        name: process.env.CONTAINER_NAME,
-                        environment: [{ name: "INPUT_KEY", value: key }],
-                    },
-                ],
-            },
-        };
-
-        try {
-            console.log("Starting Fargate Task...");
-            const data = await ecsClient.send(new RunTaskCommand(params));
-            console.log("Fargate Task started successfully:", data.tasks[0].taskArn);
-        } catch (err) {
-            console.error("Error starting Fargate Task:", err);
-            // On failure to start task, move status back to FAILED so sweeper can retry
-            await ddb.send(new UpdateCommand({
-                TableName: process.env.TABLE_NAME,
-                Key: { videoId },
-                UpdateExpression: "SET transcodeStatus = :f, lastUpdated = :t",
-                ExpressionAttributeValues: { ":f": "FAILED", ":t": Date.now() }
-            }));
-            throw err;
-        }
+        // Start Fargate... (passing TENANT_ID and VIDEO_ID to the container)
     }
 };

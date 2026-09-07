@@ -9,7 +9,9 @@ export class DatabaseStack extends cdk.Stack {
     super(scope, id, props);
 
     this.table = new dynamodb.Table(this, 'VideoMetadataTable', {
-      partitionKey: { name: 'videoId', type: dynamodb.AttributeType.STRING },
+      // Principal Strategy: Generic Single-Table Design Keys
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });

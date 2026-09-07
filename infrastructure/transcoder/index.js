@@ -13,13 +13,14 @@ const SOURCE_BUCKET = process.env.SOURCE_BUCKET;
 const DEST_BUCKET = process.env.DEST_BUCKET;
 const TABLE_NAME = process.env.TABLE_NAME;
 const INPUT_KEY = process.env.INPUT_KEY;
+const TENANT_ID = process.env.TENANT_ID;
+const VIDEO_ID = process.env.VIDEO_ID;
 
 async function run() {
-    console.log(`Starting Transcode for: ${INPUT_KEY}`);
+    console.log(`Starting Transcode for Tenant: ${TENANT_ID}, Video: ${VIDEO_ID}`);
 
-    const videoId = path.basename(INPUT_KEY, path.extname(INPUT_KEY));
-    const localInput = `/tmp/${INPUT_KEY}`;
-    const outputDir = `/tmp/${videoId}_hls`;
+    const localInput = `/tmp/${VIDEO_ID}${path.extname(INPUT_KEY)}`;
+    const outputDir = `/tmp/${VIDEO_ID}_hls`;
 
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
     ['stream_0', 'stream_1', 'stream_2'].forEach(dir => {
@@ -28,7 +29,6 @@ async function run() {
     });
 
     try {
-        // 1. Download source MP4
         console.log("Downloading source from S3...");
         const response = await s3.send(new GetObjectCommand({
             Bucket: SOURCE_BUCKET,
@@ -36,7 +36,6 @@ async function run() {
         }));
         await pipeline(response.Body, fs.createWriteStream(localInput));
 
-        // 2. Transcode to HLS ladder
         console.log("Running FFmpeg...");
         const filter = "[0:v]split=3[v1][v2][v3];[v1]scale=w=1920:h=1080[v1out];[v2]scale=w=1280:h=720[v2out];[v3]scale=w=854:h=480[v3out]";
 
@@ -63,19 +62,18 @@ async function run() {
 
         execSync(ffmpegCmd, { stdio: 'inherit' });
 
-        // 3. Upload Artifacts to S3
         console.log("Uploading HLS artifacts to S3...");
-        await uploadFolder(outputDir, `${videoId}_hls`);
+        // Principal Strategy: Maintain tenant folder structure in output bucket too
+        const s3Prefix = `${TENANT_ID}/${VIDEO_ID}_hls`;
+        await uploadFolder(outputDir, s3Prefix);
 
-        // 4. Update DynamoDB to COMPLETED
         console.log("Updating DynamoDB to COMPLETED...");
-        const hlsKey = `${videoId}_hls`;
         await db.send(new UpdateCommand({
             TableName: TABLE_NAME,
-            Key: { videoId: videoId },
+            Key: { PK: `TENANT#${TENANT_ID}`, SK: `VIDEO#${VIDEO_ID}` },
             UpdateExpression: "SET hlsKey = :h, transcodeStatus = :s, lastUpdated = :t",
             ExpressionAttributeValues: {
-                ":h": hlsKey,
+                ":h": `${VIDEO_ID}_hls`,
                 ":s": "COMPLETED",
                 ":t": Date.now()
             }
@@ -84,22 +82,16 @@ async function run() {
         console.log("Transcode pipeline completed successfully!");
     } catch (err) {
         console.error("Transcode failed:", err);
-
-        // Update DynamoDB to FAILED
         try {
             await db.send(new UpdateCommand({
                 TableName: TABLE_NAME,
-                Key: { videoId: videoId },
+                Key: { PK: `TENANT#${TENANT_ID}`, SK: `VIDEO#${VIDEO_ID}` },
                 UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t",
-                ExpressionAttributeValues: {
-                    ":s": "FAILED",
-                    ":t": Date.now()
-                }
+                ExpressionAttributeValues: { ":s": "FAILED", ":t": Date.now() }
             }));
         } catch (dbErr) {
             console.error("Failed to update status to FAILED:", dbErr);
         }
-
         process.exit(1);
     }
 }

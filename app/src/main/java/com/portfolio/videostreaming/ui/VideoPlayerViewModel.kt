@@ -75,7 +75,7 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
         // Log telemetry (BFF)
         viewModelScope.launch {
             try {
-                StreamingApi.service.logPlayEvent(PlayEventRequest(videoId))
+                StreamingApi.service.logPlayEvent("GLOBAL", PlayEventRequest(videoId))
             } catch (e: Exception) {
                 Log.e("VideoPlayerVM", "Failed to log play event", e)
             }

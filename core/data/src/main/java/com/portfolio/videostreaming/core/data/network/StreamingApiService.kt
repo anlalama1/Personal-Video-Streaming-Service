@@ -8,6 +8,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 /**
@@ -31,10 +32,15 @@ data class PlayEventRequest(
 
 interface StreamingApiService {
     @GET("catalog")
-    suspend fun getCatalog(): List<MediaItemDto>
+    suspend fun getCatalog(
+        @Header("x-tenant-id") tenantId: String
+    ): List<MediaItemDto>
 
     @POST("play")
-    suspend fun logPlayEvent(@Body request: PlayEventRequest)
+    suspend fun logPlayEvent(
+        @Header("x-tenant-id") tenantId: String,
+        @Body request: PlayEventRequest
+    )
 }
 
 /**

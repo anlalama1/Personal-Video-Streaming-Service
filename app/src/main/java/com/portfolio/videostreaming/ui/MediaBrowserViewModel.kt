@@ -35,9 +35,9 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                // Call the Lambda-backed API Gateway
+                // Call the Lambda-backed API Gateway with the tenant context
                 val dtos = withContext(Dispatchers.IO) {
-                    StreamingApi.service.getCatalog()
+                    StreamingApi.service.getCatalog("GLOBAL") // Hardcoded for MVP
                 }
                 
                 // Map DTOs to UI Models

@@ -9,8 +9,7 @@ const Ingestion = () => {
     title: '',
     genre: '',
     releaseYear: new Date().getFullYear().toString(),
-    familyId: 'PUBLIC',
-    videoId: ''
+    familyId: 'PUBLIC'
   });
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -20,10 +19,6 @@ const Ingestion = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Auto-generate videoId from title if empty
-    if (name === 'title' && !formData.videoId) {
-        setFormData(prev => ({ ...prev, videoId: value.toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '') }));
-    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,12 +36,18 @@ const Ingestion = () => {
     setProgress(0);
 
     try {
-      // 1. Get Pre-signed URL
-      // We encode the tenantId in a header for now
       const tenantId = 'GLOBAL';
+
+      /**
+       * Lead Strategy: Deterministic Identity.
+       * We use the filename (minus extension) as the stable videoId.
+       * This ensures the React Metadata and the S3-triggered Orchestrator
+       * both update the exact same record in DynamoDB.
+       */
+      const videoId = file.name.split('.')[0].toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
       const s3Key = `${tenantId}/${formData.familyId}/${file.name}`;
 
-      console.log('Requesting upload URL...');
+      // 1. Get Pre-signed URL
       const urlRes = await axios.get(`${API_BASE_URL}upload-url`, {
         params: { key: s3Key, contentType: file.type },
         headers: { 'x-tenant-id': tenantId }
@@ -54,7 +55,6 @@ const Ingestion = () => {
       const { uploadUrl } = urlRes.data;
 
       // 2. Upload to S3
-      console.log('Uploading to S3...');
       await axios.put(uploadUrl, file, {
         headers: { 'Content-Type': file.type },
         onUploadProgress: (progressEvent) => {
@@ -64,11 +64,11 @@ const Ingestion = () => {
       });
 
       // 3. Ingest Metadata to DynamoDB
-      console.log('Ingesting metadata...');
       await axios.post(`${API_BASE_URL}ingest`, {
         ...formData,
+        videoId: videoId,
         videoFileName: file.name,
-        thumbnailFileName: '' // Future: Handle thumbnail upload too
+        thumbnailFileName: ''
       }, {
         headers: { 'x-tenant-id': tenantId }
       });
@@ -89,29 +89,16 @@ const Ingestion = () => {
       </header>
 
       <form onSubmit={handleSubmit} className="bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-xl space-y-6">
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-300">Video Title</label>
-            <input
-              required
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="e.g. Christmas 1994"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-300">Video ID</label>
-            <input
-              required
-              name="videoId"
-              value={formData.videoId}
-              onChange={handleInputChange}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-slate-400 cursor-not-allowed"
-              readOnly
-            />
-          </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-300">Video Title</label>
+          <input
+            required
+            name="title"
+            value={formData.title}
+            onChange={handleInputChange}
+            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="e.g. Christmas 1994"
+          />
         </div>
 
         <div className="grid grid-cols-3 gap-6">

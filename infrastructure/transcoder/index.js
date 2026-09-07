@@ -17,6 +17,12 @@ const TENANT_ID = process.env.TENANT_ID;
 const VIDEO_ID = process.env.VIDEO_ID;
 
 async function run() {
+    // Principal Strategy: Defensive Environment Checks.
+    if (!TENANT_ID || !VIDEO_ID) {
+        console.error("CRITICAL ERROR: TENANT_ID or VIDEO_ID missing from environment.");
+        process.exit(1);
+    }
+
     console.log(`Starting Transcode for Tenant: ${TENANT_ID}, Video: ${VIDEO_ID}`);
 
     const localInput = `/tmp/${VIDEO_ID}${path.extname(INPUT_KEY)}`;

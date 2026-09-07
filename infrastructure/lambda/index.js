@@ -24,9 +24,6 @@ function emitMetric(name, value, unit, dimensions = {}, namespace = "StreamingSe
     console.log(JSON.stringify(logEntry));
 }
 
-/**
- * Main Scribe Handler - Routes incoming API requests
- */
 exports.handler = async (event) => {
     const path = event.resource;
     const method = event.httpMethod;
@@ -51,7 +48,13 @@ async function handleGetCatalog(event, tenantId) {
     const cdnDomain = process.env.CLOUDFRONT_DOMAIN;
 
     try {
-        const skPrefix = familyId ? `FAMILY#${familyId}#VIDEO#` : "VIDEO#";
+        /**
+         * Lead Strategy: Hierarchical Filter.
+         * If familyId is provided (Phone), we look for VIDEOs in that family.
+         * If omitted (Portal), we look for ALL families in the tenant partition.
+         */
+        const skPrefix = familyId ? `FAMILY#${familyId}#VIDEO#` : "FAMILY#";
+
         const command = new QueryCommand({
             TableName: tableName,
             KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
@@ -65,8 +68,18 @@ async function handleGetCatalog(event, tenantId) {
         const items = response.Items || [];
 
         const mapToCdn = (item) => {
-            const videoId = item.SK.split('#').pop();
-            const videoUrl = `https://${cdnDomain}/${item.videoKey}`; // MP4 Pinning
+            // Extract original videoId from the SK (FAMILY#<FID>#VIDEO#<VID>)
+            const skParts = item.SK.split('#');
+            const videoId = skParts[skParts.length - 1];
+            const itemFamilyId = skParts[1];
+
+            // Skip non-video records if any
+            if (!item.SK.includes("#VIDEO#")) return null;
+
+            const videoUrl = item.hlsKey
+                ? `https://${cdnDomain}/hls/${tenantId}/${itemFamilyId}/${item.hlsKey}/master.m3u8`
+                : `https://${cdnDomain}/${item.videoKey}`;
+
             const thumbnailUrl = item.thumbnailKey
                 ? `https://${cdnDomain}/thumbnails/${item.thumbnailKey}`
                 : "https://via.placeholder.com/150";
@@ -81,7 +94,7 @@ async function handleGetCatalog(event, tenantId) {
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Headers": "*"
             },
-            body: JSON.stringify(items.map(mapToCdn)),
+            body: JSON.stringify(items.map(mapToCdn).filter(i => i !== null)),
         };
     } catch (error) {
         console.error("Catalog Error:", error);
@@ -155,7 +168,6 @@ async function handleGetUploadUrl(event, tenantId) {
 }
 
 exports.logPlayHandler = async (event) => {
-    // Existing logPlayHandler logic...
     const tenantId = event.headers['x-tenant-id'] || 'GLOBAL';
     const body = JSON.parse(event.body || "{}");
     const videoId = body.videoId;

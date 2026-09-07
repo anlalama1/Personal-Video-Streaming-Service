@@ -403,6 +403,16 @@ This document tracks the high-level collaboration between the human developer an
     - Automated the entire frontend build and deployment process within the existing CI/CD pipeline, including automated CDN invalidations.
 - **Outcome**: Delivered a professional, white-label administrative interface that turns the backend into a complete Content Management System (CMS).
 
+- **Outcome**: Delivered a professional, white-label administrative interface that turns the backend into a complete Content Management System (CMS).
+
+### 44. Demetrius Optimization: Deterministic Identity & Hierarchical Queries (Sept 7, 2026)
+- **Challenge**: The initial portal launch suffered from duplicate database entries and an empty library view due to sort-key mismatches and inconsistent ID generation.
+- **AI Contribution**: 
+    - Refactored the ingestion workflow to use **Deterministic Identity**: both the frontend and the cloud orchestrator now derive the `videoId` from the sanitized filename, ensuring they target the exact same DynamoDB record.
+    - Updated the **Scribe API** to support **Hierarchical Sort Key Queries**: changed the `SK` filtering logic to allow shop-wide visibility (searching across all families) while maintaining family-level isolation for mobile clients.
+    - Streamlined the **Ingestion UX**: removed technical fields (Video ID) from the UI, moving ID generation to a background process to reduce administrative cognitive load.
+- **Outcome**: Achieved 100% data consistency between manual metadata entry and automated S3 events, resulting in a reliable, production-ready CMS dashboard.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

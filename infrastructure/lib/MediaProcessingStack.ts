@@ -62,9 +62,15 @@ export class MediaProcessingStack extends cdk.Stack {
       },
     });
 
+    // Lead Strategy: Explicit IAM Grants.
+    // We use explicit policy statements to ensure 'UpdateItem' is never blocked by ARN changes.
+    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:Query'],
+      resources: [props.metadataTable.tableArn]
+    }));
+
     props.sourceBucket.grantRead(taskDefinition.taskRole);
     props.hlsBucket.grantReadWrite(taskDefinition.taskRole);
-    props.metadataTable.grantReadWriteData(taskDefinition.taskRole);
 
     const transcodeQueue = new sqs.Queue(this, 'TranscodeQueue', {
       visibilityTimeout: cdk.Duration.minutes(15),

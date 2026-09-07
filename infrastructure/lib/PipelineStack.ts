@@ -143,7 +143,7 @@ export class PipelineStack extends cdk.Stack {
         commands: [
           'cd app-admin',
           'npm install',
-          'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',
+          'npm run build', // VITE_API_BASE_URL is already in env
           'aws s3 sync dist s3://$ADMIN_BUCKET --delete',
           'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/admin/*"'
         ],

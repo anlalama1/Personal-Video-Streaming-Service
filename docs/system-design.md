@@ -14,39 +14,45 @@ graph TD
         BUILD_IMG -->|Push| ECR[Amazon ECR]
     end
 
+    subgraph "Admin / Partner Portal (React)"
+        AUTH_A[Cognito: Admin Auth]
+        PORTAL[Shop Dashboard]
+        PORTAL -->|Multipart Upload| R2_SRC[Cloudflare R2: MP4 / MP3 Source]
+    end
+
     subgraph "Android Consumer App"
+        AUTH_C[Cognito: Family Auth]
         MVI[MVI State Logic]
-        ENGINE[Media3 ExoPlayer Engine]
+        ENGINE[Media3 Video/Audio Engine]
         CORE[Shared Core:Data Module]
     end
 
-    subgraph "AWS Production Environment"
-        CDN[CloudFront CDN]
-        BFF[Lambda: BFF API]
-        DB[(DynamoDB: Metadata)]
+    subgraph "AWS Production Environment (The Brain)"
+        CDN[CloudFront / Cloudflare CDN]
+        BFF[Lambda: Tenant-Aware BFF]
+        DB[(DynamoDB: Multi-Tenant Table)]
         
         subgraph "Media Pipeline"
-            S3_SRC[S3: Media Source]
             SQS[SQS Buffer]
             FARGATE[Fargate: FFmpeg]
-            S3_HLS[S3: HLS Artifacts]
+            R2_HLS[Cloudflare R2: HLS Artifacts]
         end
     end
 
-    %% Flow: Release
-    DIST_S3 -->|OAC| CDN
-    CORE -->|Download APK| CDN
+    %% Flow: Auth
+    AUTH_A -->|JWT| BFF
+    AUTH_C -->|JWT| BFF
 
     %% Flow: Runtime
-    CORE -->|REST| BFF
-    BFF -->|Query| DB
+    CORE -->|REST + JWT| BFF
+    BFF -->|Query by tenant_id| DB
     CORE -->|HLS Stream| CDN
-    CDN -->|OAC| S3_HLS
+    CDN -->|Zero Egress| R2_HLS
     
     %% Flow: Processing
-    S3_SRC -->|Object Event| SQS
+    R2_SRC -->|Object Event| SQS
     SQS -->|Trigger| FARGATE
-    FARGATE -->|Transcode| S3_HLS
+    FARGATE -->|Transcode| R2_HLS
     FARGATE -->|Update Key| DB
 ```
 
@@ -101,3 +107,28 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Decision**: **Dedicated S3 Cache Bucket**.
 *   **Trade-off**: Small S3 storage fee vs. **Reliable Build Performance**.
 *   **Reasoning**: Local directory caching in CodeBuild is ephemeral. By using a permanent S3 bucket, we ensured the 1.5GB Android SDK is always available over the fast AWS internal network, saving critical build minutes.
+
+### 7. SaaS Pivot: Multi-Tenancy Strategy
+*   **Backlog Decision**: **Single-Table Design with Cognito Isolation**.
+*   **Trade-off**: Increased complexity in key design vs. **Unlimited Scalability & Absolute Data Isolation**.
+*   **Reasoning**: To convert this into a B2B platform, we must ensure shops cannot access each other's data. Using a `TENANT#<ID>` Partition Key ensures that every query is physically scoped to a single customer, while Cognito JWTs provide the verifiable proof of identity.
+
+### 8. Cost Management: Hybrid Cloud Migration (Stretch Goal)
+*   **Backlog Decision**: **Cloudflare R2 for Media Storage**.
+*   **Trade-off**: Multi-cloud complexity vs. **100% Margin Protection**.
+*   **Reasoning**: AWS S3 egress fees (~$0.09/GB) are the "Silent Killer" of streaming startups. By moving delivery to Cloudflare R2 (Zero Egress), we can offer unlimited streaming to end-users at a fixed storage cost, enabling a sustainable subscription model.
+
+### 9. Product Strategy: Multimedia Digital Vault (Audio Support)
+*   **Backlog Decision**: **Poly-Container Ingestion (MP4 + MP3/FLAC)**.
+*   **Trade-off**: UI complexity (Audio vs Video players) vs. **Addressable Market Expansion**.
+*   **Reasoning**: Digitization shops handle more than just VHS tapes; they handle CDs and Vinyl. By supporting high-fidelity audio (FLAC) and standard mobile audio (AAC), we transform the service from a "Mini Netflix" into a complete "Family Heritage Vault," significantly increasing the "Enterprise" tier conversion rate.
+
+### 10. Security & Compliance: Multi-Account Isolation
+*   **Backlog Decision**: **Isolated Environment Accounts via AWS Organizations**.
+*   **Trade-off**: Operational complexity (managing multiple logins/roles) vs. **Absolute Blast Radius Control**.
+*   **Reasoning**: Alexandria+ utilizes a 4-tier account strategy:
+    1. **Management**: Billing and root identity (isolated).
+    2. **Tooling**: Hosts the CI/CD Release Engine and cross-account Observability.
+    3. **Development**: Low-cost, unstable sandbox for prototyping.
+    4. **Production**: Immutable sanctuary for customer media and financial data (Stripe).
+    This setup meets the highest industry standards for data sovereignty and disaster recovery, ensuring that developer errors in the sandbox cannot physically impact live customer data.

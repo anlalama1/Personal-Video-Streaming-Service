@@ -1,6 +1,14 @@
-# Personal Streaming Service — Portfolio Project
+# Alexandria+ — Portfolio Project & SaaS MVP
 
-A self-hosted "mini Netflix": rip physical media I own, transcode it to adaptive streaming formats, store it in AWS, and stream it to my family on laptop, iPhone, and Android — with DRM, adaptive bitrate, captions, and LLM-powered recommendations.
+**Alexandria+** is a self-hosted "mini Netflix" and B2B SaaS platform designed to rebuild the Great Library of history, one family at a time. It rip physical media, transcodes it to adaptive streaming formats, stores it securely, and delivers a professional streaming experience to laptops, iPhones, and Android devices.
+
+---
+
+## 📚 Project Documentation
+
+### Vision & Strategy
+- [**The Alexandria+ North Star**](./docs/alexandria-plus-north-star.md): The project's mission, narrative, and business pitches for partners and investors.
+- [**System Design & ADR**](./docs/system-design.md): Deep dive into the architecture, component breakdown, and a log of every major design trade-off (ADR).
 
 **Goal:** Prove hands-on competence across a broad media + mobile + cloud + applied-GenAI skill set by building the whole thing end to end, capturing proof, and tearing it down. This is a **portfolio spike**, not a permanent product.
 

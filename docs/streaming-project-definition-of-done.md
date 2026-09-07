@@ -16,6 +16,8 @@ The project is **done** when all of the following are true:
   - [ ] Android app (my own ExoPlayer/Media3 build)
 - [ ] Playback is **adaptive** — I can demonstrate quality/bitrate switching under changing network conditions.
 - [ ] Content is **access-controlled** — it cannot be fetched without authorization (CloudFront signed URLs/cookies at minimum).
+- [ ] **Multi-Tenancy Validated** — Data is strictly isolated by `tenant_id` at the database and API layers.
+- [ ] **Authenticated Access** — User management and API security are handled via **AWS Cognito**.
 - [ ] **DRM demonstrated** — Widevine-protected playback works on Android/web (stretch: AES-128 as a stepping stone; PlayReady understood conceptually; FairPlay explicitly out of scope).
 - [ ] **Adaptive bitrate demonstrated at the algorithm level** — I can observe, tune, and force the player's rendition-switching decisions (not just enable them).
 - [ ] **Captions rendered** — embedded CEA-608/708 captions display with a toggle.
@@ -116,14 +118,31 @@ The project is **done** when all of the following are true:
 - [ ] Achieve a 100% score on architectural and strategic reasoning.
 - [ ] **Lead Engineer Demonstration**: Prove that you "Own" the code and decisions by being able to defend them without AI assistance, mirroring the expectations of a technical lead interview at a Tier-1 company.
 
-### Milestone 12 — Android "Administrator" App (Content Ingestion)
-- [ ] New Android Module/Project: `streaming-admin-app`.
-- [ ] **Content Picker**: select local MP4 files and JPG thumbnails from the device.
-- [ ] **Ingestion Flow**:
-  - [ ] Multi-part upload to S3 directly (or via pre-signed URLs from Lambda).
-  - [ ] Metadata entry form: Title, Genre, Year.
-  - [ ] DynamoDB entry creation via the BFF (API Gateway/Lambda).
-- [ ] **Lead Engineer Demonstration**: prove the ability to build internal tools for content management, a key part of large-scale streaming systems.
+### Milestone 13 — SaaS Monetization: Payment Orchestration (Stripe)
+- [ ] **Stripe Account & Product Catalog**: Define subscription tiers (Starter, Pro, Enterprise) in the Stripe Dashboard.
+- [ ] **Merchant Integration**:
+  - [ ] Implement **Stripe Checkout** in the Partner Portal for secure, PCI-compliant subscription signup.
+  - [ ] Use **AWS Secrets Manager** to securely store Stripe API keys.
+- [ ] **Event-Driven Billing**:
+  - [ ] Create a **Stripe Webhook Lambda** to receive lifecycle events (e.g., `customer.subscription.deleted`, `invoice.paid`).
+  - [ ] Integrate with **Amazon EventBridge** to orchestrate "Entitlement Updates" (enabling/disabling shop access).
+- [ ] **Metered Billing (Future)**: Integrate with Stripe's usage-based billing to charge shops per GB of storage consumed.
+
+### Milestone 14 — Multimedia Expansion: Audio & Music Support (Premium)
+- [ ] **Audio Pipeline**: Configure the Fargate factory to detect and process MP3/AAC/FLAC files.
+- [ ] **Lossless Support**: Implement FLAC preservation for audiophile-grade CD/Vinyl digitization.
+- [ ] **Music Player UI**: Update the Android app to support an "Audio-Only" mode with persistent playback notification and album art rendering.
+- [ ] **AI Music Metadata**: Leverage **Amazon Bedrock** and **Amazon Transcribe** to identify songs, artists, and lyrics from digitized audio.
+- [ ] **Premium Entitlement**: Link audio upload capability to the "Enterprise" Stripe tier.
+
+### Milestone 15 — Enterprise Governance: Multi-Account Strategy
+- [ ] **Organization Setup**: Configure **AWS Organizations** to manage multiple child accounts.
+- [ ] **Environment Isolation**:
+  - [ ] Provision a dedicated **Development Account** for unstable spikes and manual testing.
+  - [ ] Provision a dedicated **Production Account** as a locked-down sanctuary for customer data.
+- [ ] **Cross-Account Pipeline**:
+  - [ ] Refactor the CI/CD pipeline to deploy to both accounts sequentially (Dev -> Manual Approval -> Prod).
+  - [ ] Implement **IAM Role Trust** to allow the central Pipeline account to deploy resources into member accounts.
 
 ---
 

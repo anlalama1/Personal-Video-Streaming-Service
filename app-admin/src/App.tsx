@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Database, UploadCloud, Library as LibraryIcon } from 'lucide-react';
 import Ingestion from './pages/Ingestion';
 import Library from './pages/Library';
@@ -15,7 +15,7 @@ function App() {
           </div>
 
           <nav className="space-y-2">
-            <Link to="/" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors">
+            <Link to="/home" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors">
               <UploadCloud size={20} />
               <span>Ingestion</span>
             </Link>
@@ -29,8 +29,10 @@ function App() {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-10">
           <Routes>
-            <Route path="/" element={<Ingestion />} />
+            <Route path="/home" element={<Ingestion />} />
             <Route path="/library" element={<Library />} />
+            {/* Lead Strategy: Redirect root to /home to ensure a clean landing state */}
+            <Route path="/" element={<Navigate to="/home" replace />} />
           </Routes>
         </main>
       </div>

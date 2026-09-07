@@ -86,6 +86,7 @@ export class StorageStack extends cdk.Stack {
         function handler(event) {
           var request = event.request;
           var uri = request.uri;
+
           if (uri.startsWith('/thumbnails/')) {
             request.uri = uri.replace('/thumbnails/', '/');
           }
@@ -95,9 +96,15 @@ export class StorageStack extends cdk.Stack {
           if (uri.startsWith('/download/')) {
             request.uri = uri.replace('/download/', '/');
           }
-          if (uri.startsWith('/admin/')) {
+
+          // Lead Strategy: SPA Routing for Demetrius.
+          // Handles both '/admin' and '/admin/home', etc.
+          if (uri === '/admin' || uri.startsWith('/admin/')) {
             request.uri = uri.replace('/admin/', '/');
-            // If the URI doesn't look like a file, serve index.html for SPA routing
+            if (request.uri === '/admin') request.uri = '/';
+
+            // If the URI doesn't look like a physical file (e.g., .js, .css, .png),
+            // we serve index.html to allow React Router to handle the path.
             if (!request.uri.includes('.')) {
               request.uri = '/index.html';
             }

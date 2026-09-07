@@ -6,6 +6,17 @@ const path = require("path");
 const ecsClient = new ECSClient({});
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
+/**
+ * Principal Strategy: Unified ID Generation.
+ * Sanitizes filenames to create a stable, shell-safe, and URL-safe videoId.
+ */
+function sanitizeId(filename) {
+    return path.parse(filename).name
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^\w]/g, '');
+}
+
 exports.handler = async (event) => {
     console.log("Orchestrator triggered with event:", JSON.stringify(event));
 
@@ -26,28 +37,34 @@ exports.handler = async (event) => {
         const parts = key.split('/');
         let tenantId = 'GLOBAL';
         let familyId = 'PUBLIC';
-        let videoId = "";
+        let fileName = "";
 
         if (parts.length >= 3) {
             tenantId = parts[0];
             familyId = parts[1];
-            videoId = path.basename(parts[2], path.extname(parts[2]));
+            fileName = parts[2];
         } else if (parts.length === 2) {
             tenantId = parts[0];
-            videoId = path.basename(parts[1], path.extname(parts[1]));
+            fileName = parts[1];
         } else {
-            videoId = path.basename(key, path.extname(key));
+            fileName = key;
         }
 
-        console.log(`Processing - Tenant: ${tenantId}, Family: ${familyId}, Video: ${videoId}`);
+        const videoId = sanitizeId(fileName);
+        console.log(`Processing - Tenant: ${tenantId}, Family: ${familyId}, VideoId: ${videoId}`);
+
+        const dbKey = {
+            PK: `TENANT#${tenantId}`,
+            SK: `FAMILY#${familyId}#VIDEO#${videoId}`
+        };
 
         try {
+            /**
+             * Principal Strategy: Atomic Lock with correct Hierarchical SK.
+             */
             await ddb.send(new UpdateCommand({
                 TableName: process.env.TABLE_NAME,
-                Key: {
-                    PK: `TENANT#${tenantId}`,
-                    SK: `FAMILY#${familyId}#VIDEO#${videoId}`
-                },
+                Key: dbKey,
                 ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :f",
                 UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc, videoKey = :vk",
                 ExpressionAttributeValues: {
@@ -62,7 +79,7 @@ exports.handler = async (event) => {
             }));
         } catch (err) {
             if (err.name === "ConditionalCheckFailedException") {
-                console.warn(`Lock failed for ${videoId}. Task likely already in progress.`);
+                console.warn(`Lock failed for ${videoId}. Task likely in progress.`);
                 continue;
             }
             throw err;
@@ -86,6 +103,7 @@ exports.handler = async (event) => {
                         environment: [
                             { name: "INPUT_KEY", value: key },
                             { name: "TENANT_ID", value: tenantId },
+                            { name: "FAMILY_ID", value: familyId },
                             { name: "VIDEO_ID", value: videoId }
                         ],
                     },
@@ -101,7 +119,7 @@ exports.handler = async (event) => {
             console.error("Error starting Fargate Task:", err);
             await ddb.send(new UpdateCommand({
                 TableName: process.env.TABLE_NAME,
-                Key: { PK: `TENANT#${tenantId}`, SK: `FAMILY#${familyId}#VIDEO#${videoId}` },
+                Key: dbKey,
                 UpdateExpression: "SET transcodeStatus = :f, lastUpdated = :t",
                 ExpressionAttributeValues: { ":f": "FAILED", ":t": Date.now() }
             }));

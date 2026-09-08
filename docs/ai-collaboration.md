@@ -456,6 +456,16 @@ This document tracks the high-level collaboration between the human developer an
     - Automated **Unified Asset Deployment**: Expanded the release pipeline to simultaneously build and deploy the Android App, the Admin Portal, and the Web Viewer.
 - **Outcome**: Achieved a truly "Platform-First" architecture, delivering a cohesive, multi-device ecosystem for family heritage preservation.
 
+- **Outcome**: Achieved a truly "Platform-First" architecture, delivering a cohesive, multi-device ecosystem for family heritage preservation.
+
+### 49. Web Viewer Fix: Shaka Player Type Resolution (Sept 7, 2026)
+- **Challenge**: The `DeployScrollViewer` stage failed because the `@types/shaka-player` package was not found in the npm registry (404).
+- **AI Contribution**: 
+    - Identified that `shaka-player` version 4+ provides its own bundled types, making the external `@types` package redundant or non-existent for that specific version.
+    - Cleaned up `app-viewer/package.json` by removing the invalid dependency.
+    - Hardened the frontend build by creating a **`vite-env.d.ts`** with a global module declaration for `shaka-player`, ensuring TypeScript compilation stability.
+- **Outcome**: Resolved the registry 404 error and enabled successful compilation of the Web Viewer component.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

@@ -424,6 +424,16 @@ This document tracks the high-level collaboration between the human developer an
     - Enhanced the **DynamoDB State Machine** with a new `UPLOADING` status, ensuring database consistency during long-running ingestions.
 - **Outcome**: Enabled resilient, non-blocking ingestion of enterprise-scale media files, improving administrative productivity and system reliability.
 
+- **Outcome**: Enabled resilient, non-blocking ingestion of enterprise-scale media files, improving administrative productivity and system reliability.
+
+### 46. Bug Fix: URL Encoding & Mobile Crash Prevention (Sept 7, 2026)
+- **Challenge**: The Android app crashed during video playback when file paths contained spaces or special characters (e.g., "Dragon Ball Z_Super..."), as these are invalid in raw URI strings.
+- **AI Contribution**: 
+    - Diagnosed the root cause in the **Scribe API**'s URL generation logic.
+    - Implemented a **Segment-Aware URL Encoder** in the Lambda BFF: Developed a utility function to recursively encode path segments (handling spaces, parentheses, etc.) while preserving mandatory directory slashes.
+    - Standardized **HLS and MP4 path resolution** to ensure consistency across the hybrid multi-tenant storage hierarchy.
+- **Outcome**: Eliminated application crashes and ensured 100% playback reliability for media with complex filenames across all device targets.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

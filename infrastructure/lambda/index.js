@@ -62,12 +62,19 @@ async function handleGetCatalog(event, tenantId) {
         const videoId = skParts[skParts.length - 1];
         const itemFamilyId = skParts[1];
 
+        /**
+         * Principal Strategy: URL Safety Encoding.
+         * Filenames often contain spaces or special characters that crash
+         * mobile URI parsers. We encode each segment while preserving slashes.
+         */
+        const encodeUrlPath = (path) => path.split('/').map(p => encodeURIComponent(p)).join('/');
+
         const videoUrl = item.hlsKey
-            ? `https://${cdnDomain}/hls/${tenantId}/${itemFamilyId}/${item.hlsKey}/master.m3u8`
-            : `https://${cdnDomain}/${item.videoKey}`;
+            ? `https://${cdnDomain}/hls/${tenantId}/${itemFamilyId}/${encodeURIComponent(item.hlsKey)}/master.m3u8`
+            : `https://${cdnDomain}/${encodeUrlPath(item.videoKey)}`;
 
         const thumbnailUrl = item.thumbnailKey
-            ? `https://${cdnDomain}/thumbnails/${item.thumbnailKey}`
+            ? `https://${cdnDomain}/thumbnails/${encodeURIComponent(item.thumbnailKey)}`
             : "https://via.placeholder.com/150";
 
         return { ...item, videoId, videoUrl, thumbnailUrl };

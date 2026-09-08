@@ -8,6 +8,7 @@
 
 ### Vision & Strategy
 - [**The Alexandria+ North Star**](./docs/alexandria-plus-north-star.md): The project's mission, narrative, and business pitches for partners and investors.
+- [**Legal Strategy & Compliance**](./docs/legal/legal-strategy-considerations.md): Professional guardrails (DMCA, Rekognition filtering) to protect the platform.
 - [**System Design & ADR**](./docs/system-design.md): Deep dive into the architecture, component breakdown, and a log of every major design trade-off (ADR).
 
 **Goal:** Prove hands-on competence across a broad media + mobile + cloud + applied-GenAI skill set by building the whole thing end to end, capturing proof, and tearing it down. This is a **portfolio spike**, not a permanent product.

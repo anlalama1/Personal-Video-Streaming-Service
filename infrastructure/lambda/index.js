@@ -17,9 +17,6 @@ const response = (statusCode, body) => ({
     body: JSON.stringify(body)
 });
 
-/**
- * Main Scribe Handler - Entry point for Catalog and Ingestion
- */
 exports.handler = async (event) => {
     try {
         const path = event.resource;
@@ -146,18 +143,29 @@ async function handleGetPartUrl(event, tenantId) {
 
 async function handleCompleteMultipart(event, tenantId) {
     const { key, uploadId, parts } = JSON.parse(event.body);
+
+    /**
+     * Principal Strategy: ETag Normalization.
+     * S3 requires ETags to be wrapped in double quotes for completion.
+     * We ensure each part's ETag is correctly quoted before sending to S3.
+     */
+    const normalizedParts = parts.map(part => ({
+        ETag: part.ETag.startsWith('"') ? part.ETag : `"${part.ETag}"`,
+        PartNumber: parseInt(part.PartNumber)
+    }));
+
+    console.log(`Completing Multipart: Key=${key}, Parts=${normalizedParts.length}`);
+
     await s3Client.send(new CompleteMultipartUploadCommand({
         Bucket: process.env.MEDIA_BUCKET,
         Key: key,
         UploadId: uploadId,
-        MultipartUpload: { Parts: parts }
+        MultipartUpload: { Parts: normalizedParts }
     }));
+
     return response(200, { message: "Upload complete" });
 }
 
-/**
- * Entry point for Telemetry / Play Events
- */
 exports.logPlayHandler = async (event) => {
     try {
         const body = JSON.parse(event.body || "{}");

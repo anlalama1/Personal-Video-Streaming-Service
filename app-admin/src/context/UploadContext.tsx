@@ -66,7 +66,13 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const { uploadUrl } = urlRes.data;
 
         const partRes = await axios.put(uploadUrl, blob);
-        const eTag = partRes.headers.etag;
+        // Senior Strategy: Handle ETag header safely.
+        // Browsers/Axios might return it as 'etag' or 'ETag'.
+        const eTag = partRes.headers.etag || partRes.headers.ETag;
+
+        if (!eTag) {
+          throw new Error(`Part ${partNumber} upload failed: No ETag returned from S3. Check CORS exposeHeaders.`);
+        }
 
         completedParts.push({ ETag: eTag, PartNumber: partNumber });
         updateTask(taskId, { progress: Math.round((partNumber / totalParts) * 100) });

@@ -45,4 +45,4 @@ We aren't just an app; we are the infrastructure for human heritage."
 | **BFF / API Layer** | **The Scribe** | Translates complex database "scrolls" into a language the app understands. |
 | **Partner Portal** | **Demetrius** | Named after Demetrius of Phalerum, who proposed the original library. The "Idea" and "Management" hub. |
 | **Self-Serve Portal** | **The Mouseion** | Named after the institution that housed the library. Where families contribute their own modern digital scrolls. |
-| **Viewer App** | **The Scroll** | Each family's private window into the library. |
+| **Viewing Experience** | **The Scroll** | The cross-platform window into the library, delivered via **Android App** and **Modern Web Browser**. |

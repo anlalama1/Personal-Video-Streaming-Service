@@ -146,3 +146,8 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Decision**: **Subscription to Platform / One-Time Fee to Shop**.
 *   **Trade-off**: Increased onboarding complexity vs. **Maximum Resilience & Customer Lifetime Value**.
 *   **Reasoning**: By owning the direct billing relationship with the family, Alexandria+ ensures that a family's library is not tied to the lifespan of a single local shop. The "Authorized Archivist" model (using temporary Ingestion Keys) allows shops to generate high-margin archival revenue without the overhead of managing long-term recurring billing for their customers, creating a scalable, decentralized channel for library growth.
+
+### 14. Distribution: Multi-Target Ecosystem
+*   **Backlog Decision**: **Cross-Platform Delivery (Web, Android, iOS, Roku)**.
+*   **Trade-off**: Development overhead of native clients vs. **Maximum Accessibility**.
+*   **Reasoning**: To fulfill the mission of "Rebuilding the Great Library," content must be accessible wherever the family is. By utilizing industry-standard HLS and a unified serverless API, we can deploy low-latency viewing experiences across the entire device spectrum—phones, tablets, laptops, and living-room TVs—with 100% asset compatibility.

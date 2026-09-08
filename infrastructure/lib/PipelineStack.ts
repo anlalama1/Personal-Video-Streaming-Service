@@ -101,11 +101,6 @@ export class PipelineStack extends cdk.Stack {
 
     pipeline.addStage(prodStage);
 
-    /**
-     * Lead Strategy: Multi-Asset Distribution Wave.
-     * We deploy both the Android APK and the Demetrius Web Portal in parallel
-     * after the infrastructure stacks have stabilized.
-     */
     const distroWave = pipeline.addWave('Distribution');
 
     // 1. Android APK Distribution
@@ -143,9 +138,37 @@ export class PipelineStack extends cdk.Stack {
         commands: [
           'cd app-admin',
           'npm install',
-          'npm run build', // VITE_API_BASE_URL is already in env
+          'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',
           'aws s3 sync dist s3://$ADMIN_BUCKET --delete',
           'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/admin/*"'
+        ],
+        rolePolicyStatements: [
+          new iam.PolicyStatement({
+            actions: ['s3:PutObject', 's3:ListBucket', 's3:DeleteObject'],
+            resources: [`arn:aws:s3:::*`],
+          }),
+          new iam.PolicyStatement({
+            actions: ['cloudfront:CreateInvalidation'],
+            resources: [`arn:aws:cloudfront::${account}:distribution/*`],
+          }),
+        ],
+      })
+    );
+
+    // 3. The Scroll (Web Viewer) Distribution
+    distroWave.addPost(new pipelines.CodeBuildStep('DeployScrollViewer', {
+        input: source,
+        envFromCfnOutputs: {
+          VITE_API_BASE_URL: prodStage.apiUrl,
+          VIEWER_BUCKET: prodStage.viewerPortalBucketName,
+          DISTRIBUTION_ID: prodStage.distributionId,
+        },
+        commands: [
+          'cd app-viewer',
+          'npm install',
+          'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',
+          'aws s3 sync dist s3://$VIEWER_BUCKET --delete',
+          'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"'
         ],
         rolePolicyStatements: [
           new iam.PolicyStatement({

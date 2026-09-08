@@ -444,6 +444,18 @@ This document tracks the high-level collaboration between the human developer an
     - Enhanced **Error Transparency**: Added stack trace reporting to 500 error responses during development to accelerate front-end debugging.
 - **Outcome**: Eliminated CORS-driven "Silent Failures," ensuring that any future backend issues are immediately visible in the portal's logs.
 
+- **Outcome**: Delivered a professional, white-label administrative interface that turns the backend into a complete Content Management System (CMS).
+
+### 48. Cross-Platform Expansion: The Scroll (Web Viewer) (Sept 7, 2026)
+- **Challenge**: Enabling high-fidelity, adaptive bitrate streaming on desktop and laptop browsers with a professional, cinematic user experience.
+- **AI Contribution**: 
+    - Architected and implemented **The Scroll (Web)**: A React-based viewing portal optimized for high-end desktop and Smart TV browsers.
+    - Integrated **Shaka Player** (Google's media engine) to handle the ABR bitrate ladder natively on the web.
+    - Designed a **Cinematic "Hero" Interface**: Developed a responsive landing page with featured-title headers, translucent navigation, and high-fidelity media grids.
+    - Engineered **Priority CloudFront Routing**: Reorganized the CDN behaviors to serve the web app at the root domain (`/`) while isolating raw media assets under a unified `/media/` path.
+    - Automated **Unified Asset Deployment**: Expanded the release pipeline to simultaneously build and deploy the Android App, the Admin Portal, and the Web Viewer.
+- **Outcome**: Achieved a truly "Platform-First" architecture, delivering a cohesive, multi-device ecosystem for family heritage preservation.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

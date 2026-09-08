@@ -161,6 +161,22 @@ The project is **done** when all of the following are true:
   - [ ] Integrate with **Stripe Billing** to dynamically adjust subscription costs based on "Storage-as-a-Utility."
 - [ ] **Purge Protocol**: Implement the secure `DELETE` workflow for Family Admins to manage their own storage footprint.
 
+### Milestone 18 — The Scroll (Web): Cross-Platform Viewer
+- [ ] **Web Engine**: Integrate **Shaka Player** for resilient, multi-bitrate streaming on web browsers.
+- [ ] **Responsive UI**: Build the viewer using **React + Tailwind**, optimized for both desktop and tablet layouts.
+- [ ] **Casting Support**: Implement **Google Chromecast** and **Apple AirPlay** integration.
+- [ ] **Unified CI/CD**: Add the web deployment stage to the Release Engine (Pipeline).
+
+### Milestone 19 — The Scroll (iOS): Apple Mobile Support
+- [ ] **Native Development**: Build the iOS viewer using **SwiftUI**.
+- [ ] **Player Integration**: Utilize **AVPlayer** for native, high-performance HLS playback on iPhone and iPad.
+- [ ] **DRM Handshake**: Prepare the backend for **FairPlay Streaming** (FPS) certificate handshakes (Apple's proprietary DRM).
+
+### Milestone 20 — The Scroll (Living Room): Smart TV & Roku
+- [ ] **Android TV**: Optimize the existing Kotlin/Compose code for Android TV lean-back interactions (D-Pad navigation).
+- [ ] **Roku App**: Build a native Roku channel using **BrightScript** and **SceneGraph**.
+- [ ] **Activation Flow**: Implement the standard "6-digit code" TV activation workflow to link a Smart TV to a family's Cognito account.
+
 ---
 
 ## Requirement Coverage Map

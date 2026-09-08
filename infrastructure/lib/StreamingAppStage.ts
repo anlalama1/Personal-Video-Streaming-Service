@@ -14,6 +14,7 @@ import { Config } from '../bin/config';
 export class StreamingAppStage extends cdk.Stage {
   public readonly appDistributionBucketName: cdk.CfnOutput;
   public readonly adminPortalBucketName: cdk.CfnOutput;
+  public readonly viewerPortalBucketName: cdk.CfnOutput;
   public readonly distributionId: cdk.CfnOutput;
   public readonly apiUrl: cdk.CfnOutput;
 
@@ -28,6 +29,7 @@ export class StreamingAppStage extends cdk.Stage {
     const storage = new StorageStack(this, 'StorageStack', { env });
     this.appDistributionBucketName = storage.node.findChild('AppDistributionBucketName') as cdk.CfnOutput;
     this.adminPortalBucketName = storage.node.findChild('AdminBucketName') as cdk.CfnOutput;
+    this.viewerPortalBucketName = storage.node.findChild('ViewerBucketName') as cdk.CfnOutput;
     this.distributionId = storage.node.findChild('DistributionId') as cdk.CfnOutput;
 
     const database = new DatabaseStack(this, 'DatabaseStack', { env });

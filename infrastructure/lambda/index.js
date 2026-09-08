@@ -73,9 +73,12 @@ async function handleGetCatalog(event, tenantId) {
 
         const encodeUrlPath = (path) => path.split('/').map(p => encodeURIComponent(p)).join('/');
 
+        // Lead Strategy: Uniform Path Access.
+        // HLS streams use the /hls/ prefix.
+        // Raw MP4s now use the /media/ prefix for CDN routing consistency.
         const videoUrl = item.hlsKey
             ? `https://${cdnDomain}/hls/${tenantId}/${itemFamilyId}/${encodeURIComponent(item.hlsKey)}/master.m3u8`
-            : `https://${cdnDomain}/${encodeUrlPath(item.videoKey)}`;
+            : `https://${cdnDomain}/media/${encodeUrlPath(item.videoKey)}`;
 
         const thumbnailUrl = item.thumbnailKey
             ? `https://${cdnDomain}/thumbnails/${encodeURIComponent(item.thumbnailKey)}`

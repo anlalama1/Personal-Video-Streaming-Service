@@ -141,3 +141,8 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Backlog Decision**: **Route 53 Custom Domains with ACM SSL**.
 *   **Trade-off**: Additional fixed monthly cost ($0.50/mo) vs. **Professional B2B Trust**.
 *   **Reasoning**: To transition Alexandria+ from a portfolio project to a commercial SaaS, custom domain support is mandatory. Utilizing Route 53 with Alias records ensures zero additional latency and provides a professional entry point (e.g., `alexandria-plus.com/demetrius`) for shop partners, while ACM provides managed, auto-renewing security certificates at zero cost.
+
+### 13. Business Architecture: Platform-First (D2C + B2B Channel)
+*   **Decision**: **Subscription to Platform / One-Time Fee to Shop**.
+*   **Trade-off**: Increased onboarding complexity vs. **Maximum Resilience & Customer Lifetime Value**.
+*   **Reasoning**: By owning the direct billing relationship with the family, Alexandria+ ensures that a family's library is not tied to the lifespan of a single local shop. The "Authorized Archivist" model (using temporary Ingestion Keys) allows shops to generate high-margin archival revenue without the overhead of managing long-term recurring billing for their customers, creating a scalable, decentralized channel for library growth.

@@ -153,6 +153,14 @@ The project is **done** when all of the following are true:
   - [ ] Map the custom domain to the CloudFront distribution using **Alias Records**.
   - [ ] Update the `RewritePath` logic to support domain-specific routing (e.g., `www.alexandria-plus.com/demetrius/`).
 
+### Milestone 17 — The Mouseion: Self-Serve Family Contributions
+- [ ] **Administrative Hierarchy**: Update Cognito to support `FamilyAdmin` vs `FamilyMember` roles.
+- [ ] **Self-Serve Portal**: Build a consumer-facing version of Demetrius allowing families to upload modern media directly.
+- [ ] **Metered Storage Billing**: 
+  - [ ] Implement a nightly **S3 Inventory Lambda** to calculate per-family storage consumption.
+  - [ ] Integrate with **Stripe Billing** to dynamically adjust subscription costs based on "Storage-as-a-Utility."
+- [ ] **Purge Protocol**: Implement the secure `DELETE` workflow for Family Admins to manage their own storage footprint.
+
 ---
 
 ## Requirement Coverage Map

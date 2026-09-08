@@ -11,17 +11,21 @@ To empower local preservation artisans with elite, cloud-native technology that 
 ## 3. The Narrative (The "Fire" Analogy)
 We are in a race against **"Magnetic Decay."** Analog media has a shelf life, and the "fire" is already burning. Local digitization shops are the first responders, but they currently lack the "delivery trucks" to get that saved knowledge into the modern living room. Alexandria+ provides the infrastructure to turn a one-time rescue mission into a permanent digital legacy.
 
-## 4. Business Context: The "Shops-as-Partners" Strategy
-We do not compete with local labs; we arm them. By providing a white-label "Partner Portal," we allow small businesses to compete with national giants like iMemories by offering a superior technical product (ABR Streaming, AI Chaptering, Audio support) under their own brand.
+## 4. Business Context: The "Open Archival Platform" Model
+Alexandria+ operates on a **Platform-First** model. We provide the permanent digital infrastructure (the Vault) and empower local digitization professionals (Authorized Archivists) to populate it.
+
+- **Direct Relationship**: Families subscribe directly to Alexandria+ to maintain their private legacy portal.
+- **Shop Monetization**: Digitization shops charge families a one-time **"Archival Service Fee"** (e.g., $25 base + $1 per 100GB) to handle the professional ingestion, metadata validation, and cloud-transfer of physical media.
+- **Win-Win Symmetry**: Shops earn high-margin, immediate cash for their technical labor, while Alexandria+ builds a long-term, stable subscription base.
 
 ---
 
 ## 5. The Pitches
 
-### A. To the Digitization Store Owner (The "Revenue" Pitch)
-"You're an expert at saving memories, but right now, your business ends at the USB drive. When you give a customer a file, they often lose it, or it sits in a drawer. Alexandria+ lets you offer them a 'Family Streaming Vault.' 
+### A. To the Digitization Store Owner (The "High-Margin" Pitch)
+"You're an expert at saving memories, but the 'last mile' is a headache. Handing over a USB drive often leads to customer confusion or lost files. 
 
-You provide the scan; we provide the Netflix-style experience. It turns your one-off $50 transfer job into $10/month of recurring revenue. You keep the customer relationship; we handle the servers."
+Alexandria+ turns you into an **Authorized Archivist**. You offer a premium 'Cloud Delivery' service for a one-time fee. You charge the customer $25 to $50 for the upload; we handle the software and hosting. You get paid for your expertise immediately, and your customer gets a Netflix-style vault they can watch on their TV tonight."
 
 ### B. To the Venture Capitalist (The "Scale" Pitch)
 "Alexandria+ is a high-margin B2B2C SaaS platform targeting the multi-billion dollar 'Memory Preservation' market. We've solved the two biggest hurdles in media startups: 
@@ -40,4 +44,5 @@ We aren't just an app; we are the infrastructure for human heritage."
 | **Media Factory** | **The Pharos Engine** | Named after the Lighthouse; it turns raw data into a visible signal. |
 | **BFF / API Layer** | **The Scribe** | Translates complex database "scrolls" into a language the app understands. |
 | **Partner Portal** | **Demetrius** | Named after Demetrius of Phalerum, who proposed the original library. The "Idea" and "Management" hub. |
+| **Self-Serve Portal** | **The Mouseion** | Named after the institution that housed the library. Where families contribute their own modern digital scrolls. |
 | **Viewer App** | **The Scroll** | Each family's private window into the library. |

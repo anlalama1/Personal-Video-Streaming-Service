@@ -413,6 +413,17 @@ This document tracks the high-level collaboration between the human developer an
     - Streamlined the **Ingestion UX**: removed technical fields (Video ID) from the UI, moving ID generation to a background process to reduce administrative cognitive load.
 - **Outcome**: Achieved 100% data consistency between manual metadata entry and automated S3 events, resulting in a reliable, production-ready CMS dashboard.
 
+- **Outcome**: Achieved 100% data consistency between manual metadata entry and automated S3 events, resulting in a reliable, production-ready CMS dashboard.
+
+### 45. Ingestion Scalability: Asynchronous Multipart Uploads (Sept 7, 2026)
+- **Challenge**: Large media files (4K/long-form) caused browser timeouts and prevented shop administrators from navigating the portal during long uploads.
+- **AI Contribution**: 
+    - Engineered a **Multi-Stage Multipart Handshake** in the Scribe API, coordinating `UploadId` generation and pre-signed part URLs.
+    - Implemented a **React Background Orchestrator** using Context and Hooks to manage a parallel "Chunk Queue" (10MB slices).
+    - Designed a global **Upload Task Drawer** to provide persistent visibility into background progress during portal navigation.
+    - Enhanced the **DynamoDB State Machine** with a new `UPLOADING` status, ensuring database consistency during long-running ingestions.
+- **Outcome**: Enabled resilient, non-blocking ingestion of enterprise-scale media files, improving administrative productivity and system reliability.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

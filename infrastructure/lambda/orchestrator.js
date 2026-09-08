@@ -65,10 +65,13 @@ exports.handler = async (event) => {
             await ddb.send(new UpdateCommand({
                 TableName: process.env.TABLE_NAME,
                 Key: dbKey,
-                ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :f",
+                // Principal Strategy: Atomic Lock.
+                // We check if the state is INGESTED, UPLOADING, or FAILED.
+                ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :u OR transcodeStatus = :f",
                 UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc, videoKey = :vk",
                 ExpressionAttributeValues: {
                     ":i": "INGESTED",
+                    ":u": "UPLOADING",
                     ":f": "FAILED",
                     ":s": "TRANSCODING",
                     ":t": Date.now(),

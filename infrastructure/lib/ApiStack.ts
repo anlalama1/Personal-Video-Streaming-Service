@@ -65,8 +65,16 @@ export class ApiStack extends cdk.Stack {
     const ingest = api.root.addResource('ingest');
     ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
 
-    const upload = api.root.addResource('upload-url');
-    upload.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda));
+    const upload = api.root.addResource('upload');
+
+    const start = upload.addResource('start');
+    start.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
+
+    const part = upload.addResource('part');
+    part.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
+
+    const complete = upload.addResource('complete');
+    complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
 
     const play = api.root.addResource('play');
     play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda));

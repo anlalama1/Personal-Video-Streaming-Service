@@ -131,4 +131,8 @@ This section documents the "Why" behind our engineering choices, representing Le
     2. **Tooling**: Hosts the CI/CD Release Engine and cross-account Observability.
     3. **Development**: Low-cost, unstable sandbox for prototyping.
     4. **Production**: Immutable sanctuary for customer media and financial data (Stripe).
-    This setup meets the highest industry standards for data sovereignty and disaster recovery, ensuring that developer errors in the sandbox cannot physically impact live customer data.
+
+### 11. Ingestion Strategy: Asynchronous Multipart Persistence
+*   **Decision**: **Browser-Side Chunking with S3 Multipart APIs**.
+*   **Trade-off**: Client-side CPU overhead vs. **Unlimited File Size & Resilience**.
+*   **Reasoning**: Standard S3 PUT requests are capped at 5GB and are vulnerable to network timeouts. By implementing a custom background coordinator in React, we allow shop owners to ingest massive 4K archives (50GB+) with automated retry logic and "background" execution, ensuring the portal remains usable while data is in transit.

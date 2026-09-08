@@ -28,7 +28,7 @@ export class StorageStack extends cdk.Stack {
         allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
         allowedOrigins: ['*'],
         allowedHeaders: ['*'],
-        exposeHeaders: ['ETag'], // Mandatory for Multipart Uploads to read ETag in the browser
+        exposedHeaders: ['ETag'], // Mandatory for Multipart Uploads to read ETag in the browser
       }],
     });
 

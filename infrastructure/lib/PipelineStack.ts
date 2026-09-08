@@ -32,6 +32,10 @@ export class PipelineStack extends cdk.Stack {
       dockerEnabledForSynth: true,
       synth: new pipelines.CodeBuildStep('Synth', {
         input: source,
+        buildEnvironment: {
+          buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
+          computeType: codebuild.ComputeType.MEDIUM,
+        },
         commands: [
           'cd infrastructure',
           'npm install',

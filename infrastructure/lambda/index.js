@@ -7,17 +7,28 @@ const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({});
 
+const response = (statusCode, body) => ({
+    statusCode,
+    headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "*"
+    },
+    body: JSON.stringify(body)
+});
+
 /**
- * Main Scribe Handler - Routes incoming API requests
+ * Main Scribe Handler - Entry point for Catalog and Ingestion
  */
 exports.handler = async (event) => {
-    const path = event.resource;
-    const method = event.httpMethod;
-    const tenantId = event.headers['x-tenant-id'] || 'GLOBAL';
-
-    console.log(`Scribe Request: ${method} ${path} for Tenant: ${tenantId}`);
-
     try {
+        const path = event.resource;
+        const method = event.httpMethod;
+        const headers = event.headers || {};
+        const tenantId = headers['x-tenant-id'] || headers['X-Tenant-Id'] || 'GLOBAL';
+
+        console.log(`Scribe Request: ${method} ${path} for Tenant: ${tenantId}`);
+
         if (path === '/catalog' && method === 'GET') {
             return await handleGetCatalog(event, tenantId);
         } else if (path === '/ingest' && method === 'POST') {
@@ -29,16 +40,17 @@ exports.handler = async (event) => {
         } else if (path === '/upload/complete' && method === 'POST') {
             return await handleCompleteMultipart(event, tenantId);
         }
-    } catch (err) {
-        console.error("API Error:", err);
-        return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
-    }
 
-    return { statusCode: 404, body: JSON.stringify({ message: "Not Found" }) };
+        return response(404, { message: "Not Found" });
+    } catch (err) {
+        console.error("Global Handler Error:", err);
+        return response(500, { error: err.message });
+    }
 };
 
 async function handleGetCatalog(event, tenantId) {
-    const familyId = event.headers['x-family-id'];
+    const headers = event.headers || {};
+    const familyId = headers['x-family-id'] || headers['X-Family-Id'];
     const tableName = process.env.TABLE_NAME;
     const cdnDomain = process.env.CLOUDFRONT_DOMAIN;
 
@@ -53,20 +65,15 @@ async function handleGetCatalog(event, tenantId) {
         }
     });
 
-    const response = await docClient.send(command);
-    const items = response.Items || [];
+    const result = await docClient.send(command);
+    const items = result.Items || [];
 
     const mapToCdn = (item) => {
-        if (!item.SK.includes("#VIDEO#")) return null;
+        if (!item.SK || !item.SK.includes("#VIDEO#")) return null;
         const skParts = item.SK.split('#');
         const videoId = skParts[skParts.length - 1];
         const itemFamilyId = skParts[1];
 
-        /**
-         * Principal Strategy: URL Safety Encoding.
-         * Filenames often contain spaces or special characters that crash
-         * mobile URI parsers. We encode each segment while preserving slashes.
-         */
         const encodeUrlPath = (path) => path.split('/').map(p => encodeURIComponent(p)).join('/');
 
         const videoUrl = item.hlsKey
@@ -77,14 +84,17 @@ async function handleGetCatalog(event, tenantId) {
             ? `https://${cdnDomain}/thumbnails/${encodeURIComponent(item.thumbnailKey)}`
             : "https://via.placeholder.com/150";
 
-        return { ...item, videoId, videoUrl, thumbnailUrl };
+        return {
+            videoId,
+            title: item.title || "Untitled",
+            genre: item.genre || "Unknown",
+            releaseYear: item.releaseYear || "0",
+            thumbnailUrl,
+            videoUrl
+        };
     };
 
-    return {
-        statusCode: 200,
-        headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" },
-        body: JSON.stringify(items.map(mapToCdn).filter(i => i !== null)),
-    };
+    return response(200, items.map(mapToCdn).filter(i => i !== null));
 }
 
 async function handleIngest(event, tenantId) {
@@ -107,70 +117,53 @@ async function handleIngest(event, tenantId) {
         }
     }));
 
-    return {
-        statusCode: 201,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ message: "Metadata record created" })
-    };
+    return response(201, { message: "Metadata record created" });
 }
 
 async function handleStartMultipart(event, tenantId) {
     const { key, contentType } = JSON.parse(event.body);
-    const command = new CreateMultipartUploadCommand({
+    const res = await s3Client.send(new CreateMultipartUploadCommand({
         Bucket: process.env.MEDIA_BUCKET,
         Key: key,
         ContentType: contentType
-    });
-
-    const response = await s3Client.send(command);
-    return {
-        statusCode: 200,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ uploadId: response.UploadId })
-    };
+    }));
+    return response(200, { uploadId: res.UploadId });
 }
 
 async function handleGetPartUrl(event, tenantId) {
     const { key, uploadId, partNumber, totalParts } = JSON.parse(event.body);
+    console.log(`INGESTION: Part ${partNumber}/${totalParts || '?'} | Key=${key}`);
 
-    // Principal Strategy: Granular Ingestion Logging
-    // This allows us to track the "Ingestion Pulse" of large files in CloudWatch.
-    console.log(`INGESTION PULSE: Tenant=${tenantId} | Part ${partNumber}/${totalParts || '?'} | Key=${key}`);
+    const url = await getSignedUrl(s3Client, new UploadPartCommand({
+        Bucket: process.env.MEDIA_BUCKET,
+        Key: key,
+        UploadId: uploadId,
+        PartNumber: partNumber
+    }), { expiresIn: 3600 });
 
-    try {
-        const command = new UploadPartCommand({
-            Bucket: process.env.MEDIA_BUCKET,
-            Key: key,
-            UploadId: uploadId,
-            PartNumber: partNumber
-        });
-
-        const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-    return {
-        statusCode: 200,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ uploadUrl: url })
-    };
+    return response(200, { uploadUrl: url });
 }
 
 async function handleCompleteMultipart(event, tenantId) {
     const { key, uploadId, parts } = JSON.parse(event.body);
-    const command = new CompleteMultipartUploadCommand({
+    await s3Client.send(new CompleteMultipartUploadCommand({
         Bucket: process.env.MEDIA_BUCKET,
         Key: key,
         UploadId: uploadId,
         MultipartUpload: { Parts: parts }
-    });
-
-    await s3Client.send(command);
-    return {
-        statusCode: 200,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ message: "Upload complete" })
-    };
+    }));
+    return response(200, { message: "Upload complete" });
 }
 
+/**
+ * Entry point for Telemetry / Play Events
+ */
 exports.logPlayHandler = async (event) => {
-    // (Existing telemetry logic)
-    return { statusCode: 200, body: JSON.stringify({ status: "logged" }) };
+    try {
+        const body = JSON.parse(event.body || "{}");
+        console.log("Logged play event for:", body.videoId);
+        return response(200, { status: "logged" });
+    } catch (err) {
+        return response(500, { error: err.message });
+    }
 };

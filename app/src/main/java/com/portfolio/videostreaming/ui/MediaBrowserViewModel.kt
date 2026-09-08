@@ -53,7 +53,7 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                 }
             } catch (e: Exception) {
                 Log.e("MediaBrowserVM", "Error loading catalog", e)
-                _errorMessage.value = "Failed to connect to AWS catalog. Ensure API is deployed."
+                _errorMessage.value = "Connection Error: ${e.localizedMessage ?: "Unknown error"}"
             } finally {
                 _isLoading.value = false
             }

@@ -26,6 +26,7 @@ The project is **done** when all of the following are true:
 - [ ] **(Optional) Bedrock-powered recommendations** — explainable "For You" suggestions over the catalog, validated against the real library.
 - [ ] I have **durable proof** captured (see "Proof Artifacts" below).
 - [ ] AWS resources are **torn down** and a **final billing check** confirms no lingering charges.
+- [ ] **Brand Identity Validated (Stretch)** — Custom domain (e.g., `alexandria-plus.com`) and SSL certificates are active via Route 53 and ACM.
 
 ---
 
@@ -143,6 +144,14 @@ The project is **done** when all of the following are true:
 - [ ] **Cross-Account Pipeline**:
   - [ ] Refactor the CI/CD pipeline to deploy to both accounts sequentially (Dev -> Manual Approval -> Prod).
   - [ ] Implement **IAM Role Trust** to allow the central Pipeline account to deploy resources into member accounts.
+
+### Milestone 16 — Brand Identity: Custom Domain & Route 53 (Stretch)
+- [ ] **Domain Registration**: Acquire `alexandria-plus.com` (or similar) via Route 53.
+- [ ] **Security (ACM)**: Provision an SSL/TLS certificate for the custom domain.
+- [ ] **DNS & Routing**:
+  - [ ] Create a **Hosted Zone** in Route 53.
+  - [ ] Map the custom domain to the CloudFront distribution using **Alias Records**.
+  - [ ] Update the `RewritePath` logic to support domain-specific routing (e.g., `www.alexandria-plus.com/demetrius/`).
 
 ---
 

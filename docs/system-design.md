@@ -136,3 +136,8 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Decision**: **Browser-Side Chunking with S3 Multipart APIs**.
 *   **Trade-off**: Client-side CPU overhead vs. **Unlimited File Size & Resilience**.
 *   **Reasoning**: Standard S3 PUT requests are capped at 5GB and are vulnerable to network timeouts. By implementing a custom background coordinator in React, we allow shop owners to ingest massive 4K archives (50GB+) with automated retry logic and "background" execution, ensuring the portal remains usable while data is in transit.
+
+### 12. Branding & Identity: Custom Domain Strategy (Stretch Goal)
+*   **Backlog Decision**: **Route 53 Custom Domains with ACM SSL**.
+*   **Trade-off**: Additional fixed monthly cost ($0.50/mo) vs. **Professional B2B Trust**.
+*   **Reasoning**: To transition Alexandria+ from a portfolio project to a commercial SaaS, custom domain support is mandatory. Utilizing Route 53 with Alias records ensures zero additional latency and provides a professional entry point (e.g., `alexandria-plus.com/demetrius`) for shop partners, while ACM provides managed, auto-renewing security certificates at zero cost.

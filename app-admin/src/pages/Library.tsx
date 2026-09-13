@@ -45,6 +45,8 @@ const Library = () => {
         return <span className="flex items-center gap-1.5 text-amber-400 bg-amber-950/50 px-3 py-1 rounded-full text-xs font-bold border border-amber-800"><Sparkles size={14} /> Needs Review</span>;
       case 'UPLOADING':
         return <span className="flex items-center gap-1.5 text-slate-400 bg-slate-900/50 px-3 py-1 rounded-full text-xs font-bold border border-slate-700 animate-pulse"><Database size={14} /> Ingesting</span>;
+      case 'PROCESSING':
+        return <span className="flex items-center gap-1.5 text-blue-300 bg-blue-900/40 px-3 py-1 rounded-full text-xs font-bold border border-blue-800 animate-pulse"><Sparkles size={14} /> AI Analysis</span>;
       case 'TRANSCODING':
         return <span className="flex items-center gap-1.5 text-blue-400 bg-blue-950/50 px-3 py-1 rounded-full text-xs font-bold border border-blue-800 animate-pulse"><Clock size={14} /> Transcoding</span>;
       case 'FAILED':

@@ -125,7 +125,7 @@ exports.handler = async (event) => {
                         ":i": "INGESTED",
                         ":u": "UPLOADING",
                         ":f": "FAILED",
-                        ":s": "UPLOADING",
+                        ":s": "PROCESSING",
                         ":t": Date.now(),
                         ":zero": 0,
                         ":inc": 1,

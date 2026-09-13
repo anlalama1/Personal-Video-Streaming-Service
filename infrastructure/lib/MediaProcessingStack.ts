@@ -140,10 +140,9 @@ export class MediaProcessingStack extends cdk.Stack {
       actions: ['bedrock:InvokeModel'],
       resources: [
         // Allow the cross-region inference profile (account-scoped)
-        'arn:aws:bedrock:us-east-1:575992668616:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        'arn:aws:bedrock:us-*:575992668616:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0',
         // Allow the underlying foundation model in any US region
-        'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0',
-        'arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0'
+        'arn:aws:bedrock:us-*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0',
       ]
     }));
   }

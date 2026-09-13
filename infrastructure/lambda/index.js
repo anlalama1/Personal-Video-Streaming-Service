@@ -83,7 +83,7 @@ async function handleGetCatalog(event, tenantId) {
             : `https://${cdnDomain}/media/${encodeUrlPath(item.videoKey)}`;
 
         const thumbnailUrl = item.thumbnailKey
-            ? `https://${cdnDomain}/thumbnails/${encodeURIComponent(item.thumbnailKey)}`
+            ? `https://${cdnDomain}/hls/${encodeUrlPath(item.thumbnailKey)}`
             : "https://via.placeholder.com/150";
 
         return {
@@ -181,6 +181,10 @@ async function handlePublishVideo(event, tenantId) {
     const body = JSON.parse(event.body || "{}");
     const { videoId, familyId, title, genre, releaseYear, description, tags, videoKey } = body;
     const tableName = process.env.TABLE_NAME;
+
+    if (!videoId || !familyId || !videoKey || !title) {
+        return response(400, { error: "videoId, familyId, videoKey, and title are required" });
+    }
 
     console.log(`PUBLISH: Finalizing ${videoId} for Tenant ${tenantId}`);
 

@@ -64,6 +64,25 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
+    // Keep browser clients informed when API Gateway itself rejects a request
+    // before the Lambda integration can add its normal CORS headers.
+    api.addGatewayResponse('Default4xxCors', {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'*'",
+        'Access-Control-Allow-Methods': "'GET,POST,PUT,DELETE,OPTIONS'",
+      },
+    });
+    api.addGatewayResponse('Default5xxCors', {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'*'",
+        'Access-Control-Allow-Methods': "'GET,POST,PUT,DELETE,OPTIONS'",
+      },
+    });
+
     const catalog = api.root.addResource('catalog');
     catalog.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda));
 

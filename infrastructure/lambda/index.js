@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
@@ -36,6 +36,8 @@ exports.handler = async (event) => {
             return await handleGetPartUrl(event, tenantId);
         } else if (path === '/upload/complete' && method === 'POST') {
             return await handleCompleteMultipart(event, tenantId);
+        } else if (path === '/catalog/publish' && method === 'POST') {
+            return await handlePublishVideo(event, tenantId);
         }
 
         return response(404, { message: "Not Found" });
@@ -90,7 +92,13 @@ async function handleGetCatalog(event, tenantId) {
             genre: item.genre || "Unknown",
             releaseYear: item.releaseYear || "0",
             thumbnailUrl,
-            videoUrl
+            videoUrl,
+            transcodeStatus: item.transcodeStatus || 'INGESTED',
+            aiTitle: item.aiTitle || '',
+            aiDescription: item.aiDescription || '',
+            aiTags: item.aiTags || [],
+            videoKey: item.videoKey || '',
+            familyId: itemFamilyId
         };
     };
 
@@ -167,6 +175,51 @@ async function handleCompleteMultipart(event, tenantId) {
     }));
 
     return response(200, { message: "Upload complete" });
+}
+
+async function handlePublishVideo(event, tenantId) {
+    const body = JSON.parse(event.body || "{}");
+    const { videoId, familyId, title, genre, releaseYear, description, tags, videoKey } = body;
+    const tableName = process.env.TABLE_NAME;
+
+    console.log(`PUBLISH: Finalizing ${videoId} for Tenant ${tenantId}`);
+
+    // Lead Strategy: Transactional Locking not needed here; we just set the target state.
+    await docClient.send(new UpdateCommand({
+        TableName: tableName,
+        Key: {
+            PK: `TENANT#${tenantId}`,
+            SK: `FAMILY#${familyId}#VIDEO#${videoId}`
+        },
+        UpdateExpression: "SET title = :t, genre = :g, releaseYear = :ry, description = :d, tags = :tg, transcodeStatus = :s, lastUpdated = :lu",
+        ExpressionAttributeValues: {
+            ":t": title,
+            ":g": genre,
+            ":ry": releaseYear,
+            ":d": description || "",
+            ":tg": tags || [],
+            ":s": "TRANSCODING",
+            ":lu": Date.now()
+        }
+    }));
+
+    // Invoke Orchestrator Lambda to trigger the full multi-bitrate HLS transcode in Fargate
+    const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+    const lambdaClient = new LambdaClient({});
+
+    await lambdaClient.send(new InvokeCommand({
+        FunctionName: process.env.ORCHESTRATOR_LAMBDA_ARN,
+        InvocationType: "Event", // Asynchronous execution
+        Payload: Buffer.from(JSON.stringify({
+            action: "START_TRANSCODE",
+            tenantId,
+            familyId,
+            videoId,
+            videoKey
+        }))
+    }));
+
+    return response(200, { success: true, message: "Asset approved. Full HLS transcoding kicked off." });
 }
 
 exports.logPlayHandler = async (event) => {

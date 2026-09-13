@@ -34,20 +34,21 @@ export class StreamingAppStage extends cdk.Stage {
 
     const database = new DatabaseStack(this, 'DatabaseStack', { env });
 
-    const api = new ApiStack(this, 'ApiStack', {
-      env,
-      table: database.table,
-      cdnDomain: storage.distribution.distributionDomainName,
-      mediaBucket: storage.mediaBucket
-    });
-    this.apiUrl = api.node.findChild('ApiUrl') as cdk.CfnOutput;
-
-    new MediaProcessingStack(this, 'MediaProcessingStack', {
+    const mediaProcessing = new MediaProcessingStack(this, 'MediaProcessingStack', {
       env,
       sourceBucket: storage.mediaBucket,
       hlsBucket: storage.hlsBucket,
       metadataTable: database.table,
     });
+
+    const api = new ApiStack(this, 'ApiStack', {
+      env,
+      table: database.table,
+      cdnDomain: storage.distribution.distributionDomainName,
+      mediaBucket: storage.mediaBucket,
+      orchestratorLambda: mediaProcessing.orchestratorLambda
+    });
+    this.apiUrl = api.node.findChild('ApiUrl') as cdk.CfnOutput;
 
     new ObservabilityStack(this, 'ObservabilityStack', {
       env,

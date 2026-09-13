@@ -11,6 +11,7 @@ interface ApiStackProps extends cdk.StackProps {
   table: dynamodb.ITable;
   cdnDomain: string;
   mediaBucket: s3.IBucket;
+  orchestratorLambda?: lambda.IFunction;
 }
 
 export class ApiStack extends cdk.Stack {
@@ -29,6 +30,7 @@ export class ApiStack extends cdk.Stack {
         TABLE_NAME: props.table.tableName,
         CLOUDFRONT_DOMAIN: props.cdnDomain,
         MEDIA_BUCKET: props.mediaBucket.bucketName,
+        ORCHESTRATOR_LAMBDA_ARN: props.orchestratorLambda ? props.orchestratorLambda.functionArn : '',
       },
     });
 
@@ -48,6 +50,9 @@ export class ApiStack extends cdk.Stack {
     props.table.grantReadWriteData(scribeLambda);
     props.table.grantReadData(this.logPlayLambda);
     props.mediaBucket.grantPut(scribeLambda); // Needed for pre-signed URLs
+    if (props.orchestratorLambda) {
+      props.orchestratorLambda.grantInvoke(scribeLambda);
+    }
 
     // 3. API Gateway
     const api = new apigateway.RestApi(this, 'StreamingApi', {
@@ -61,6 +66,9 @@ export class ApiStack extends cdk.Stack {
 
     const catalog = api.root.addResource('catalog');
     catalog.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda));
+
+    const catalogPublish = catalog.addResource('publish');
+    catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
 
     const ingest = api.root.addResource('ingest');
     ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));

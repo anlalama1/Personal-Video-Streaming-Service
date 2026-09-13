@@ -65,9 +65,9 @@ graph TD
 *   **Parallel Build Waves**: Executes Docker image building and Android compilation on independent servers simultaneously to minimize release latency.
 
 ### B. Media Processing Pipeline
-*   **Event-Driven Transcoding**: Uses an S3-to-SQS trigger to decouple ingestion from processing.
-*   **Serverless FFmpeg**: Leverages **AWS ECS Fargate** for immutable, high-performance transcoding without managed servers.
-*   **ABR Ladder**: Automatically "shreds" MP4s into a 3-tier HLS bitrate ladder (1080p, 720p, 480p).
+*   **Polymorphic Container Architecture**: Reuses the same Fargate Docker image for two distinct operation roles (`CONTAINER_MODE` variable), maximizing asset utility and simplifying CI/CD.
+*   **Human-in-the-Loop Intake**: Automatically extracts a 2-second thumbnail frame and invokes AWS Bedrock (Claude 3 Haiku) to generate default metadata drafts (`aiTitle`, `aiDescription`, `aiTags`) inside a low-compute Fargate profile, staging the asset in a `REVIEW_PENDING` lock.
+*   **Deferred Transcoding**: Delays heavy multi-bitrate HLS segmentation until a human operator has reviewed, adjusted, and approved the metadata in the Demetrius Portal, eliminating compute waste on bad uploads.
 
 ### C. Backend API (BFF)
 *   **Late Binding**: The Lambda function constructs CloudFront URLs at runtime based on environment variables, keeping the database infrastructure-agnostic.
@@ -151,3 +151,8 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Backlog Decision**: **Cross-Platform Delivery (Web, Android, iOS, Roku)**.
 *   **Trade-off**: Development overhead of native clients vs. **Maximum Accessibility**.
 *   **Reasoning**: To fulfill the mission of "Rebuilding the Great Library," content must be accessible wherever the family is. By utilizing industry-standard HLS and a unified serverless API, we can deploy low-latency viewing experiences across the entire device spectrum—phones, tablets, laptops, and living-room TVs—with 100% asset compatibility.
+
+### 15. Ingestion Sequence: Polymorphic Container & Human-in-the-Loop Optimization
+*   **Decision**: **Bifurcated `CONTAINER_MODE` inside a Single Docker Image, staging under `REVIEW_PENDING` before full HLS transcode**.
+*   **Trade-off**: Minor code branching complexity inside the transcoder image vs. **Extreme FinOps Efficiency & Zero Compute Waste**.
+*   **Reasoning**: Running large multi-bitrate transcodes on heavy 4-vCPU Fargate instances before metadata confirmation can waste massive compute dollars on bad or unwanted files. Reusing the exact same Docker image with a low-horsepower memory/CPU override during `METADATA_EXTRACT` allows fractions-of-a-penny ingestion metadata extraction via Bedrock, ensuring heavy compute clusters are strictly reserved for human-vetted content.

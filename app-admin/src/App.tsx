@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { Database, UploadCloud, Library as LibraryIcon } from 'lucide-react';
+import { Database, UploadCloud, Library as LibraryIcon, ClipboardCheck } from 'lucide-react';
 import Ingestion from './pages/Ingestion';
 import Library from './pages/Library';
+import ReviewBoard from './pages/ReviewBoard';
 import { UploadProvider } from './context/UploadContext';
 import UploadDrawer from './components/UploadDrawer';
 
@@ -22,6 +23,10 @@ function App() {
                 <UploadCloud size={20} />
                 <span>Ingestion</span>
               </Link>
+              <Link to="/review" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors">
+                <ClipboardCheck size={20} />
+                <span>Review Board</span>
+              </Link>
               <Link to="/library" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors">
                 <LibraryIcon size={20} />
                 <span>Library</span>
@@ -33,6 +38,7 @@ function App() {
           <main className="flex-1 overflow-y-auto p-10">
             <Routes>
               <Route path="/home" element={<Ingestion />} />
+              <Route path="/review" element={<ReviewBoard />} />
               <Route path="/library" element={<Library />} />
               <Route path="/" element={<Navigate to="/home" replace />} />
             </Routes>

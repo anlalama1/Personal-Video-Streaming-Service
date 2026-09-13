@@ -51,10 +51,11 @@ npx cdk deploy StreamingPipelineStack
     - Update `core/data/build.gradle.kts` with this new URL.
 - **Git Push**: Push the URL change to GitHub. The pipeline will build the final APK with the correct backend link.
 
-### 5. SDE Note: Manual Values
-The following files contain account-specific values that **must** be updated:
-- [**`infrastructure/bin/config.ts`**](./infrastructure/bin/config.ts): AWS Account, Region, GitHub Repo, and Connection ARN.
-- [**`core/data/build.gradle.kts`**](./core/data/build.gradle.kts): The dynamically generated `BASE_URL` for the API.
+### 5. Centralized Configuration Reference (SDE Onboarding)
+For users onboarding to this codebase, all global behavior parameters are centralized across three configuration files:
+*   [**`infrastructure/bin/config.ts`**](./infrastructure/bin/config.ts): Handles target AWS deployment targets (`account`, `region`), GitHub source webhooks, and project resource prefixes. **Must be updated prior to running CDK deployments.**
+*   [**`app-admin/src/config.ts`**](./app-admin/src/config.ts): Configures the active Generative AI foundational model (`BEDROCK_MODEL_ID`) utilized by the **Demetrius Metadata Review Board** for auto-populating summaries.
+*   [**`core/data/build.gradle.kts`**](./core/data/build.gradle.kts): The dynamically generated `BASE_URL` connecting the Android consumer client to your live serverless backend API.
 
 ---
 

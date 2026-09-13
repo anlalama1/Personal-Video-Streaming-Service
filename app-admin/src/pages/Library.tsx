@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { RefreshCcw, CheckCircle2, Clock, XCircle, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { RefreshCcw, CheckCircle2, Clock, XCircle, AlertTriangle, Sparkles, Database } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -11,6 +12,7 @@ interface MediaItem {
   releaseYear: string;
   transcodeStatus: string;
   hlsKey?: string;
+  aiTitle?: string;
 }
 
 const Library = () => {
@@ -20,7 +22,6 @@ const Library = () => {
   const fetchLibrary = async () => {
     setLoading(true);
     try {
-      // In MVP, we just fetch GLOBAL for now
       const res = await axios.get(`${API_BASE_URL}catalog`, {
         headers: { 'x-tenant-id': 'GLOBAL' }
       });
@@ -40,14 +41,16 @@ const Library = () => {
     switch (status) {
       case 'COMPLETED':
         return <span className="flex items-center gap-1.5 text-green-400 bg-green-950/50 px-3 py-1 rounded-full text-xs font-bold border border-green-800"><CheckCircle2 size={14} /> Ready</span>;
+      case 'REVIEW_PENDING':
+        return <span className="flex items-center gap-1.5 text-amber-400 bg-amber-950/50 px-3 py-1 rounded-full text-xs font-bold border border-amber-800"><Sparkles size={14} /> Needs Review</span>;
+      case 'UPLOADING':
+        return <span className="flex items-center gap-1.5 text-slate-400 bg-slate-900/50 px-3 py-1 rounded-full text-xs font-bold border border-slate-700 animate-pulse"><Database size={14} /> Ingesting</span>;
       case 'TRANSCODING':
-        return <span className="flex items-center gap-1.5 text-blue-400 bg-blue-950/50 px-3 py-1 rounded-full text-xs font-bold border border-blue-800 animate-pulse"><Clock size={14} /> Processing</span>;
+        return <span className="flex items-center gap-1.5 text-blue-400 bg-blue-950/50 px-3 py-1 rounded-full text-xs font-bold border border-blue-800 animate-pulse"><Clock size={14} /> Transcoding</span>;
       case 'FAILED':
-        return <span className="flex items-center gap-1.5 text-orange-400 bg-orange-950/50 px-3 py-1 rounded-full text-xs font-bold border border-orange-800"><AlertTriangle size={14} /> Retrying</span>;
-      case 'FATAL':
-        return <span className="flex items-center gap-1.5 text-red-400 bg-red-950/50 px-3 py-1 rounded-full text-xs font-bold border border-red-800"><XCircle size={14} /> Action Required</span>;
+        return <span className="flex items-center gap-1.5 text-orange-400 bg-orange-950/50 px-3 py-1 rounded-full text-xs font-bold border border-orange-800"><AlertTriangle size={14} /> Error</span>;
       default:
-        return <span className="flex items-center gap-1.5 text-slate-400 bg-slate-950/50 px-3 py-1 rounded-full text-xs font-bold border border-slate-800">Ingested</span>;
+        return <span className="flex items-center gap-1.5 text-slate-400 bg-slate-950/50 px-3 py-1 rounded-full text-xs font-bold border border-slate-800">{status}</span>;
     }
   };
 
@@ -79,9 +82,16 @@ const Library = () => {
           </thead>
           <tbody className="divide-y divide-slate-700">
             {items.map((item) => (
-              <tr key={item.videoId} className="hover:bg-slate-700/30 transition-colors">
+              <tr key={item.videoId} className={`hover:bg-slate-700/30 transition-colors ${item.transcodeStatus === 'REVIEW_PENDING' ? 'bg-amber-500/5' : ''}`}>
                 <td className="px-6 py-5">
-                  <div className="font-bold text-slate-100">{item.title}</div>
+                  <div className="font-bold text-slate-100 flex items-center gap-2">
+                    {item.transcodeStatus === 'REVIEW_PENDING' ? item.aiTitle || item.title : item.title}
+                    {item.transcodeStatus === 'REVIEW_PENDING' && (
+                      <Link to="/review" className="text-[10px] text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800 hover:bg-amber-900/50 transition-all font-semibold">
+                        Review Draft
+                      </Link>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-500 font-mono">{item.videoId}</div>
                 </td>
                 <td className="px-6 py-5">

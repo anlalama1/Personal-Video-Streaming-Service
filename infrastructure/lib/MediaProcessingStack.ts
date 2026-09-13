@@ -19,6 +19,8 @@ interface MediaProcessingStackProps extends cdk.StackProps {
 }
 
 export class MediaProcessingStack extends cdk.Stack {
+  public readonly orchestratorLambda: lambda.Function;
+
   constructor(scope: Construct, id: string, props: MediaProcessingStackProps) {
     super(scope, id, props);
 
@@ -88,7 +90,7 @@ export class MediaProcessingStack extends cdk.Stack {
     });
     rule.addTarget(new targets.SqsQueue(transcodeQueue));
 
-    const orchestratorLambda = new lambda.Function(this, 'OrchestratorLambda', {
+    this.orchestratorLambda = new lambda.Function(this, 'OrchestratorLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'orchestrator.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
@@ -102,8 +104,8 @@ export class MediaProcessingStack extends cdk.Stack {
       },
     });
 
-    orchestratorLambda.addEventSource(new SqsEventSource(transcodeQueue));
-    props.metadataTable.grantReadWriteData(orchestratorLambda); // Permission for lock
+    this.orchestratorLambda.addEventSource(new SqsEventSource(transcodeQueue));
+    props.metadataTable.grantReadWriteData(this.orchestratorLambda); // Permission for lock
 
     // 7. The Sweeper: 15-minute sanity check for stuck transcodes
     const sweeperLambda = new lambda.Function(this, 'TranscodingSweeper', {
@@ -124,13 +126,19 @@ export class MediaProcessingStack extends cdk.Stack {
       schedule: events.Schedule.rate(cdk.Duration.minutes(15)),
     });
     sweepRule.addTarget(new targets.LambdaFunction(sweeperLambda));
-    orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
+    this.orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ecs:RunTask'],
       resources: [taskDefinition.taskDefinitionArn],
     }));
-    orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
+    this.orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
       actions: ['iam:PassRole'],
       resources: [taskDefinition.taskRole.roleArn, taskDefinition.executionRole!.roleArn],
+    }));
+
+    // Principal Strategy: Bedrock Multimodal Access for Metadata Enrichment
+    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-*']
     }));
   }
 }

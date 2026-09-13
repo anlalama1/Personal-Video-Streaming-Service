@@ -138,7 +138,13 @@ export class MediaProcessingStack extends cdk.Stack {
     // Principal Strategy: Bedrock Multimodal Access for Metadata Enrichment
     taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
       actions: ['bedrock:InvokeModel'],
-      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-*']
+      resources: [
+        // Allow the cross-region inference profile (account-scoped)
+        'arn:aws:bedrock:us-east-1:575992668616:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        // Allow the underlying foundation model in any US region
+        'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0',
+        'arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0'
+      ]
     }));
   }
 }

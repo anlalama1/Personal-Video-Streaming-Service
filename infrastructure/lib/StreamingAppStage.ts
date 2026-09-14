@@ -37,6 +37,7 @@ export class StreamingAppStage extends cdk.Stage {
     const mediaProcessing = new MediaProcessingStack(this, 'MediaProcessingStack', {
       env,
       sourceBucket: storage.mediaBucket,
+      thumbnailBucket: storage.thumbnailBucket,
       hlsBucket: storage.hlsBucket,
       metadataTable: database.table,
     });

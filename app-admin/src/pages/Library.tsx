@@ -22,7 +22,7 @@ const Library = () => {
   const fetchLibrary = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}catalog`, {
+      const res = await axios.get(`${API_BASE_URL}catalog?adminView=true`, {
         headers: { 'x-tenant-id': 'GLOBAL' }
       });
       setItems(res.data);

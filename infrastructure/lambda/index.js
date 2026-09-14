@@ -51,7 +51,10 @@ exports.handler = async (event) => {
 
 async function handleGetCatalog(event, tenantId) {
     const headers = event.headers || {};
+    const queryParams = event.queryStringParameters || {};
     const familyId = headers['x-family-id'] || headers['X-Family-Id'];
+    const isAdminView = queryParams.adminView === 'true';
+
     const tableName = process.env.TABLE_NAME;
     const cdnDomain = process.env.CLOUDFRONT_DOMAIN;
 
@@ -67,7 +70,16 @@ async function handleGetCatalog(event, tenantId) {
     });
 
     const result = await docClient.send(command);
-    const items = result.Items || [];
+    let items = result.Items || [];
+
+    // Principal Strategy: Catalog Visibility Gating.
+    // Consumer apps (Android/Scroll) only see items that are past the approval gate.
+    if (!isAdminView) {
+        items = items.filter(item =>
+            item.transcodeStatus === 'COMPLETED' ||
+            item.transcodeStatus === 'TRANSCODING'
+        );
+    }
 
     const mapToCdn = (item) => {
         if (!item.SK || !item.SK.includes("#VIDEO#")) return null;
@@ -85,7 +97,7 @@ async function handleGetCatalog(event, tenantId) {
             : `https://${cdnDomain}/media/${encodeUrlPath(item.videoKey)}`;
 
         const thumbnailUrl = item.thumbnailKey
-            ? `https://${cdnDomain}/hls/${encodeUrlPath(item.thumbnailKey)}`
+            ? `https://${cdnDomain}/thumbnails/${encodeUrlPath(item.thumbnailKey)}`
             : "https://via.placeholder.com/150";
 
         return {
@@ -98,6 +110,9 @@ async function handleGetCatalog(event, tenantId) {
             transcodeStatus: item.transcodeStatus || 'INGESTED',
             description: item.description || item.aiDescription || '',
             tags: item.tags || item.aiTags || [],
+            aiTitle: item.aiTitle || '',
+            aiDescription: item.aiDescription || '',
+            aiTags: item.aiTags || [],
             videoKey: item.videoKey || '',
             familyId: itemFamilyId
         };

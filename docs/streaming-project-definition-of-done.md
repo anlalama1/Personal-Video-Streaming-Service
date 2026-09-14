@@ -47,49 +47,49 @@ The project is **done** when all of the following are true:
 > [!NOTE]
 > **Architectural Decision: Local Transcoding.** Full-length movie transcoding is CPU-intensive and exceeds the **AWS Lambda 15-minute timeout**. While **AWS Elemental MediaConvert** is the industry standard, it is costly for a personal spike. We will use **local FFmpeg** to prove understanding of GOP sizes, segmenting, and manifest structures without cloud overhead.
 
-- [ ] Rip **one** movie you own.
-- [ ] Transcode it into **3 renditions** (e.g., 1080p/720p/480p) with **FFmpeg**.
-- [ ] Handle a **codec matrix**: AVC (H.264) and HEVC (H.265) video; keep/handle **EAC3** (Dolby Digital Plus) audio from the rip alongside **AAC**.
-- [ ] Package into **HLS** (`.m3u8` + segments) and **DASH** (`.mpd` + segments).
-- [ ] Include captions: embedded **CEA-608/708** and/or sidecar **WebVTT**.
-- [ ] Play it locally (VLC or a local hls.js/Shaka page) to confirm the pipeline works.
+- [X] Rip **one** movie you own.
+- [X] Transcode it into **3 renditions** (e.g., 1080p/720p/480p) with **FFmpeg**.
+- [X] Handle a **codec matrix**: AVC (H.264) and HEVC (H.265) video; keep/handle **EAC3** (Dolby Digital Plus) audio from the rip alongside **AAC**.
+- [X] Package into **HLS** (`.m3u8` + segments) and **DASH** (`.mpd` + segments).
+- [X] Include captions: embedded **CEA-608/708** and/or sidecar **WebVTT**.
+- [X] Play it locally (VLC or a local hls.js/Shaka page) to confirm the pipeline works.
 
 ### Milestone 3 — Storage & delivery (AWS)
-- [ ] Upload manifests + segments to **S3**.
-- [ ] Put **CloudFront** in front of S3.
+- [X] Upload manifests + segments to **S3**.
+- [X] Put **CloudFront** in front of S3.
 - [ ] Add **signed URLs / signed cookies** so content requires authorization.
-- [ ] Confirm playback from the CloudFront URL in a browser.
+- [X] Confirm playback from the CloudFront URL in a browser.
 
 ### Milestone 4 — Web client (laptop + iPhone)
-- [ ] Build a simple web player page (**Shaka Player** or **hls.js/dash.js**).
-- [ ] Confirm playback in a **laptop browser**.
-- [ ] Confirm playback in **iPhone Safari** (native HLS support — no native app, no Apple Developer fee).
+- [X] Build a simple web player page (**Shaka Player** or **hls.js/dash.js**).
+- [X] Confirm playback in a **laptop browser**.
+- [X] Confirm playback in **iPhone Safari** (native HLS support — no native app, no Apple Developer fee).
 
 ### Milestone 5 — Android app (main learning vehicle)
-- [ ] Browse/catalog screen — Compose grid of thumbnails (**MVVM**), metadata from a small backend or Room.
-- [ ] Basic playback — drop in **ExoPlayer/Media3**, play one HLS stream.
-- [ ] **Player lifecycle** — correctly release/resume across background, rotation, and process death.
-- [ ] Adaptive streaming + **codec/bitrate overlay** showing current resolution/bitrate/codec (AVC/HEVC/AAC/EAC3).
+- [X] Browse/catalog screen — Compose grid of thumbnails (**MVVM**), metadata from a small backend or Room.
+- [X] Basic playback — drop in **ExoPlayer/Media3**, play one HLS stream.
+- [X] **Player lifecycle** — correctly release/resume across background, rotation, and process death.
+- [X] Adaptive streaming + **codec/bitrate overlay** showing current resolution/bitrate/codec (AVC/HEVC/AAC/EAC3).
 - [ ] **ABR algorithms (depth):**
   - [ ] Baseline: enable ExoPlayer's default (hybrid) adaptive track selection.
   - [ ] Observability: overlay showing estimated bandwidth, buffer health, and a log of rendition switches.
   - [ ] Control: customize the `AdaptiveTrackSelection` parameters and articulate the tradeoffs (aggressive vs. conservative switching).
   - [ ] Proof: throttle the network (Android Studio) and record the player adapting 1080p→720p→480p and recovering.
 - [ ] **Captions** — render embedded **CEA-608/708** (and/or WebVTT) with a toggle.
-- [ ] **Custom controls** — seek bar with buffered-progress (Canvas/custom View).
-- [ ] Player screen refactored to **MVI** (single immutable state, explicit intents).
-- [ ] Player events (buffering, position, errors) modeled as **Flow** (reactive requirement).
+- [X] **Custom controls** — seek bar with buffered-progress (Canvas/custom View).
+- [X] Player screen refactored to **MVI** (single immutable state, explicit intents).
+- [X] Player events (buffering, position, errors) modeled as **Flow** (reactive requirement).
 - [ ] **Animations** — fading controls and/or thumbnail-to-player transition.
-- [ ] **Hilt / DI** wiring the ViewModels, repository, and player.
+- [X] **Hilt / DI** wiring the ViewModels, repository, and player.
 
 ### Milestone 6 — Small backend (optional but nice)
-- [ ] Catalog/auth API on **Lambda + API Gateway + DynamoDB** (Free Tier).
+- [X] Catalog/auth API on **Lambda + API Gateway + DynamoDB** (Free Tier).
 - [ ] Issues signed URLs/cookies to authenticated family users.
 - [ ] **Watch-history store** — record play events (userId, titleId, timestamp, completion %) in DynamoDB. Feeds recommendations (Milestone 10).
 
 ### Milestone 7 — Quality & performance (requirement proof)
 - [ ] **Unit tests** for ViewModels and repository (Turbine for Flow assertions).
-- [ ] **Android Profiler** pass: confirm the player is released (no memory leak), check for jank during control animations, and watch for excessive recomposition.
+- [X] **Android Profiler** pass: confirm the player is released (no memory leak), check for jank during control animations, and watch for excessive recomposition.
 - [ ] Capture Profiler screenshots as evidence.
 
 ### Milestone 8 — DRM capstone
@@ -110,9 +110,10 @@ The project is **done** when all of the following are true:
 - [ ] **Constrain + validate**: instruct the model to recommend only from the provided catalog, and validate returned title IDs against the real catalog before display (guards against hallucination).
 - [ ] **Explainable output**: recommendations include a short "why" ("because you watched X and Y…").
 - [ ] **Cache** recommendations; regenerate only when history changes (controls cost + determinism).
-- [ ] (Optional, offline batch) Use Bedrock to **enrich catalog metadata** — synopses, mood/theme tags.
+- [X] (Optional, offline batch) Use Bedrock to **enrich catalog metadata** — synopses, mood/theme tags.
 - [ ] Client **"For You" row** in Compose (also a nice animation surface).
-- [ ] Keep Bedrock **server-side only** (never called directly from the client).
+- [X] Keep Bedrock **server-side only** (never called directly from the client).
+
 
 ### Milestone 11 — Knowledge Mastery & Audit
 - [ ] Complete the **[Knowledge Audit](./knowledge-audit.md)** self-assessment.

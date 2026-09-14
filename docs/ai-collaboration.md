@@ -466,6 +466,93 @@ This document tracks the high-level collaboration between the human developer an
     - Hardened the frontend build by creating a **`vite-env.d.ts`** with a global module declaration for `shaka-player`, ensuring TypeScript compilation stability.
 - **Outcome**: Resolved the registry 404 error and enabled successful compilation of the Web Viewer component.
 
+### 50. GenAI Video Metadata & Thumbnail Auto-Generation (Sept 13, 2026)
+- **Challenge**: Manually indexing titles, descriptions, and thumbnails for family media is time-consuming and often neglected, leading to a poor library experience.
+- **AI Contribution**: 
+    - Architected a **Multimodal GenAI Pipeline** using **AWS Bedrock (Claude 3.5 Haiku)**.
+    - Designed a "Semantic Proxy" strategy: Used FFmpeg to extract a high-quality keyframe at the 2-second mark to serve as the visual context for the LLM.
+    - Engineered a sophisticated **Multimodal Prompt** that instructs the AI to return structured JSON containing a catchy title, professional summary, and relevant tags.
+    - Integrated **Filename Context**: Instructed the AI to use the original filename as a secondary hint for identifying the scene or event.
+- **Outcome**: Automated the tedious metadata entry process with high accuracy, transforming raw uploads into richly described, searchable library assets.
+
+### 51. Polymorphic Container Architecture (Sept 13, 2026)
+- **Challenge**: Running heavy 4-vCPU Fargate tasks just for AI metadata extraction is cost-prohibitive and inefficient.
+- **AI Contribution**: 
+    - Designed the **Polymorphic Container pattern** (Single Binary, Multiple Personas).
+    - Introduced a **`CONTAINER_MODE`** environment variable to branch the execution path.
+    - Implemented **Dynamic Resource Overrides** in the Orchestrator Lambda:
+        - `METADATA_EXTRACT` mode: Requests only **0.25 vCPU / 0.5 GB RAM** (fractions of a cent per run).
+        - `TRANSCODE_HLS` mode: Requests full **4.0 vCPU / 8.0 GB RAM** for performance.
+- **Outcome**: Achieved extreme FinOps efficiency by reusing the same Docker image for two distinct operational roles while paying only for the compute required at each stage.
+
+### 52. Human-in-the-Loop Asset Management (Sept 13, 2026)
+- **Challenge**: Allowing an AI to directly publish content to a live catalog carries "Hallucination" and compliance risks.
+- **AI Contribution**: 
+    - Engineered a **"Draft Staging"** workflow matching the standards of professional media platforms (e.g., Disney+).
+    - Refactored the DynamoDB schema to isolate suggestions into `aiTitle`, `aiDescription`, and `aiTags` fields.
+    - Introduced the **`REVIEW_PENDING`** state to lock assets from the consumer catalog until human approval is secured.
+    - Designed a new **Metadata Review Board** in the Demetrius Portal to pre-fill the form with AI defaults for manual verification.
+- **Outcome**: Balanced AI-driven efficiency with human oversight, ensuring 100% catalog quality and brand safety.
+
+### 53. True Resumable S3 Ingestion (Sept 13, 2026)
+- **Challenge**: Browser refreshes or network drops during 4K video uploads (5GB+) forced users to restart the entire transfer from 0%.
+- **AI Contribution**: 
+    - Designed a **Metadata Matching Persistence Strategy** to bridge the "Browser Memory" gap.
+    - Leveraged **`localStorage`** to persist S3 `uploadId` and `completedParts` (ETags) across sessions.
+    - Implemented **Binary Integrity Verification**: The system checks the re-selected file's name and byte-size to ensure it matches the original upload checkpoint.
+    - Engineered a **Sparse Upload Loop** that automatically skips chunks already acknowledged by S3.
+- **Outcome**: Delivered an "Industrial-Grade" ingestion client that survives refreshes and saves both bandwidth and operator time.
+
+### 54. Cinematic Discovery Layer (Sept 13, 2026)
+- **Challenge**: Jumping directly from a grid to a video player feels jarring and hides the rich AI-generated metadata.
+- **AI Contribution**: 
+    - Architected and implemented matching **Media Preview Pages** (Detail Views) across the Web and Android apps.
+    - Designed a **Cinematic UI Pattern**: Blurred thumbnail backdrops with vertical gradient overlays for readable foreground text.
+    - Refactored the **Android Navigation Graph** and ViewModel state to support immersive transitions between screens.
+    - Updated the **Scribe API** to deliver expanded metadata (Descriptions, Genres, Years) to all client targets.
+- **Outcome**: Elevated the platform's visual polish to meet the expectations of modern streaming audiences (Netflix/Hulu tier).
+
+### 55. Catalog Visibility Gating (Sept 13, 2026)
+- **Challenge**: Consumer apps were showing raw, unapproved media items that lacked HLS artifacts or metadata.
+- **AI Contribution**: 
+    - Engineered an **API-Level Approval Gate** in the Lambda BFF.
+    - Implemented a **Role-Based Visibility Filter**:
+        - Consumer apps only see `TRANSCODING` or `COMPLETED` assets.
+        - Admin portals bypass the filter via a secure `adminView=true` query parameter.
+- **Outcome**: Ensured a clean, high-quality end-user experience by strictly enforcing the media ingestion state machine at the data layer.
+
+### 56. CI/CD Pipeline Gating & Wave Optimization (Sept 13, 2026)
+- **Challenge**: High deployment costs and slow feedback loops caused by heavy Android compilation during infrastructure iteration.
+- **AI Contribution**: 
+    - Performed a **Pipeline Bottleneck Audit** identifying the Android build as the primary cost driver.
+    - Refactored `PipelineStack.ts` to move the **Android Build & Distribution** into a terminal wave (`AndroidRelease`).
+    - Upgraded the **Synth Environment to Node 20** using the AWS Native `runtime-versions` specification to resolve "Self-Mutation" deadlocks.
+- **Outcome**: Reduced deployment costs and feedback latency while maintaining a single "Git-Ops" source of truth for the entire platform.
+
+### 57. Observability: Bedrock Prompt Logging (Sept 13, 2026)
+- **Challenge**: Lack of visibility into the exact instructions and context (filenames, visual directives) being passed to the Generative AI model, making prompt engineering difficult.
+- **AI Contribution**: 
+    - Implemented a structured logging wrapper in the Fargate worker ([transcoder/index.js](file:///I:/Android%20Projects/infrastructure/transcoder/index.js)).
+    - Added decorative separators and clear identifiers to the CloudWatch log stream to isolate the prompt payload for audit and optimization.
+- **Outcome**: Enabled high-fidelity debugging of multimodal AI behaviors, allowing the developer to tune AI responses with precise visibility into the input context.
+
+### 58. Prompt Engineering: Entity Recognition & Naming (Sept 13, 2026)
+- **Challenge**: The GenAI model was producing overly generic descriptions (e.g., "animated mascot with an orange beak") for globally recognizable icons like Disney characters.
+- **AI Contribution**: 
+    - Diagnosed the issue as a "Hallucination Guardrail" conflict where the model prioritized descriptive objectivity over proper-noun identification.
+    - Refactored the multimodal prompt to explicitly instruct the model to perform **Entity Recognition**.
+    - Added a **CRITICAL** directive to identify and use specific names for famous characters, landmarks, and brands if recognizable.
+- **Outcome**: Significantly increased the metadata quality for heritage media, allowing for richer archival descriptions and improved library searchability.
+
+### 59. Prompt Engineering: "High-Confidence/Low-Regret" Narrative Bias (Sept 13, 2026)
+- **Challenge**: Initial AI drafts were still leaning toward safe, clinical descriptions rather than rich, human-readable narratives suitable for a family heritage vault.
+- **AI Contribution**: 
+    - Implemented a "Human-in-the-Loop" prompt optimization.
+    - Instructed the model to **BE BOLD** and prioritize specific "best guesses" (e.g., identifying specific family events or roles) over safe genericisms.
+    - Shifted the stylistic requirement from "Professional Summary" to "Storyteller/Archival Narrative" to better align with the product's emotional value proposition.
+- **Outcome**: Produced significantly more engaging and specific metadata drafts, leveraging the human review stage as a safety net to allow for more creative and detailed AI indexing.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.
+

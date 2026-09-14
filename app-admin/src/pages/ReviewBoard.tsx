@@ -37,7 +37,7 @@ const ReviewBoard = () => {
   const fetchReviewQueue = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}catalog`, {
+      const res = await axios.get(`${API_BASE_URL}catalog?adminView=true`, {
         headers: { 'x-tenant-id': 'GLOBAL' }
       });
       // Filter for items explicitly in REVIEW_PENDING state or currently being prepared (UPLOADING/PROCESSING)

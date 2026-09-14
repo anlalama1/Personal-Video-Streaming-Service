@@ -15,6 +15,7 @@ import { Config } from '../bin/config';
 
 interface MediaProcessingStackProps extends cdk.StackProps {
   sourceBucket: s3.IBucket;
+  thumbnailBucket: s3.IBucket;
   hlsBucket: s3.IBucket;
   metadataTable: dynamodb.ITable;
 }
@@ -60,6 +61,7 @@ export class MediaProcessingStack extends cdk.Stack {
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'Transcoder' }),
       environment: {
         SOURCE_BUCKET: props.sourceBucket.bucketName,
+        THUMBNAIL_BUCKET: props.thumbnailBucket.bucketName,
         DEST_BUCKET: props.hlsBucket.bucketName,
         TABLE_NAME: props.metadataTable.tableName,
         BEDROCK_MODEL_ID: Config.bedrockModelId,
@@ -74,6 +76,7 @@ export class MediaProcessingStack extends cdk.Stack {
     }));
 
     props.sourceBucket.grantRead(taskDefinition.taskRole);
+    props.thumbnailBucket.grantReadWrite(taskDefinition.taskRole);
     props.hlsBucket.grantReadWrite(taskDefinition.taskRole);
 
     const transcodeQueue = new sqs.Queue(this, 'TranscodeQueue', {
@@ -103,6 +106,7 @@ export class MediaProcessingStack extends cdk.Stack {
         SECURITY_GROUPS: JSON.stringify([taskSecurityGroup.securityGroupId]),
         CONTAINER_NAME: container.containerName,
         TABLE_NAME: props.metadataTable.tableName, // Added for atomic lock logic
+        THUMBNAIL_BUCKET: props.thumbnailBucket.bucketName,
       },
     });
 

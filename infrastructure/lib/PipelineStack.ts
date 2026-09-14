@@ -33,10 +33,14 @@ export class PipelineStack extends cdk.Stack {
       synth: new pipelines.CodeBuildStep('Synth', {
         input: source,
         buildEnvironment: {
-          buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
+          // Senior Strategy: Upgrade to Node 20 to match aws-cdk-lib requirements
+          buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
           computeType: codebuild.ComputeType.MEDIUM,
         },
         commands: [
+          'nvm install 20',
+          'nvm use 20',
+          'node --version',
           'cd infrastructure',
           'npm install',
           'cd lambda && npm install && cd ..',
@@ -182,32 +186,6 @@ export class PipelineStack extends cdk.Stack {
         rolePolicyStatements: [
           new iam.PolicyStatement({
             actions: ['s3:PutObject'],
-            resources: [`arn:aws:s3:::*`],
-          }),
-          new iam.PolicyStatement({
-            actions: ['cloudfront:CreateInvalidation'],
-            resources: [`arn:aws:cloudfront::${account}:distribution/*`],
-          }),
-        ],
-      })
-    );
-  }
-}
-
-          VITE_API_BASE_URL: prodStage.apiUrl,
-          VIEWER_BUCKET: prodStage.viewerPortalBucketName,
-          DISTRIBUTION_ID: prodStage.distributionId,
-        },
-        commands: [
-          'cd app-viewer',
-          'npm install',
-          'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',
-          'aws s3 sync dist s3://$VIEWER_BUCKET --delete',
-          'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"'
-        ],
-        rolePolicyStatements: [
-          new iam.PolicyStatement({
-            actions: ['s3:PutObject', 's3:ListBucket', 's3:DeleteObject'],
             resources: [`arn:aws:s3:::*`],
           }),
           new iam.PolicyStatement({

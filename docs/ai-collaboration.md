@@ -560,6 +560,47 @@ This document tracks the high-level collaboration between the human developer an
     - Refactored `ApiStack.ts` to remove the redundant manual call, adhering to the "Don't Repeat Yourself" (DRY) principle for infrastructure-as-code.
 - **Outcome**: Resolved the synthesis failure and restored pipeline health, while maintaining a consistent and clean CORS security posture across the entire API.
 
+### 61. Strategic Pivot: Automated Heritage Ingestion (Sept 13, 2026)
+- **Challenge**: Defining the product evolution from a content viewer to a comprehensive family heritage platform.
+- **AI Contribution**: 
+    - Formulated the architecture for "The Great Intake"—an automated Android background sync engine.
+    - Recommended the use of **WorkManager** and **ContentObservers** to monitor local media changes with production-grade Wi-Fi/Battery constraints.
+    - Designed the multi-tier storage metering and mobile metadata editing strategy.
+- **Outcome**: Expanded the project's business vision and technical scope, positioning Alexandria+ as a professional-grade Personal Media Asset Management (MAM) platform.
+
+### 62. FinOps Strategy: Cost-Safe Mobile Ingestion (Sept 13, 2026)
+- **Challenge**: Protecting the SaaS gross margins while supporting high-volume automated video uploads from mobile devices.
+- **AI Contribution**: 
+    - Designed a "Deferred Transcoding" architectural pattern to prevent runaway compute costs.
+    - Recommended **Local-First Frame Extraction** (performing thumbnail extraction on the Android device) to eliminate cloud compute dependency for initial indexing.
+    - Implemented **Storage Tier Stratification**, leveraging S3 Glacier Instant Retrieval for raw intake while reserving heavy Fargate transcoding clusters for human-vetted content only.
+- **Outcome**: Established a financially sustainable ingestion model that aligns with enterprise-level "Pay-as-you-grow" FinOps principles.
+
+### 63. FinOps Optimization: Short-Form Passthrough (Sept 13, 2026)
+- **Challenge**: High compute spend on transcoding short-duration family media where adaptive bitrate (HLS) provides diminishing returns for the user.
+- **AI Contribution**: 
+    - Formulated the "5-Minute Threshold" strategy for bypass logic.
+    - Designed the architectural shift to **Direct MP4 Delivery** for short assets, eliminating Fargate compute usage for low-complexity media.
+    - Updated the system lifecycle to include duration detection as a pre-transcode gate.
+- **Outcome**: Optimized the media pipeline for real-world usage patterns, significantly reducing the operational break-even point for the SaaS platform.
+
+### 64. Governance Strategy: Two-Phase Deletion (Sept 13, 2026)
+- **Challenge**: Designing a deletion workflow that balances user agency with the catastrophic risk of accidentally losing irreplaceable family media.
+- **AI Contribution**: 
+    - Designed the **Two-Phase Deletion** architecture.
+    - Recommended a **"Soft-Delete"** model with a 30-day "Trash" period for safety.
+    - Planned the background orchestration for final S3 asset purges (Source, HLS, Thumbnails) to ensure no "Shadow Data" or unmetered costs remain after final deletion.
+- **Outcome**: Established a professional data lifecycle policy that prioritizes data safety and system hygiene.
+
+### 65. AI Privacy & Transparency Framework (Sept 13, 2026)
+- **Challenge**: Addressing valid user concerns regarding the privacy of personal family media when utilizing Generative AI models.
+- **AI Contribution**: 
+    - Drafted a "Privacy Manifesto" and onboarding disclosure for end-users.
+    - Formulated the technical justification for using **Amazon Bedrock**'s enterprise-grade infrastructure to provide a "Zero-Training" guarantee.
+    - Designed the "Least Exposure" principle, ensuring only static snapshots (not full videos) are shared with the AI.
+    - Integrated opt-out logic into the product roadmap, ensuring the platform remains inclusive for privacy-sensitive users.
+- **Outcome**: Created a high-trust onboarding experience that turns enterprise-grade data protection into a core product value.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

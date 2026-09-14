@@ -45,3 +45,11 @@ Alexandria+ reserves the right to suspend transcoding or playback for any media 
 ## 7. Privacy & Data Residency
 - **PII Isolation**: We do not store family names or addresses in DynamoDB. We use logical `familyId` strings.
 - **GDPR/CCPA Readiness**: By allowing shops to "Delete" a family partition, we fulfill "Right to be Forgotten" requirements natively via our Single-Table Design.
+
+## 8. Generative AI Transparency & Data Privacy
+As Alexandria+ leverages multimodal foundation models (via AWS Bedrock) for automated metadata drafting, we must provide clear disclosure and agency to end-users regarding their media's interaction with AI.
+
+- **Zero-Training Guarantee**: Contractually, Amazon Bedrock does not use customer data (prompts or media snapshots) to train the underlying foundation models. Alexandria+ utilizes these models in a stateless environment.
+- **Principle of Least Exposure**: Full video files are never transmitted to the AI provider. Only a single high-quality keyframe (extracted via the Pharos Engine) is shared for analysis.
+- **Human-in-the-Loop (MAM Standard)**: AI suggestions are restricted to a "Draft Staging" state (`REVIEW_PENDING`). No AI-generated content is published to the production library without explicit human verification and approval.
+- **The "Right to Opt-Out"**: Users must be provided an onboarding-level choice to disable AI-assisted indexing. If opted out, the platform must fallback to manual-only metadata entry, ensuring no visual data is processed by the AI layer for that specific tenant/user.

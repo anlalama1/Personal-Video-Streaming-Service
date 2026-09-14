@@ -178,6 +178,24 @@ The project is **done** when all of the following are true:
 - [ ] **Roku App**: Build a native Roku channel using **BrightScript** and **SceneGraph**.
 - [ ] **Activation Flow**: Implement the standard "6-digit code" TV activation workflow to link a Smart TV to a family's Cognito account.
 
+### Milestone 21 — The Great Intake: Automated Mobile Heritage Sync
+- [ ] **Background Observer**: Implement an Android `ContentObserver` + `WorkManager` service to detect new videos in the system camera roll.
+- [ ] **Unmetered Ingestion Logic**: Enforce "Wi-Fi Only" constraints for large 4K uploads to protect user data plans and battery health.
+- [ ] **Approval Gate Settings**: Add user toggles for "Auto-Publish," "AI Draft Only," or "Manual Review Required" for mobile uploads.
+- [ ] **In-App Metadata Refinement**: Enable users to edit titles and descriptions directly within the Android app, synchronized via a `PATCH` API endpoint.
+- [ ] **Storage Metering & Notifications**: Implement a usage-tracking Lambda to notify users when they approach their tier's storage limits (S3/R2).
+
+### Milestone 22 — FinOps: Short-Form Optimization
+- [ ] **Duration-Aware Orchestration**: Update the Fargate orchestrator to detect video duration via FFmpeg probe.
+- [ ] **Passthrough Logic**: Skip heavy HLS transcoding for videos under 5 minutes.
+- [ ] **Direct MP4 Delivery**: Update the Lambda BFF to serve raw MP4 CloudFront URLs for short-form assets, bypassing the HLS bitrate ladder.
+
+### Milestone 23 — Cleanup & Governance: Deletion & Rejection Workflows
+- [ ] **Review Rejection**: Implement a "Reject/Cancel" action in the Demetrius Review Board to purge unwanted uploads and metadata drafts.
+- [ ] **Library Deletion**: Implement a secure "Delete from Vault" feature in both the Admin and Consumer apps.
+- [ ] **S3 Lifecycle Alignment**: Ensure that deleting a DynamoDB record triggers a background purge of all associated S3 assets (Source MP4, Thumbnails, HLS Fragments).
+- [ ] **Hard vs Soft Delete Strategy**: Implement "Soft Delete" (e.g., `isDeleted` flag) for the first 30 days to allow for accidental recovery, followed by permanent hard deletion.
+
 ---
 
 ## Requirement Coverage Map

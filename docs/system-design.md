@@ -161,3 +161,27 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Decision**: **Intermediate "Media Preview" pages across all clients**.
 *   **Trade-off**: Additional navigation tap/click vs. **Professional Polish & Data Richness**.
 *   **Reasoning**: Modern streaming audiences expect a high-fidelity "Discovery" phase (Summaries, Genres, Tags) before committing to playback. By implementing a cinematic detail layer, we showcase the AI-generated metadata and provide a visually immersive transition from the catalog to the player.
+
+### 17. Product Vision: Automated Heritage Ingestion
+*   **Decision**: **Background Synchronization Engine using Android WorkManager**.
+*   **Trade-off**: Background execution complexity vs. **Zero-Friction Ingestion & High Retention**.
+*   **Reasoning**: Alexandria+ is envisioned as a living archive. By automating the sync between the user's camera roll and their personal vault (with Wi-Fi-only safety guards), we ensure family heritage is captured effortlessly. The addition of mobile-first metadata editing and storage metering transitions the platform from a consumption tool to a comprehensive Media Asset Management (MAM) system.
+
+### 18. FinOps: Cost-Safe Ingestion Strategy (Deferred Transcoding)
+*   **Decision**: **Local-First Frame Extraction & Storage Tier Stratification**.
+*   **Trade-off**: Slightly higher client-side complexity vs. **Protected SaaS Gross Margins**.
+*   **Reasoning**: Auto-syncing high-volume 4K mobile media creates a high risk of "Compute Spikes." To protect the platform's financial viability, we implement a stratified flow:
+    1.  **Local Extraction**: The Android app extracts a 1080p keyframe locally (zero cloud cost) and uploads it with the raw MP4.
+    2.  **Cold Storage**: Raw MP4s are stored in S3 Glacier Instant Retrieval (low-cost storage).
+    3.  **Discovery Pass**: Bedrock runs on the uploaded frame immediately to provide the "Review Board" metadata.
+    4.  **Just-In-Time (JIT) Transcoding**: The heavy Fargate HLS transcoder is **only** triggered when a user manually "Approves" the asset or hits "Play" for the first time, ensuring compute dollars are strictly mapped to human-vetted content.
+
+### 19. FinOps: Short-Form Passthrough
+*   **Decision**: **Skip HLS transcoding for videos under 5 minutes**.
+*   **Trade-off**: Loss of adaptive bitrate for shorts vs. **Significant Compute Savings**.
+*   **Reasoning**: For short-form family media (less than 5 minutes), the file size is typically small enough that the overhead of HLS segmentation and multi-rendition storage is not justified. By serving the raw MP4 directly via CloudFront, we eliminate 100% of the Fargate transcode cost for the majority of user-generated clips while still maintaining an excellent playback experience on modern high-speed networks.
+
+### 20. Data Governance: Two-Phase Deletion Strategy
+*   **Decision**: **Soft-Delete with 30-day "Trash" Window**.
+*   **Trade-off**: Increased storage overhead vs. **User Experience Safety**.
+*   **Reasoning**: Family heritage media is irreplaceable. A "Hard Delete" (immediate permanent removal) on a single tap is too high-risk for this platform. We implement a "Soft Delete" flag in DynamoDB which hides the asset from the library immediately, but retains the S3 files for 30 days. An automated S3 Lifecycle policy or Lambda sweeper handles the final hard purge, allowing users to "Undo" deletions and protecting the platform from accidental data loss.

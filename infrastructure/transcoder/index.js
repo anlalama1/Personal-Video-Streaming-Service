@@ -19,6 +19,7 @@ const TENANT_ID = process.env.TENANT_ID;
 const FAMILY_ID = process.env.FAMILY_ID;
 const VIDEO_ID = process.env.VIDEO_ID;
 const CONTAINER_MODE = process.env.CONTAINER_MODE || "TRANSCODE_HLS";
+const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID;
 
 async function run() {
     if (!TENANT_ID || !FAMILY_ID || !VIDEO_ID) {
@@ -121,7 +122,7 @@ Return a JSON object with exactly three fields: "title" (a short, catchy title b
             };
 
             const command = new InvokeModelCommand({
-                modelId: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+                modelId: BEDROCK_MODEL_ID,
                 contentType: "application/json",
                 accept: "application/json",
                 body: JSON.stringify(payload)

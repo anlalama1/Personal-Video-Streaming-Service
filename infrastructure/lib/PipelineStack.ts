@@ -33,13 +33,13 @@ export class PipelineStack extends cdk.Stack {
       synth: new pipelines.CodeBuildStep('Synth', {
         input: source,
         buildEnvironment: {
-          // Senior Strategy: Upgrade to Node 20 to match aws-cdk-lib requirements
-          buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
+          // Senior Strategy: Use Standard 7.0 (Ubuntu 22.04) and 'n' to ensure Node 20
+          buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
           computeType: codebuild.ComputeType.MEDIUM,
         },
         commands: [
-          'nvm install 20',
-          'nvm use 20',
+          'npm install -g n',
+          'n 20',
           'node --version',
           'cd infrastructure',
           'npm install',
@@ -119,10 +119,13 @@ export class PipelineStack extends cdk.Stack {
           ADMIN_BUCKET: prodStage.adminPortalBucketName,
           DISTRIBUTION_ID: prodStage.distributionId,
         },
+        env: {
+          VITE_BEDROCK_MODEL_ID: Config.bedrockModelId,
+        },
         commands: [
           'cd app-admin',
           'npm install',
-          'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',
+          'VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_BEDROCK_MODEL_ID=$VITE_BEDROCK_MODEL_ID npm run build',
           'aws s3 sync dist s3://$ADMIN_BUCKET --delete',
           'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/admin/*"'
         ],

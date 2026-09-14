@@ -11,6 +11,7 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as path from 'path';
+import { Config } from '../bin/config';
 
 interface MediaProcessingStackProps extends cdk.StackProps {
   sourceBucket: s3.IBucket;
@@ -61,6 +62,7 @@ export class MediaProcessingStack extends cdk.Stack {
         SOURCE_BUCKET: props.sourceBucket.bucketName,
         DEST_BUCKET: props.hlsBucket.bucketName,
         TABLE_NAME: props.metadataTable.tableName,
+        BEDROCK_MODEL_ID: Config.bedrockModelId,
       },
     });
 
@@ -140,9 +142,9 @@ export class MediaProcessingStack extends cdk.Stack {
       actions: ['bedrock:InvokeModel'],
       resources: [
         // Allow the cross-region inference profile (account-scoped)
-        'arn:aws:bedrock:us-*:575992668616:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        `arn:aws:bedrock:us-*:${Config.account}:inference-profile/${Config.bedrockModelId}`,
         // Allow the underlying foundation model in any US region
-        'arn:aws:bedrock:us-*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0',
+        `arn:aws:bedrock:us-*::foundation-model/${Config.bedrockModelId.replace('us.', '')}`,
       ]
     }));
   }

@@ -21,5 +21,8 @@ export const Config = {
     githubConnectionArn: 'arn:aws:codeconnections:us-east-1:575992668616:connection/5119b184-5098-45b0-bbc0-f56ed91d5f82',
 
     // The prefix used for various production resources
-    projectPrefix: 'StreamingService'
+    projectPrefix: 'StreamingService',
+
+    // The active foundation model ID used for GenAI metadata enrichment via AWS Bedrock
+    bedrockModelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
 };

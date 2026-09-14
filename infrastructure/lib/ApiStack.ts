@@ -26,6 +26,7 @@ export class ApiStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      timeout: cdk.Duration.seconds(30),
       environment: {
         TABLE_NAME: props.table.tableName,
         CLOUDFRONT_DOMAIN: props.cdnDomain,

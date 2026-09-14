@@ -1,11 +1,13 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({});
+const lambdaClient = new LambdaClient({});
 
 const response = (statusCode, body) => ({
     statusCode,
@@ -208,9 +210,6 @@ async function handlePublishVideo(event, tenantId) {
     }));
 
     // Invoke Orchestrator Lambda to trigger the full multi-bitrate HLS transcode in Fargate
-    const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
-    const lambdaClient = new LambdaClient({});
-
     await lambdaClient.send(new InvokeCommand({
         FunctionName: process.env.ORCHESTRATOR_LAMBDA_ARN,
         InvocationType: "Event", // Asynchronous execution

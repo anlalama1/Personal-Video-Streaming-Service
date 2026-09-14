@@ -101,37 +101,13 @@ export class PipelineStack extends cdk.Stack {
     });
 
     const buildWave = pipeline.addWave('ParallelBuilds');
-    buildWave.addPost(androidBuildStep);
+    // androidBuildStep removed from here to move it to the end
 
     pipeline.addStage(prodStage);
 
     const distroWave = pipeline.addWave('Distribution');
 
-    // 1. Android APK Distribution
-    distroWave.addPost(new pipelines.CodeBuildStep('UploadAndroidApk', {
-        input: androidBuildStep,
-        envFromCfnOutputs: {
-          BUCKET_NAME: prodStage.appDistributionBucketName,
-          DISTRIBUTION_ID: prodStage.distributionId,
-        },
-        commands: [
-          'aws s3 cp latest-beta.apk s3://$BUCKET_NAME/latest-beta.apk --content-type "application/vnd.android.package-archive" --content-disposition "attachment; filename=\"personal-stream-beta.apk\""',
-          'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/download/*"'
-        ],
-        rolePolicyStatements: [
-          new iam.PolicyStatement({
-            actions: ['s3:PutObject'],
-            resources: [`arn:aws:s3:::*`],
-          }),
-          new iam.PolicyStatement({
-            actions: ['cloudfront:CreateInvalidation'],
-            resources: [`arn:aws:cloudfront::${account}:distribution/*`],
-          }),
-        ],
-      })
-    );
-
-    // 2. Demetrius Partner Portal Distribution
+    // 1. Demetrius Partner Portal Distribution
     distroWave.addPost(new pipelines.CodeBuildStep('DeployDemetriusPortal', {
         input: source,
         envFromCfnOutputs: {
@@ -159,10 +135,65 @@ export class PipelineStack extends cdk.Stack {
       })
     );
 
-    // 3. The Scroll (Web Viewer) Distribution
+    // 2. The Scroll (Web Viewer) Distribution
     distroWave.addPost(new pipelines.CodeBuildStep('DeployScrollViewer', {
         input: source,
         envFromCfnOutputs: {
+          VITE_API_BASE_URL: prodStage.apiUrl,
+          VIEWER_BUCKET: prodStage.viewerPortalBucketName,
+          DISTRIBUTION_ID: prodStage.distributionId,
+        },
+        commands: [
+          'cd app-viewer',
+          'npm install',
+          'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',
+          'aws s3 sync dist s3://$VIEWER_BUCKET --delete',
+          'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"'
+        ],
+        rolePolicyStatements: [
+          new iam.PolicyStatement({
+            actions: ['s3:PutObject', 's3:ListBucket', 's3:DeleteObject'],
+            resources: [`arn:aws:s3:::*`],
+          }),
+          new iam.PolicyStatement({
+            actions: ['cloudfront:CreateInvalidation'],
+            resources: [`arn:aws:cloudfront::${account}:distribution/*`],
+          }),
+        ],
+      })
+    );
+
+    // Principal Strategy: Terminal Wave for Heavy Android Compilation.
+    // We move the BuildAndroidApp and UploadAndroidApk steps here to ensure
+    // infrastructure and web portals land first.
+    const terminalWave = pipeline.addWave('AndroidRelease');
+    terminalWave.addPost(androidBuildStep);
+
+    terminalWave.addPost(new pipelines.CodeBuildStep('UploadAndroidApk', {
+        input: androidBuildStep,
+        envFromCfnOutputs: {
+          BUCKET_NAME: prodStage.appDistributionBucketName,
+          DISTRIBUTION_ID: prodStage.distributionId,
+        },
+        commands: [
+          'aws s3 cp latest-beta.apk s3://$BUCKET_NAME/latest-beta.apk --content-type "application/vnd.android.package-archive" --content-disposition "attachment; filename=\"personal-stream-beta.apk\""',
+          'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/download/*"'
+        ],
+        rolePolicyStatements: [
+          new iam.PolicyStatement({
+            actions: ['s3:PutObject'],
+            resources: [`arn:aws:s3:::*`],
+          }),
+          new iam.PolicyStatement({
+            actions: ['cloudfront:CreateInvalidation'],
+            resources: [`arn:aws:cloudfront::${account}:distribution/*`],
+          }),
+        ],
+      })
+    );
+  }
+}
+
           VITE_API_BASE_URL: prodStage.apiUrl,
           VIEWER_BUCKET: prodStage.viewerPortalBucketName,
           DISTRIBUTION_ID: prodStage.distributionId,

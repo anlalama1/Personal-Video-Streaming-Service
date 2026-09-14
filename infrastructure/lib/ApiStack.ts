@@ -89,11 +89,6 @@ export class ApiStack extends cdk.Stack {
 
     const catalogPublish = catalog.addResource('publish');
     catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
-    catalogPublish.addCorsPreflight({
-      allowOrigins: apigateway.Cors.ALL_ORIGINS,
-      allowMethods: ['POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key', 'X-Amz-Security-Token', 'x-tenant-id', 'x-family-id'],
-    });
 
     const ingest = api.root.addResource('ingest');
     ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));

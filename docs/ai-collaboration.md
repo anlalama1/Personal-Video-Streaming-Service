@@ -552,6 +552,14 @@ This document tracks the high-level collaboration between the human developer an
     - Shifted the stylistic requirement from "Professional Summary" to "Storyteller/Archival Narrative" to better align with the product's emotional value proposition.
 - **Outcome**: Produced significantly more engaging and specific metadata drafts, leveraging the human review stage as a safety net to allow for more creative and detailed AI indexing.
 
+### 60. Infrastructure Fix: API Gateway Construct Collision (Sept 13, 2026)
+- **Challenge**: The CI/CD pipeline failed during synthesis with a `Duplicate Construct` error: `There is already a Construct with name 'OPTIONS' in Resource [publish]`.
+- **AI Contribution**: 
+    - Diagnosed the root cause as a conflict between the global `defaultCorsPreflightOptions` on the `RestApi` and a redundant manual `addCorsPreflight` call on a specific resource.
+    - Identified that CDK automatically adds the `OPTIONS` method to all resources when a global policy is defined.
+    - Refactored `ApiStack.ts` to remove the redundant manual call, adhering to the "Don't Repeat Yourself" (DRY) principle for infrastructure-as-code.
+- **Outcome**: Resolved the synthesis failure and restored pipeline health, while maintaining a consistent and clean CORS security posture across the entire API.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

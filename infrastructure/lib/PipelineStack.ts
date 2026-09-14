@@ -33,13 +33,20 @@ export class PipelineStack extends cdk.Stack {
       synth: new pipelines.CodeBuildStep('Synth', {
         input: source,
         buildEnvironment: {
-          // Senior Strategy: Use Standard 7.0 (Ubuntu 22.04) and 'n' to ensure Node 20
           buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
           computeType: codebuild.ComputeType.MEDIUM,
         },
+        // Senior Strategy: Use the native 'runtime-versions' for reliable Node 20 selection
+        partialBuildSpec: codebuild.BuildSpec.fromObject({
+          phases: {
+            install: {
+              'runtime-versions': {
+                nodejs: '20'
+              }
+            }
+          }
+        }),
         commands: [
-          'npm install -g n',
-          'n 20',
           'node --version',
           'cd infrastructure',
           'npm install',

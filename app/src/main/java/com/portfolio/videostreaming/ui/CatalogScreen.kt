@@ -36,7 +36,7 @@ import com.portfolio.videostreaming.core.data.model.MediaFile
 
 @Composable
 fun CatalogScreen(
-    onVideoSelected: (String, String) -> Unit,
+    onVideoSelected: (MediaFile) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MediaBrowserViewModel = viewModel()
 ) {
@@ -80,7 +80,7 @@ fun CatalogScreen(
                 items(videoList) { video ->
                     VideoItem(
                         video = video,
-                        onClick = { onVideoSelected(video.id, video.videoUrl) }
+                        onClick = { onVideoSelected(video) }
                     )
                 }
             }

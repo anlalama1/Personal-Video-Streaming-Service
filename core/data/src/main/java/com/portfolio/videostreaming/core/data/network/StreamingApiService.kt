@@ -20,9 +20,11 @@ data class MediaItemDto(
     val videoId: String,
     val title: String,
     val genre: String,
-    val releaseYear: String, // Switched to String to match your DynamoDB entry
+    val releaseYear: String,
     val thumbnailUrl: String,
-    val videoUrl: String
+    val videoUrl: String,
+    val description: String? = null,
+    val tags: List<String>? = null
 )
 
 @Serializable

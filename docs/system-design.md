@@ -156,3 +156,8 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Decision**: **Bifurcated `CONTAINER_MODE` inside a Single Docker Image, staging under `REVIEW_PENDING` before full HLS transcode**.
 *   **Trade-off**: Minor code branching complexity inside the transcoder image vs. **Extreme FinOps Efficiency & Zero Compute Waste**.
 *   **Reasoning**: Running large multi-bitrate transcodes on heavy 4-vCPU Fargate instances before metadata confirmation can waste massive compute dollars on bad or unwanted files. Reusing the exact same Docker image with a low-horsepower memory/CPU override during `METADATA_EXTRACT` allows fractions-of-a-penny ingestion metadata extraction via Bedrock, ensuring heavy compute clusters are strictly reserved for human-vetted content.
+
+### 16. User Experience: Cinematic Discovery Layer
+*   **Decision**: **Intermediate "Media Preview" pages across all clients**.
+*   **Trade-off**: Additional navigation tap/click vs. **Professional Polish & Data Richness**.
+*   **Reasoning**: Modern streaming audiences expect a high-fidelity "Discovery" phase (Summaries, Genres, Tags) before committing to playback. By implementing a cinematic detail layer, we showcase the AI-generated metadata and provide a visually immersive transition from the catalog to the player.

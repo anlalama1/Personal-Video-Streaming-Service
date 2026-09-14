@@ -12,6 +12,8 @@ interface MediaItem {
   releaseYear: string;
   thumbnailUrl: string;
   videoUrl: string;
+  description: string;
+  tags: string[];
 }
 
 const Home = () => {
@@ -85,7 +87,10 @@ const Home = () => {
                 <Play fill="currentColor" size={24} />
                 <span>Play Now</span>
               </button>
-              <button className="flex items-center gap-3 bg-slate-800/80 backdrop-blur-md text-white px-8 py-4 rounded-xl font-bold hover:bg-slate-700 transition-all border border-slate-700">
+              <button
+                onClick={() => navigate('/details', { state: { video: featured } })}
+                className="flex items-center gap-3 bg-slate-800/80 backdrop-blur-md text-white px-8 py-4 rounded-xl font-bold hover:bg-slate-700 transition-all border border-slate-700"
+              >
                 <Info size={24} />
                 <span>More Info</span>
               </button>
@@ -106,7 +111,7 @@ const Home = () => {
             {videos.map(video => (
               <div
                 key={video.videoId}
-                onClick={() => navigate('/player', { state: { video } })}
+                onClick={() => navigate('/details', { state: { video } })}
                 className="group relative aspect-video bg-slate-900 rounded-xl overflow-hidden cursor-pointer border border-slate-800 hover:border-blue-500/50 transition-all transform hover:scale-105 shadow-2xl"
               >
                 <img

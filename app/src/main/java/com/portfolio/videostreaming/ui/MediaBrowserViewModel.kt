@@ -23,8 +23,15 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage = _errorMessage.asStateFlow()
 
+    private val _selectedVideo = MutableStateFlow<MediaFile?>(null)
+    val selectedVideo = _selectedVideo.asStateFlow()
+
     init {
         loadVideos()
+    }
+
+    fun selectVideo(video: MediaFile) {
+        _selectedVideo.value = video
     }
 
     /**
@@ -48,7 +55,9 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                         genre = dto.genre,
                         releaseYear = dto.releaseYear.toIntOrNull() ?: 0,
                         thumbnailUrl = dto.thumbnailUrl,
-                        videoUrl = dto.videoUrl
+                        videoUrl = dto.videoUrl,
+                        description = dto.description ?: "",
+                        tags = dto.tags ?: emptyList()
                     )
                 }
             } catch (e: Exception) {

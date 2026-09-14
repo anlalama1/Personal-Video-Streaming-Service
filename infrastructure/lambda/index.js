@@ -96,9 +96,8 @@ async function handleGetCatalog(event, tenantId) {
             thumbnailUrl,
             videoUrl,
             transcodeStatus: item.transcodeStatus || 'INGESTED',
-            aiTitle: item.aiTitle || '',
-            aiDescription: item.aiDescription || '',
-            aiTags: item.aiTags || [],
+            description: item.description || item.aiDescription || '',
+            tags: item.tags || item.aiTags || [],
             videoKey: item.videoKey || '',
             familyId: itemFamilyId
         };

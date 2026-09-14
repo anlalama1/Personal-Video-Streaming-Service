@@ -36,6 +36,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.portfolio.videostreaming.ui.CatalogScreen
+import com.portfolio.videostreaming.ui.MediaBrowserViewModel
+import com.portfolio.videostreaming.ui.MediaDetailsScreen
 import com.portfolio.videostreaming.ui.PlayerIntent
 import com.portfolio.videostreaming.ui.ScreenTimeViewModel
 import com.portfolio.videostreaming.ui.VideoPlayer
@@ -51,6 +53,7 @@ import java.nio.charset.StandardCharsets
  */
 sealed class Screen(val route: String) {
     object Catalog : Screen("catalog")
+    object Details : Screen("details")
     object Player : Screen("player/{videoId}/{videoUri}") {
         fun createRoute(videoId: String, videoUri: String): String {
             val encoded = URLEncoder.encode(videoUri, StandardCharsets.UTF_8.toString())
@@ -90,6 +93,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         if (hasPermission) {
                             val screenTimeViewModel: ScreenTimeViewModel = viewModel()
+                            val mediaBrowserViewModel: MediaBrowserViewModel = viewModel()
                             val navController = rememberNavController()
 
                             val sessionSeconds by screenTimeViewModel.sessionSeconds.collectAsState()
@@ -100,10 +104,24 @@ class MainActivity : ComponentActivity() {
                                 NavHost(navController = navController, startDestination = Screen.Catalog.route) {
                                     composable(Screen.Catalog.route) {
                                         CatalogScreen(
-                                            onVideoSelected = { videoId, videoUri ->
-                                                navController.navigate(Screen.Player.createRoute(videoId, videoUri))
+                                            viewModel = mediaBrowserViewModel,
+                                            onVideoSelected = { video ->
+                                                mediaBrowserViewModel.selectVideo(video)
+                                                navController.navigate(Screen.Details.route)
                                             }
                                         )
+                                    }
+                                    composable(Screen.Details.route) {
+                                        val selectedVideo by mediaBrowserViewModel.selectedVideo.collectAsState()
+                                        selectedVideo?.let { video ->
+                                            MediaDetailsScreen(
+                                                video = video,
+                                                onBack = { navController.popBackStack() },
+                                                onPlay = {
+                                                    navController.navigate(Screen.Player.createRoute(video.id, video.videoUrl))
+                                                }
+                                            )
+                                        }
                                     }
                                     composable(Screen.Player.route) { backStackEntry ->
                                         val videoId = backStackEntry.arguments?.getString("videoId") ?: ""

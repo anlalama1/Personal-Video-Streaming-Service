@@ -11,5 +11,7 @@ data class MediaFile(
     val genre: String,
     val releaseYear: Int,
     val thumbnailUrl: String,
-    val videoUrl: String
+    val videoUrl: String,
+    val description: String = "",
+    val tags: List<String> = emptyList()
 )

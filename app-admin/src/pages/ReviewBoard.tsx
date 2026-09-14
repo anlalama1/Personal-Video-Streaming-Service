@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { RefreshCcw, ClipboardCheck, Sparkles, CheckCircle } from 'lucide-react';
+import { RefreshCcw, ClipboardCheck, Sparkles, CheckCircle, Loader2 } from 'lucide-react';
 import { SYSTEM_CONFIG } from '../config';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -40,8 +40,10 @@ const ReviewBoard = () => {
       const res = await axios.get(`${API_BASE_URL}catalog`, {
         headers: { 'x-tenant-id': 'GLOBAL' }
       });
-      // Filter for items explicitly in REVIEW_PENDING state
-      const reviewItems = res.data.filter((item: MediaItem) => item.transcodeStatus === 'REVIEW_PENDING');
+      // Filter for items explicitly in REVIEW_PENDING state or currently being prepared (UPLOADING/PROCESSING)
+      const reviewItems = res.data.filter((item: MediaItem) =>
+        ['REVIEW_PENDING', 'UPLOADING', 'PROCESSING'].includes(item.transcodeStatus)
+      );
       setItems(reviewItems);
     } catch (err) {
       console.error('Failed to load review board data:', err);
@@ -146,30 +148,51 @@ const ReviewBoard = () => {
         <div className="lg:col-span-1 bg-slate-800 rounded-xl border border-slate-700 p-5 h-[calc(100vh-240px)] overflow-y-auto space-y-4">
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-2">Review Queue ({items.length})</h3>
 
-          {items.map((item) => (
-            <div
-              key={item.videoId}
-              onClick={() => selectItemForReview(item)}
-              className={`p-4 rounded-xl border transition-all cursor-pointer flex gap-4 items-center ${
-                selectedItem?.videoId === item.videoId
-                  ? 'bg-blue-600/20 border-blue-500 shadow-lg shadow-blue-500/10'
-                  : 'bg-slate-900/40 border-slate-700 hover:border-slate-500 hover:bg-slate-900/80'
-              }`}
-            >
-              <img
-                src={item.thumbnailUrl}
-                alt="AI thumbnail"
-                className="w-20 h-14 object-cover rounded-lg border border-slate-700 bg-slate-800"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-slate-200 truncate">{item.aiTitle || item.title}</div>
-                <div className="text-xs text-slate-500 font-mono truncate">{item.videoId}</div>
-                <div className="mt-1 flex items-center gap-1 text-[10px] text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded w-max font-semibold border border-blue-900">
-                  <Sparkles size={10} /> AI Staged
+          {items.map((item) => {
+            const isReady = item.transcodeStatus === 'REVIEW_PENDING';
+            const isSelected = selectedItem?.videoId === item.videoId;
+
+            return (
+              <div
+                key={item.videoId}
+                onClick={() => isReady && selectItemForReview(item)}
+                className={`p-4 rounded-xl border transition-all flex gap-4 items-center ${
+                  !isReady
+                    ? 'bg-slate-900/20 border-slate-800 opacity-60 cursor-not-allowed'
+                    : isSelected
+                      ? 'bg-blue-600/20 border-blue-500 shadow-lg shadow-blue-500/10 cursor-pointer'
+                      : 'bg-slate-900/40 border-slate-700 hover:border-slate-500 hover:bg-slate-900/80 cursor-pointer'
+                }`}
+              >
+                <div className="relative">
+                  <img
+                    src={item.thumbnailUrl || "https://via.placeholder.com/150"}
+                    alt="AI thumbnail"
+                    className="w-20 h-14 object-cover rounded-lg border border-slate-700 bg-slate-800"
+                  />
+                  {!isReady && (
+                    <div className="absolute inset-0 bg-slate-900/60 rounded-lg flex items-center justify-center">
+                      <Loader2 size={16} className="text-blue-400 animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-slate-200 truncate">{item.aiTitle || item.title}</div>
+                  <div className="text-xs text-slate-500 font-mono truncate">{item.videoId}</div>
+
+                  {isReady ? (
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded w-max font-semibold border border-blue-900">
+                      <Sparkles size={10} /> AI Staged
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded w-max font-semibold border border-amber-900">
+                      <Loader2 size={10} className="animate-spin" /> AI Processing...
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {items.length === 0 && !loading && (
             <div className="text-center py-20 text-slate-500 italic text-sm">

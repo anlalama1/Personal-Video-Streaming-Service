@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { RefreshCcw, ClipboardCheck, Sparkles, CheckCircle, Loader2 } from 'lucide-react';
+import { RefreshCcw, ClipboardCheck, Sparkles, CheckCircle, Loader2, Trash2 } from 'lucide-react';
 import { SYSTEM_CONFIG } from '../config';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -110,6 +110,26 @@ const ReviewBoard = () => {
       await fetchReviewQueue();
     } catch (err) {
       console.error('Publish confirmation failed:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedItem) return;
+    if (!window.confirm(`Are you sure you want to reject and purge "${selectedItem.title}"? This will move it to the trash for 30 days and then permanently delete all files.`)) return;
+
+    setSubmitting(true);
+    try {
+      await axios.delete(`${API_BASE_URL}catalog/${selectedItem.videoId}/${selectedItem.familyId}`, {
+        headers: { 'x-tenant-id': 'GLOBAL' }
+      });
+
+      setSuccessMsg(`"${selectedItem.title}" rejected and staged for deletion.`);
+      setSelectedItem(null);
+      await fetchReviewQueue();
+    } catch (err) {
+      console.error('Rejection failed:', err);
     } finally {
       setSubmitting(false);
     }
@@ -279,13 +299,24 @@ const ReviewBoard = () => {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-black py-4 rounded-xl transition-all shadow-xl tracking-widest uppercase text-sm"
-              >
-                {submitting ? 'Activating Transcoding Clusters...' : 'Approve & Trigger HLS Transcode'}
-              </button>
+              <div className="flex gap-4">
+                <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={handleReject}
+                    className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-red-900/40 text-slate-300 hover:text-red-400 px-6 py-4 rounded-xl transition-all border border-slate-600 hover:border-red-900 font-bold uppercase text-xs"
+                >
+                    <Trash2 size={16} /> Reject & Purge
+                </button>
+
+                <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-black py-4 rounded-xl transition-all shadow-xl tracking-widest uppercase text-sm"
+                >
+                    {submitting ? 'Activating Transcoding Clusters...' : 'Approve & Trigger HLS Transcode'}
+                </button>
+              </div>
             </form>
           ) : (
             <div className="bg-slate-800/40 border border-dashed border-slate-700 rounded-xl p-20 text-center text-slate-500 italic h-full flex flex-col justify-center items-center gap-2">

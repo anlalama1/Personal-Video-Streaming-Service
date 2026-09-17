@@ -40,6 +40,8 @@ exports.handler = async (event) => {
             return await handleCompleteMultipart(event, tenantId);
         } else if (path === '/catalog/publish' && method === 'POST') {
             return await handlePublishVideo(event, tenantId);
+        } else if (path === '/catalog/{videoId}/{familyId}' && method === 'DELETE') {
+            return await handleDeleteVideo(event, tenantId);
         }
 
         return response(404, { message: "Not Found" });
@@ -71,6 +73,10 @@ async function handleGetCatalog(event, tenantId) {
 
     const result = await docClient.send(command);
     let items = result.Items || [];
+
+    // Principal Strategy: Governance Gating.
+    // We always filter out items in the 'DELETED' state to support the two-phase purge.
+    items = items.filter(item => item.transcodeStatus !== 'DELETED');
 
     // Principal Strategy: Catalog Visibility Gating.
     // Consumer apps (Android/Scroll) only see items that are past the approval gate.
@@ -237,6 +243,29 @@ async function handlePublishVideo(event, tenantId) {
     }));
 
     return response(200, { success: true, message: "Asset approved. Full HLS transcoding kicked off." });
+}
+
+async function handleDeleteVideo(event, tenantId) {
+    const { videoId, familyId } = event.pathParameters;
+    const tableName = process.env.TABLE_NAME;
+
+    console.log(`DELETE: Soft-deleting ${videoId} for Tenant ${tenantId}`);
+
+    await docClient.send(new UpdateCommand({
+        TableName: tableName,
+        Key: {
+            PK: `TENANT#${tenantId}`,
+            SK: `FAMILY#${familyId}#VIDEO#${videoId}`
+        },
+        UpdateExpression: "SET transcodeStatus = :s, deletedAt = :t, lastUpdated = :lu",
+        ExpressionAttributeValues: {
+            ":s": "DELETED",
+            ":t": Date.now(),
+            ":lu": Date.now()
+        }
+    }));
+
+    return response(200, { success: true, message: "Asset moved to trash. Will be permanently purged after retention period." });
 }
 
 exports.logPlayHandler = async (event) => {

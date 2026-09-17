@@ -90,6 +90,10 @@ export class ApiStack extends cdk.Stack {
     const catalogPublish = catalog.addResource('publish');
     catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
 
+    const videoResource = catalog.addResource('{videoId}');
+    const familyResource = videoResource.addResource('{familyId}');
+    familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda));
+
     const ingest = api.root.addResource('ingest');
     ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
 

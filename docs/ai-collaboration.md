@@ -601,6 +601,16 @@ This document tracks the high-level collaboration between the human developer an
     - Integrated opt-out logic into the product roadmap, ensuring the platform remains inclusive for privacy-sensitive users.
 - **Outcome**: Created a high-trust onboarding experience that turns enterprise-grade data protection into a core product value.
 
+### 66. Governance & Cleanup: Two-Phase Deletion Implementation (Sept 16, 2026)
+- **Challenge**: Enabling users to reject ingestion drafts and delete library items without risking irreversible loss of family heritage media.
+- **AI Contribution**: 
+    - Designed and implemented the **Soft-Delete API** endpoint (`DELETE /catalog/{id}/{familyId}`).
+    - Engineered a **Retention-Period Sweeper**: Enhanced the background reconciliation process to identify items in `DELETED` state and perform automated hard purges after a configurable grace period.
+    - Integrated a **Manual Rejection Workflow** in the Demetrius Portal, allowing shop owners to immediately prune unwanted uploads.
+    - Implemented a **Governance-Aware Catalog Filter** that hides deleted items across all clients while preserving data for potential recovery.
+    - Introduced the **`RETENTION_PERIOD_HOURS`** environment variable to allow for dynamic platform tuning and accelerated testing of the deletion lifecycle.
+- **Outcome**: Established a resilient, professional data lifecycle strategy that balances system hygiene with high-stakes data safety.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

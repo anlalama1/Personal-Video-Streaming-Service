@@ -113,19 +113,27 @@ export class MediaProcessingStack extends cdk.Stack {
     this.orchestratorLambda.addEventSource(new SqsEventSource(transcodeQueue));
     props.metadataTable.grantReadWriteData(this.orchestratorLambda); // Permission for lock
 
-    // 7. The Sweeper: 15-minute sanity check for stuck transcodes
+    // 7. The Sweeper: 15-minute sanity check for stuck transcodes & governance purge
     const sweeperLambda = new lambda.Function(this, 'TranscodingSweeper', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'sweeper.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      timeout: cdk.Duration.minutes(5),
       environment: {
         TABLE_NAME: props.metadataTable.tableName,
         QUEUE_URL: transcodeQueue.queueUrl,
+        RETENTION_PERIOD_HOURS: '720', // Default 30 days
+        SOURCE_BUCKET: props.sourceBucket.bucketName,
+        THUMBNAIL_BUCKET: props.thumbnailBucket.bucketName,
+        DEST_BUCKET: props.hlsBucket.bucketName,
       },
     });
 
     props.metadataTable.grantReadWriteData(sweeperLambda);
     transcodeQueue.grantSendMessages(sweeperLambda);
+    props.sourceBucket.grantReadWrite(sweeperLambda);
+    props.thumbnailBucket.grantReadWrite(sweeperLambda);
+    props.hlsBucket.grantReadWrite(sweeperLambda);
 
     // Trigger sweeper every 15 minutes
     const sweepRule = new events.Rule(this, 'SweeperRule', {

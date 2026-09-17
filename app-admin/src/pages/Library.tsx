@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { RefreshCcw, CheckCircle2, Clock, XCircle, AlertTriangle, Sparkles, Database } from 'lucide-react';
+import { RefreshCcw, CheckCircle2, Clock, XCircle, AlertTriangle, Sparkles, Database, Trash2 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -13,11 +13,13 @@ interface MediaItem {
   transcodeStatus: string;
   hlsKey?: string;
   aiTitle?: string;
+  familyId: string;
 }
 
 const Library = () => {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchLibrary = async () => {
     setLoading(true);
@@ -30,6 +32,23 @@ const Library = () => {
       console.error('Failed to fetch library:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (videoId: string, familyId: string, title: string) => {
+    if (!window.confirm(`Move "${title}" to trash? It will be permanently purged after the retention period.`)) return;
+
+    setDeletingId(videoId);
+    try {
+      await axios.delete(`${API_BASE_URL}catalog/${videoId}/${familyId}`, {
+        headers: { 'x-tenant-id': 'GLOBAL' }
+      });
+      await fetchLibrary();
+    } catch (err) {
+      console.error('Deletion failed:', err);
+      alert('Failed to delete item.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -79,12 +98,12 @@ const Library = () => {
               <th className="px-6 py-4 font-semibold">Title</th>
               <th className="px-6 py-4 font-semibold">Details</th>
               <th className="px-6 py-4 font-semibold text-center">Status</th>
-              <th className="px-6 py-4 font-semibold">HLS Folder</th>
+              <th className="px-6 py-4 font-semibold text-center w-20">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700">
             {items.map((item) => (
-              <tr key={item.videoId} className={`hover:bg-slate-700/30 transition-colors ${item.transcodeStatus === 'REVIEW_PENDING' ? 'bg-amber-500/5' : ''}`}>
+              <tr key={item.videoId} className={`group hover:bg-slate-700/30 transition-colors ${item.transcodeStatus === 'REVIEW_PENDING' ? 'bg-amber-500/5' : ''}`}>
                 <td className="px-6 py-5">
                   <div className="font-bold text-slate-100 flex items-center gap-2">
                     {item.transcodeStatus === 'REVIEW_PENDING' ? item.aiTitle || item.title : item.title}
@@ -106,17 +125,22 @@ const Library = () => {
                   </div>
                 </td>
                 <td className="px-6 py-5">
-                   {item.hlsKey ? (
-                     <span className="text-xs font-mono text-blue-400">{item.hlsKey}</span>
-                   ) : (
-                     <span className="text-xs text-slate-600">—</span>
-                   )}
+                  <div className="flex justify-center">
+                    <button
+                        onClick={() => handleDelete(item.videoId, item.familyId, item.title)}
+                        disabled={deletingId === item.videoId}
+                        className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-950/30 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                        title="Move to Trash"
+                    >
+                        {deletingId === item.videoId ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
             {items.length === 0 && !loading && (
               <tr>
-                <td colSpan={4} className="px-6 py-20 text-center text-slate-500 italic">No media scrolls found in your library.</td>
+                <td colSpan={5} className="px-6 py-20 text-center text-slate-500 italic">No media scrolls found in your library.</td>
               </tr>
             )}
           </tbody>

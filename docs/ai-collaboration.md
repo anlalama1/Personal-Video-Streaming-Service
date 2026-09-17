@@ -627,6 +627,14 @@ This document tracks the high-level collaboration between the human developer an
     - Refactored the Android UI components (Catalog and Details) to match the high-end, immersive aesthetic of the web experience, utilizing unified gradients, blurs, and typography weights.
 - **Outcome**: Achieved high-fidelity brand alignment across all clients, proving the ability to architect and enforce a cohesive design language in a multi-platform ecosystem—a key expectation for Lead Engineering roles.
 
+### 69. UX Hardening: Ingestion History Management (Sept 16, 2026)
+- **Challenge**: The persistent upload task drawer in the Demetrius Portal could become cluttered with completed or failed tasks, with no easy way for the operator to reset the view.
+- **AI Contribution**: 
+    - Engineered a **State-Selective Purge** function in the `UploadContext` to filter out non-active tasks.
+    - Designed and implemented the **"Clear Finished"** UI action in the `UploadDrawer`, utilizing the **Eraser** icon for professional visual feedback.
+    - Automated the synchronization of the purged state down to **localStorage**, ensuring a clean interface upon subsequent page reloads.
+- **Outcome**: Improved administrative ergonomics and ensured long-term UI hygiene for the ingestion pipeline.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

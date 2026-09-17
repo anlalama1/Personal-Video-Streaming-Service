@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { useUpload } from '../context/UploadContext';
-import { ChevronUp, ChevronDown, CheckCircle, Loader2, AlertCircle, Play, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, CheckCircle, Loader2, AlertCircle, Play, X, Eraser } from 'lucide-react';
 
 const UploadDrawer = () => {
-  const { tasks, resumeUpload, removeTask } = useUpload();
+  const { tasks, resumeUpload, removeTask, clearTasks } = useUpload();
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -60,8 +60,21 @@ const UploadDrawer = () => {
       </button>
 
       {isOpen && (
-        <div className="p-4 space-y-4 overflow-y-auto h-80 border-t border-slate-700">
-          {tasks.map(task => (
+        <div className="flex flex-col h-80 border-t border-slate-700 bg-slate-800">
+          <div className="flex items-center justify-between px-4 py-2 bg-slate-900/50 border-b border-slate-700">
+            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Sync History</span>
+            {tasks.some(t => t.status !== 'uploading') && (
+              <button
+                onClick={clearTasks}
+                className="flex items-center gap-1 text-[10px] uppercase font-bold text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                <Eraser size={12} /> Clear Finished
+              </button>
+            )}
+          </div>
+
+          <div className="p-4 space-y-4 overflow-y-auto flex-1">
+            {tasks.map(task => (
             <div key={task.id} className="space-y-2 group">
               <div className="flex justify-between text-xs">
                 <span className="truncate w-40 font-medium text-slate-200">{task.title}</span>

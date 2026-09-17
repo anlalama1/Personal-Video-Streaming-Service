@@ -26,6 +26,7 @@ interface UploadContextType {
   startUpload: (file: File, metadata: any) => Promise<void>;
   resumeUpload: (taskId: string, file: File) => Promise<void>;
   removeTask: (taskId: string) => void;
+  clearTasks: () => void;
 }
 
 const UploadContext = createContext<UploadContextType | undefined>(undefined);
@@ -53,6 +54,11 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const removeTask = (id: string) => {
     setTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  const clearTasks = () => {
+    // Only clear tasks that are not currently active
+    setTasks(prev => prev.filter(t => t.status === 'uploading'));
   };
 
   /**
@@ -170,7 +176,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   return (
-    <UploadContext.Provider value={{ tasks, startUpload, resumeUpload, removeTask }}>
+    <UploadContext.Provider value={{ tasks, startUpload, resumeUpload, removeTask, clearTasks }}>
       {children}
     </UploadContext.Provider>
   );

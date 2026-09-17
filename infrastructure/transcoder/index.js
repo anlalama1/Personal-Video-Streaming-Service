@@ -187,8 +187,11 @@ async function handleHlsTranscode(localInput, dbKey) {
         if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
     });
 
-    console.log("Running FFmpeg adaptive HLS conversion ladder...");
-    const filter = "[0:v]split=3[v1][v2][v3];[v1]scale=w=1920:h=1080[v1out];[v2]scale=w=1280:h=720[v2out];[v3]scale=w=854:h=480[v3out]";
+    console.log("Running FFmpeg adaptive HLS conversion ladder with Aspect-Ratio preservation...");
+    const filter = "[0:v]split=3[v1][v2][v3];" +
+                   "[v1]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2[v1out];" +
+                   "[v2]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2[v2out];" +
+                   "[v3]scale=854:480:force_original_aspect_ratio=decrease,pad=854:480:(ow-iw)/2:(oh-ih)/2[v3out]";
 
     const ffmpegArgs = [
         '-i', localInput,

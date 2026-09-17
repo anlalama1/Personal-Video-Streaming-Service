@@ -611,6 +611,14 @@ This document tracks the high-level collaboration between the human developer an
     - Introduced the **`RETENTION_PERIOD_HOURS`** environment variable to allow for dynamic platform tuning and accelerated testing of the deletion lifecycle.
 - **Outcome**: Established a resilient, professional data lifecycle strategy that balances system hygiene with high-stakes data safety.
 
+### 67. Media Processing: Aspect Ratio Preservation (Sept 16, 2026)
+- **Challenge**: Vertical (portrait) videos recorded on mobile devices were being stretched and distorted when transcoded into the standard 16:9 HLS bitrate ladder.
+- **AI Contribution**: 
+    - Diagnosed the distortion as a "Force-Scale" issue in the FFmpeg transcode filter.
+    - Engineered a **Letterboxing/Pillarboxing** strategy using the `force_original_aspect_ratio=decrease` and `pad` filters.
+    - Normalized all output renditions at the transcode layer, ensuring seamless ABR switching while preserving the original visual dimensions of family memories.
+- **Outcome**: Delivered a professional, cinema-grade playback experience that respects the original format of heritage media across all device targets.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { RefreshCcw, CheckCircle2, Clock, XCircle, AlertTriangle, Sparkles, Database, Trash2 } from 'lucide-react';
+import { RefreshCcw, CheckCircle2, Clock, XCircle, AlertTriangle, Sparkles, Database, Trash2, Loader2 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 

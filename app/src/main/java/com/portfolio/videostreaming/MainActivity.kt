@@ -11,6 +11,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -42,6 +43,7 @@ import com.portfolio.videostreaming.ui.PlayerIntent
 import com.portfolio.videostreaming.ui.ScreenTimeViewModel
 import com.portfolio.videostreaming.ui.VideoPlayer
 import com.portfolio.videostreaming.ui.VideoPlayerViewModel
+import com.portfolio.videostreaming.ui.theme.AlexandriaTheme
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.net.URLEncoder
@@ -78,14 +80,15 @@ class MainActivity : ComponentActivity() {
         checkAndRequestPermission()
 
         setContent {
-            MaterialTheme {
-                Box(modifier = Modifier.fillMaxSize()) {
+            AlexandriaTheme {
+                Box(modifier = Modifier.fillMaxSize().background(Color(0xFF020617))) {
+                    // Subtle background texture matching 'The Scroll'
                     Image(
                         painter = painterResource(id = R.drawable.pixel9pro_background),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
-                        alpha = 0.5f
+                        alpha = 0.3f
                     )
                     Surface(
                         modifier = Modifier.fillMaxSize(),

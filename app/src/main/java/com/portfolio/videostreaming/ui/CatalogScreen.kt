@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,6 +36,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.portfolio.videostreaming.core.data.model.MediaFile
+import com.portfolio.videostreaming.ui.theme.Blue500
+import com.portfolio.videostreaming.ui.theme.Slate900
+import com.portfolio.videostreaming.ui.theme.Slate400
 
 @Composable
 fun CatalogScreen(
@@ -68,13 +74,24 @@ fun CatalogScreen(
                 modifier = Modifier.fillMaxSize().padding(16.dp)
             ) {
                 item {
-                    Text(
-                        text = "Cloud Library",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 24.dp)) {
+                        // Cinematic Blue Glow indicator matching 'The Scroll'
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Blue500)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Cloud Library",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
+                    }
                 }
                 
                 items(videoList) { video ->
@@ -97,10 +114,12 @@ fun VideoItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = Color.Black.copy(alpha = 0.4f)
-        )
+            containerColor = Slate900.copy(alpha = 0.8f)
+        ),
+        border = null // Senior Strategy: Use shadow and color instead of hard borders
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             // Senior Strategy: Use Coil for optimized image loading
@@ -108,9 +127,8 @@ fun VideoItem(
                 model = video.thumbnailUrl,
                 contentDescription = "Thumbnail for ${video.title}",
                 modifier = Modifier
-                    .size(100.dp)
-                    .aspectRatio(16f / 9f)
-                    .clip(MaterialTheme.shapes.small),
+                    .size(width = 120.dp, height = 68.dp)
+                    .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
             
@@ -120,13 +138,16 @@ fun VideoItem(
                 Text(
                     text = video.title,
                     color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.2.sp
                 )
                 Text(
-                    text = "${video.genre} • ${video.releaseYear}",
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 14.sp
+                    text = "${video.genre.uppercase()} • ${video.releaseYear}",
+                    color = Slate400,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.5.sp
                 )
             }
         }

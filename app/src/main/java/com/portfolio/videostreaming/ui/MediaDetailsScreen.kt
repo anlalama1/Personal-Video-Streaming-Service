@@ -1,6 +1,7 @@
 package com.portfolio.videostreaming.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.portfolio.videostreaming.core.data.model.MediaFile
+import com.portfolio.videostreaming.ui.theme.Blue500
+import com.portfolio.videostreaming.ui.theme.Slate950
 
 @Composable
 fun MediaDetailsScreen(
@@ -44,26 +47,37 @@ fun MediaDetailsScreen(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = modifier.fillMaxSize().background(Slate950)) {
         // Cinematic Background Backdrop
         AsyncImage(
             model = video.thumbnailUrl,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
-                .alpha(0.4f)
-                .blur(8.dp),
+                .alpha(0.3f)
+                .blur(4.dp),
             contentScale = ContentScale.Crop
         )
 
-        // Gradient Overlays for Readability
+        // Gradient Overlays for Readability - Pixel-perfect with 'The Scroll'
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f), Color.Black),
+                        colors = listOf(Color.Transparent, Slate950.copy(alpha = 0.6f), Slate950),
                         startY = 0f
+                    )
+                )
+        )
+        
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(Slate950, Color.Transparent, Color.Transparent),
+                        startX = 0f
                     )
                 )
         )

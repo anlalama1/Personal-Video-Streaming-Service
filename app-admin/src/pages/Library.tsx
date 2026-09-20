@@ -79,45 +79,45 @@ const Library = () => {
     <div>
       <header className="flex justify-between items-center mb-10">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Digital Library</h2>
-          <p className="text-slate-400">Manage your active scrolls and monitor engine health.</p>
+          <h2 className="text-3xl font-bold text-heritage-parchment mb-2 text-glow-gold">Digital Library</h2>
+          <p className="text-heritage-400">Manage your active scrolls and monitor engine health.</p>
         </div>
         <button
           onClick={fetchLibrary}
-          className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-5 py-2.5 rounded-lg border border-slate-700 transition-all"
+          className="flex items-center gap-2 bg-heritage-800 hover:bg-heritage-700 text-heritage-parchment px-5 py-2.5 rounded-lg border border-heritage-800 transition-all shadow-lg"
         >
           <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
           <span>Refresh</span>
         </button>
       </header>
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl overflow-hidden">
+      <div className="bg-heritage-900 rounded-xl border border-heritage-800 shadow-2xl overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-900/50 text-slate-400 text-sm uppercase tracking-wider">
-              <th className="px-6 py-4 font-semibold">Title</th>
-              <th className="px-6 py-4 font-semibold">Details</th>
-              <th className="px-6 py-4 font-semibold text-center">Status</th>
-              <th className="px-6 py-4 font-semibold text-center w-20">Actions</th>
+            <tr className="bg-heritage-black/50 text-heritage-400 text-sm uppercase tracking-wider">
+              <th className="px-6 py-4 font-black">Title</th>
+              <th className="px-6 py-4 font-black">Details</th>
+              <th className="px-6 py-4 font-black text-center">Status</th>
+              <th className="px-6 py-4 font-black text-center w-20">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-700">
+          <tbody className="divide-y divide-heritage-800">
             {items.map((item) => (
-              <tr key={item.videoId} className={`group hover:bg-slate-700/30 transition-colors ${item.transcodeStatus === 'REVIEW_PENDING' ? 'bg-amber-500/5' : ''}`}>
+              <tr key={item.videoId} className={`group hover:bg-heritage-800/30 transition-colors ${item.transcodeStatus === 'REVIEW_PENDING' ? 'bg-heritage-gold/5' : ''}`}>
                 <td className="px-6 py-5">
-                  <div className="font-bold text-slate-100 flex items-center gap-2">
+                  <div className="font-bold text-heritage-parchment flex items-center gap-2">
                     {item.transcodeStatus === 'REVIEW_PENDING' ? item.aiTitle || item.title : item.title}
                     {item.transcodeStatus === 'REVIEW_PENDING' && (
-                      <Link to="/review" className="text-[10px] text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800 hover:bg-amber-900/50 transition-all font-semibold">
+                      <Link to="/review" className="text-[10px] text-heritage-gold bg-heritage-gold/10 px-2 py-0.5 rounded border border-heritage-gold/30 hover:bg-heritage-gold/20 transition-all font-black tracking-widest uppercase">
                         Review Draft
                       </Link>
                     )}
                   </div>
-                  <div className="text-xs text-slate-500 font-mono">{item.videoId}</div>
+                  <div className="text-xs text-heritage-400/60 font-mono">{item.videoId}</div>
                 </td>
                 <td className="px-6 py-5">
-                  <div className="text-sm text-slate-300">{item.genre}</div>
-                  <div className="text-xs text-slate-500">{item.releaseYear}</div>
+                  <div className="text-sm text-heritage-parchment font-medium">{item.genre}</div>
+                  <div className="text-xs text-heritage-400 font-mono">{item.releaseYear}</div>
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex justify-center">
@@ -129,7 +129,7 @@ const Library = () => {
                     <button
                         onClick={() => handleDelete(item.videoId, item.familyId, item.title)}
                         disabled={deletingId === item.videoId}
-                        className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-950/30 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                        className="text-heritage-400 hover:text-heritage-sunset p-2 rounded-lg hover:bg-heritage-sunset/10 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
                         title="Move to Trash"
                     >
                         {deletingId === item.videoId ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
@@ -140,7 +140,7 @@ const Library = () => {
             ))}
             {items.length === 0 && !loading && (
               <tr>
-                <td colSpan={5} className="px-6 py-20 text-center text-slate-500 italic">No media scrolls found in your library.</td>
+                <td colSpan={5} className="px-6 py-20 text-center text-heritage-400 italic">No media scrolls found in your library.</td>
               </tr>
             )}
           </tbody>

@@ -28,3 +28,9 @@ body {
 ::-webkit-scrollbar-thumb {
   @apply bg-heritage-800 rounded-full hover:bg-stone-700 transition-colors;
 }
+
+@layer utilities {
+  .text-glow-gold {
+    text-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+  }
+}

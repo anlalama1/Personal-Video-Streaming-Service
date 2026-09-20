@@ -208,6 +208,11 @@ The project is **done** when all of the following are true:
 - [ ] **Pipeline Build Signing**: Update the CI/CD pipeline and `build.gradle.kts` to pull the signing credentials during the build process.
 - [ ] **Consistent Updating**: Verify that apps built via the pipeline can be installed as updates over locally-built versions (and vice versa) without package conflicts.
 
+### Milestone 26 — Architectural Hardening: Lambda Decomposition
+- [ ] **Service Mapping**: Audit the monolithic Scribe Lambda and map logic to domain-specific services (Ingestion, Catalog, Management).
+- [ ] **Event-Driven Handlers**: Transition from direct Lambda-to-Lambda invocations to **Amazon EventBridge** or SQS for asynchronous workflows (e.g., triggering metadata extraction).
+- [ ] **Micro-Service Deployment**: Deploy decoupled functions with scoped IAM permissions to minimize the "Blast Radius" of any single service failure.
+
 ---
 
 ## Requirement Coverage Map

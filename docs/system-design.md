@@ -193,3 +193,8 @@ This section documents the "Why" behind our engineering choices, representing Le
     2.  **Edge-First (Privacy)**: Local ML Kit extracts tags -> Cloud LLM writes story from tags only. *Verifiable Privacy: Images never leave the device.*
     3.  **Cloud-Full (Magic)**: Images sent to Bedrock for multimodal analysis. *High-fidelity/Opt-in only.*
 *   **Reasoning**: To bridge the "Trust Gap" for family media, the platform must move from "Legal Promises" to "Architectural Proof." By using on-device vision as the default, we leverage the user's existing mental model of phone-based privacy (e.g., Apple/Google Photos search) while maintaining the platform's core automation value.
+
+### 22. Mobile Intake Strategy: Foreground-Only Sync
+*   **Constraint**: Automated media detection and ingestion will occur **only while the Alexandria+ app is in the foreground**.
+*   **Reasoning**: To balance ease-of-use with battery and system performance, the platform will mirror the behavior of tier-1 apps like Google Photos. By restricting "The Great Intake" to active sessions, we eliminate background battery drain concerns and ensure the user is aware of the network/compute activity.
+*   **Implementation**: Utilize `ProcessLifecycleOwner` or active `Activity` lifecycle states to trigger camera-roll scanning, rather than persistent background `WorkManager` workers.

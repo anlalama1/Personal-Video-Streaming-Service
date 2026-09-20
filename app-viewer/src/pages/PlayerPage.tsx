@@ -45,18 +45,18 @@ const PlayerPage = () => {
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden group">
       {/* Custom Control Overlay (Top) */}
-      <div className="absolute top-0 left-0 w-full p-8 z-50 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-b from-black/80 to-transparent">
+      <div className="absolute top-0 left-0 w-full p-8 z-50 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-b from-heritage-black/80 to-transparent">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-3 text-white hover:text-blue-400 transition-colors"
+          className="flex items-center gap-3 text-heritage-parchment hover:text-heritage-gold transition-colors"
         >
           <ArrowLeft size={28} />
           <span className="text-xl font-bold tracking-tight">{video.title}</span>
         </button>
 
-        <div className="flex items-center gap-6 text-slate-300">
-           <Settings className="cursor-pointer hover:text-white" size={24} />
-           <Maximize className="cursor-pointer hover:text-white" size={24} />
+        <div className="flex items-center gap-6 text-heritage-400">
+           <Settings className="cursor-pointer hover:text-heritage-parchment" size={24} />
+           <Maximize className="cursor-pointer hover:text-heritage-parchment" size={24} />
         </div>
       </div>
 

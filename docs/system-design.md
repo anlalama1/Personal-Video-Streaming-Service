@@ -185,3 +185,11 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Decision**: **Soft-Delete with configurable retention window via `RETENTION_PERIOD_HOURS`**.
 *   **Trade-off**: Increased storage overhead vs. **User Experience Safety**.
 *   **Reasoning**: Family heritage media is irreplaceable. A "Hard Delete" (immediate permanent removal) on a single tap is too high-risk for this platform. We implement a "Soft Delete" flag in DynamoDB which hides the asset from the library immediately, but retains the S3 files for a grace period (default 30 days). The **Sweeper Lambda** acts as the governance engine, performing final hard purges only after the retention period—tunable via an environment variable to allow for operational flexibility and accelerated testing.
+
+### 21. Privacy Engineering: Tiered Metadata Ingestion
+*   **Decision**: Implement a three-tier "Privacy Ladder" for metadata generation, with **On-Device ML (Privacy Mode)** as the system default.
+*   **Architectural Guardrail**: 
+    1.  **Manual (Luddite)**: 100% human-typed.
+    2.  **Edge-First (Privacy)**: Local ML Kit extracts tags -> Cloud LLM writes story from tags only. *Verifiable Privacy: Images never leave the device.*
+    3.  **Cloud-Full (Magic)**: Images sent to Bedrock for multimodal analysis. *High-fidelity/Opt-in only.*
+*   **Reasoning**: To bridge the "Trust Gap" for family media, the platform must move from "Legal Promises" to "Architectural Proof." By using on-device vision as the default, we leverage the user's existing mental model of phone-based privacy (e.g., Apple/Google Photos search) while maintaining the platform's core automation value.

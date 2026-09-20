@@ -635,6 +635,15 @@ This document tracks the high-level collaboration between the human developer an
     - Automated the synchronization of the purged state down to **localStorage**, ensuring a clean interface upon subsequent page reloads.
 - **Outcome**: Improved administrative ergonomics and ensured long-term UI hygiene for the ingestion pipeline.
 
+### 70. Strategic Pivot: Resolving the GenAI Trust Gap (Sept 16, 2026)
+- **Challenge**: Identifying that legal disclaimers regarding GenAI training policies are insufficient to earn parent's trust for private family media, potentially creating a PR nightmare.
+- **AI Contribution**: 
+    - Formulated the **"Privacy-First Metadata Architecture"**.
+    - Recommended shifting the "Visual Brain" of the system from the Cloud to the **Edge** (using Google ML Kit).
+    - Designed the **Three-Tier Privacy Ladder** (Manual, Privacy, Magic) to provide users with verifiable agency over their data.
+    - Defined "Privacy Mode" (On-Device Vision) as the system default to align with existing smartphone privacy standards.
+- **Outcome**: Transformed a significant systemic risk into a core architectural differentiator, positioning Alexandria+ as a market leader in high-trust family preservation.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

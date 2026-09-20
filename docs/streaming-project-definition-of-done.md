@@ -196,6 +196,12 @@ The project is **done** when all of the following are true:
 - [ ] **S3 Lifecycle Alignment**: Ensure that deleting a DynamoDB record triggers a background purge of all associated S3 assets (Source MP4, Thumbnails, HLS Fragments).
 - [ ] **Hard vs Soft Delete Strategy**: Implement "Soft Delete" (e.g., `isDeleted` flag) for the first 30 days to allow for accidental recovery, followed by permanent hard deletion.
 
+### Milestone 24 — Privacy-First Metadata Architecture
+- [ ] **Privacy Onboarding UI**: Implement a "Trust Disclosure" screen during the first upload that explains the three metadata modes: *Luddite* (Manual), *Privacy* (On-Device ML), and *Magic* (Cloud AI).
+- [ ] **On-Device Labeling (Default)**: Integrate Google ML Kit in the Android app to perform local object detection/labeling.
+- [ ] **"Blind" Cloud Narratives**: Update the Fargate/Bedrock pipeline to support a text-only mode that generates descriptions based solely on local ML tags, ensuring no images leave the device for default users.
+- [ ] **Opt-in "Magic" Mode**: Implement the secure toggle to allow users to explicitly opt-in to the current multimodal analysis for high-fidelity storytelling.
+
 ---
 
 ## Requirement Coverage Map

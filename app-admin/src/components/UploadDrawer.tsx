@@ -122,6 +122,7 @@ const UploadDrawer = () => {
             </div>
           ))}
         </div>
+      </div>
       )}
     </div>
   );

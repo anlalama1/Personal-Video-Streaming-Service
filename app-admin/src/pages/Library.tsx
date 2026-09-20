@@ -59,19 +59,19 @@ const Library = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'COMPLETED':
-        return <span className="flex items-center gap-1.5 text-green-400 bg-green-950/50 px-3 py-1 rounded-full text-xs font-bold border border-green-800"><CheckCircle2 size={14} /> Ready</span>;
+        return <span className="flex items-center gap-1.5 text-heritage-gold bg-heritage-gold/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-heritage-gold/30"><CheckCircle2 size={14} /> Ready</span>;
       case 'REVIEW_PENDING':
-        return <span className="flex items-center gap-1.5 text-amber-400 bg-amber-950/50 px-3 py-1 rounded-full text-xs font-bold border border-amber-800"><Sparkles size={14} /> Needs Review</span>;
+        return <span className="flex items-center gap-1.5 text-heritage-gold bg-heritage-gold/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-heritage-gold/30 animate-pulse"><Sparkles size={14} /> Needs Review</span>;
       case 'UPLOADING':
-        return <span className="flex items-center gap-1.5 text-slate-400 bg-slate-900/50 px-3 py-1 rounded-full text-xs font-bold border border-slate-700 animate-pulse"><Database size={14} /> Ingesting</span>;
+        return <span className="flex items-center gap-1.5 text-heritage-400 bg-heritage-black/50 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-heritage-800 animate-pulse"><Database size={14} /> Ingesting</span>;
       case 'PROCESSING':
-        return <span className="flex items-center gap-1.5 text-blue-300 bg-blue-900/40 px-3 py-1 rounded-full text-xs font-bold border border-blue-800 animate-pulse"><Sparkles size={14} /> AI Analysis</span>;
+        return <span className="flex items-center gap-1.5 text-heritage-parchment bg-heritage-gold/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-heritage-gold/30 animate-pulse"><Sparkles size={14} /> AI Analysis</span>;
       case 'TRANSCODING':
-        return <span className="flex items-center gap-1.5 text-blue-400 bg-blue-950/50 px-3 py-1 rounded-full text-xs font-bold border border-blue-800 animate-pulse"><Clock size={14} /> Transcoding</span>;
+        return <span className="flex items-center gap-1.5 text-heritage-gold bg-heritage-gold/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-heritage-gold/30 animate-pulse"><Clock size={14} /> Transcoding</span>;
       case 'FAILED':
-        return <span className="flex items-center gap-1.5 text-orange-400 bg-orange-950/50 px-3 py-1 rounded-full text-xs font-bold border border-orange-800"><AlertTriangle size={14} /> Error</span>;
+        return <span className="flex items-center gap-1.5 text-heritage-sunset bg-heritage-sunset/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-heritage-sunset/30"><AlertTriangle size={14} /> Error</span>;
       default:
-        return <span className="flex items-center gap-1.5 text-slate-400 bg-slate-950/50 px-3 py-1 rounded-full text-xs font-bold border border-slate-800">{status}</span>;
+        return <span className="flex items-center gap-1.5 text-heritage-400 bg-heritage-black/50 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-heritage-800">{status}</span>;
     }
   };
 

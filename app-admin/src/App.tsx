@@ -10,25 +10,25 @@ function App() {
   return (
     <UploadProvider>
       <Router basename="/admin">
-        <div className="flex h-screen bg-slate-900 text-slate-100">
+        <div className="flex h-screen bg-heritage-black text-heritage-parchment">
           {/* Sidebar */}
-          <aside className="w-64 bg-slate-800 border-r border-slate-700 p-6">
+          <aside className="w-64 bg-heritage-900 border-r border-heritage-800 p-6">
             <div className="flex items-center gap-3 mb-10 px-2">
-              <Database className="text-blue-400 w-8 h-8" />
-              <h1 className="text-xl font-bold tracking-tight">Alexandria+ <span className="text-sm font-light block text-slate-400">Demetrius Portal</span></h1>
+              <Database className="text-heritage-gold w-8 h-8" />
+              <h1 className="text-xl font-black tracking-tighter uppercase italic">Alexandria+ <span className="text-[10px] font-black block text-heritage-400 tracking-[0.2em] mt-1">Demetrius Portal</span></h1>
             </div>
 
             <nav className="space-y-2">
-              <Link to="/home" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors">
-                <UploadCloud size={20} />
+              <Link to="/home" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-heritage-800 transition-colors font-bold text-sm">
+                <UploadCloud size={20} className="text-heritage-gold" />
                 <span>Ingestion</span>
               </Link>
-              <Link to="/review" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors">
-                <ClipboardCheck size={20} />
+              <Link to="/review" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-heritage-800 transition-colors font-bold text-sm">
+                <ClipboardCheck size={20} className="text-heritage-gold" />
                 <span>Review Board</span>
               </Link>
-              <Link to="/library" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors">
-                <LibraryIcon size={20} />
+              <Link to="/library" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-heritage-800 transition-colors font-bold text-sm">
+                <LibraryIcon size={20} className="text-heritage-gold" />
                 <span>Library</span>
               </Link>
             </nav>

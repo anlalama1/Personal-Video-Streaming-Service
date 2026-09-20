@@ -38,6 +38,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.portfolio.videostreaming.ui.theme.HeritageBlack
+import com.portfolio.videostreaming.ui.theme.Amber500
+import com.portfolio.videostreaming.ui.theme.Parchment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -71,7 +74,7 @@ fun PlayerControls(
 
     Box(
         modifier = modifier
-            .background(if (isVisible) Color.Black.copy(alpha = 0.3f) else Color.Transparent)
+            .background(if (isVisible) HeritageBlack.copy(alpha = 0.4f) else Color.Transparent)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -82,7 +85,7 @@ fun PlayerControls(
     ) {
         // Buffering Indicator (Added as a Senior refinement)
         if (state.isBuffering) {
-            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(64.dp))
+            CircularProgressIndicator(color = Amber500, modifier = Modifier.size(64.dp))
         }
 
         AnimatedVisibility(
@@ -96,7 +99,7 @@ fun PlayerControls(
                 Surface(
                     onClick = onBack,
                     shape = CircleShape,
-                    color = Color.Black.copy(alpha = 0.5f),
+                    color = HeritageBlack.copy(alpha = 0.6f),
                     modifier = Modifier
                         .padding(32.dp)
                         .size(48.dp)
@@ -105,8 +108,8 @@ fun PlayerControls(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go Back",
-                            tint = Color.White,
+                            contentDescription = "Back",
+                            tint = Parchment,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -158,9 +161,9 @@ fun PlayerControls(
                         onValueChange = { onIntent(PlayerIntent.SeekTo(it.toLong())) },
                         valueRange = 0f..(if (state.duration > 0) state.duration.toFloat() else 1f),
                         colors = SliderDefaults.colors(
-                            thumbColor = Color.White,
-                            activeTrackColor = Color.White,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                            thumbColor = Amber500,
+                            activeTrackColor = Amber500,
+                            inactiveTrackColor = Amber500.copy(alpha = 0.3f)
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -170,12 +173,12 @@ fun PlayerControls(
                     ) {
                         Text(
                             text = formatTime(state.currentPosition),
-                            color = Color.White,
+                            color = Parchment,
                             fontSize = 14.sp
                         )
                         Text(
                             text = formatTime(state.duration),
-                            color = Color.White,
+                            color = Parchment,
                             fontSize = 14.sp
                         )
                     }
@@ -213,14 +216,14 @@ private fun ControlIconButton(
     Surface(
         onClick = onClick,
         shape = CircleShape,
-        color = Color.Black.copy(alpha = 0.5f),
+        color = HeritageBlack.copy(alpha = 0.6f),
         modifier = Modifier.size(size)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = Color.White,
+                tint = Parchment,
                 modifier = Modifier.size(iconSize)
             )
         }

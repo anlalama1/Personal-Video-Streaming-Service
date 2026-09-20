@@ -40,6 +40,8 @@ import com.portfolio.videostreaming.core.data.model.MediaFile
 import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Orange600
+import com.portfolio.videostreaming.ui.theme.Parchment
+import com.portfolio.videostreaming.ui.theme.Stone400
 
 @Composable
 fun MediaDetailsScreen(
@@ -97,12 +99,12 @@ fun MediaDetailsScreen(
             ) {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), MaterialTheme.shapes.extraLarge)
+                    modifier = Modifier.background(HeritageBlack.copy(alpha = 0.4f), MaterialTheme.shapes.extraLarge)
                 ) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = Parchment
                     )
                 }
             }
@@ -134,7 +136,7 @@ fun MediaDetailsScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = video.releaseYear.toString(),
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = Stone400,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -146,7 +148,7 @@ fun MediaDetailsScreen(
                 Text(
                     text = video.title,
                     style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
+                    color = Parchment,
                     fontWeight = FontWeight.Black,
                     lineHeight = 42.sp
                 )
@@ -158,7 +160,7 @@ fun MediaDetailsScreen(
                     text = video.description.ifEmpty { 
                         "Experience the digital resurrection of family heritage. A professionally preserved digital scroll, now streaming in high fidelity across your entire ecosystem."
                     },
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = Parchment.copy(alpha = 0.8f),
                     fontSize = 16.sp,
                     lineHeight = 24.sp,
                     modifier = Modifier.fillMaxWidth(0.9f)
@@ -179,13 +181,13 @@ fun MediaDetailsScreen(
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = null,
-                            tint = Color.Black,
+                            tint = HeritageBlack,
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "PLAY NOW",
-                            color = Color.Black,
+                            color = HeritageBlack,
                             fontWeight = FontWeight.Black,
                             fontSize = 18.sp,
                             letterSpacing = 1.sp

@@ -660,6 +660,31 @@ This document tracks the high-level collaboration between the human developer an
     - Configured high-fidelity scaling and positioning logic to ensure the new assets render sharply across varying device densities.
 - **Outcome**: Successfully transitioned Alexandria+ from a "portfolio project" to a **branded platform**, providing a premium first-impression experience that mirrors the high-end engineering of the backend pipeline.
 
+### 73. Release Engineering: Unified App Signing Strategy (Sept 20, 2026)
+- **Challenge**: Encountered "Package Conflict" errors when trying to install pipeline-built APKs over locally-deployed debug versions due to cryptographic signature mismatches.
+- **AI Contribution**: 
+    - Diagnosed the root cause as the local `debug.keystore` vs. the ephemeral pipeline build environment.
+    - Formulated the **"Production Signing Milestone"** to move from ephemeral debug keys to a centralized, permanent identity.
+    - Designed the security architecture for storing signing assets in **AWS Secrets Manager**, ensuring that "Identity-as-Code" is maintained without committing sensitive binaries to Git.
+- **Outcome**: Established the roadmap for professional-grade app distribution, ensuring seamless updates across the entire development and production lifecycle.
+
+### 74. Ecosystem Branding: Full-Stack 'Heritage Gold' Synchronization (Sept 20, 2026)
+- **Challenge**: The "Heritage Gold" aesthetic was isolated to the Android app, creating a disjointed experience when switching to the Web Viewer or Admin Portal. Additionally, legacy blue background assets and non-transparent JPG logos created visual artifacts.
+- **AI Contribution**: 
+    - Promoted the mobile Design Tokens to a **Global Design System**, synchronizing Tailwind and CSS configurations across both React-based web clients.
+    - Engineered a **Theme-Aware Background** for Android, eliminating the blue Pixel legacy image in favor of a pure `HeritageBlack` surfaces.
+    - Orchestrated the migration to **PNG High-Fidelity Assets**, leveraging native alpha transparency to eliminate "white edge" artifacts in the UI.
+    - Implemented a **proper Adaptive Icon XML** in Android to ensure the branded launcher icon masks correctly across all OS variations.
+- **Outcome**: Achieved total visual coherence across the multi-platform ecosystem, elevating the brand to a professional, "market-ready" standard.
+
+### 75. Architectural Mastery: Shared Design Token System (Sept 20, 2026)
+- **Challenge**: Hard-coding hex codes across multiple tech stacks (Kotlin for Android, Tailwind for Web) leads to "Visual Debt" and manual synchronization errors.
+- **AI Contribution**: 
+    - Engineered a **Single Source of Truth** for branding using a centralized [design-tokens.json](file:///I:/Android%20Projects/tokens/design-tokens.json).
+    - Integrated the JSON tokens directly into the **Tailwind configurations** for both web clients, utilizing ES modules for seamless asset consumption.
+    - Standardized the Android [Color.kt](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/theme/Color.kt) to mirror the JSON keys, establishing the pattern for future code-generation automation.
+- **Outcome**: Established a professional Design System architecture that allows for global brand updates (e.g., changing the 'Gold' hue) with a single file modification, a hallmark of scalable Lead SDE leadership.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

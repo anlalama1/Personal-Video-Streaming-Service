@@ -1,3 +1,5 @@
+import tokens from '../tokens/design-tokens.json';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -7,12 +9,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        alexandria: {
-          900: '#0f172a',
-          800: '#1e293b',
-          700: '#334155',
-          600: '#475569',
-          accent: '#38bdf8',
+        heritage: {
+          black: tokens.colors['heritage-black'],
+          900: tokens.colors['stone-900'],
+          800: tokens.colors['stone-800'],
+          400: tokens.colors['stone-400'],
+          gold: tokens.colors['amber-500'],
+          sunset: tokens.colors['orange-600'],
+          parchment: tokens.colors['parchment'],
         }
       }
     },

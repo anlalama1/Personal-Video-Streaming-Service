@@ -1,0 +1,15 @@
+{
+  "colors": {
+    "heritage-black": "#0C0A09",
+    "stone-900": "#1C1917",
+    "stone-800": "#292524",
+    "stone-400": "#A8A29E",
+    "parchment": "#FAF7F5",
+    "amber-500": "#F59E0B",
+    "orange-600": "#EA580C"
+  },
+  "metadata": {
+    "palette-name": "Heritage Gold",
+    "description": "Ancient Egyptian inspired cinematic dark theme for Alexandria+"
+  }
+}

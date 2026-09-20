@@ -13,4 +13,18 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  @apply bg-heritage-black text-heritage-parchment;
+}
+
+/* Custom scrollbar for a professional look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-heritage-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-heritage-800 rounded-full hover:bg-stone-700 transition-colors;
 }

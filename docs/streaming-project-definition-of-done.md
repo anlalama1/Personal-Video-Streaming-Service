@@ -202,6 +202,12 @@ The project is **done** when all of the following are true:
 - [ ] **"Blind" Cloud Narratives**: Update the Fargate/Bedrock pipeline to support a text-only mode that generates descriptions based solely on local ML tags, ensuring no images leave the device for default users.
 - [ ] **Opt-in "Magic" Mode**: Implement the secure toggle to allow users to explicitly opt-in to the current multimodal analysis for high-fidelity storytelling.
 
+### Milestone 25 — Release Engineering: Production App Signing
+- [ ] **Release Keystore Generation**: Generate a permanent, secure JKS (Java KeyStore) for production app signing.
+- [ ] **AWS Secrets Manager Integration**: Store the Keystore binary and passwords securely in AWS Secrets Manager to decouple identity from the build environment.
+- [ ] **Pipeline Build Signing**: Update the CI/CD pipeline and `build.gradle.kts` to pull the signing credentials during the build process.
+- [ ] **Consistent Updating**: Verify that apps built via the pipeline can be installed as updates over locally-built versions (and vice versa) without package conflicts.
+
 ---
 
 ## Requirement Coverage Map

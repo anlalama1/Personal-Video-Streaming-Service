@@ -7,15 +7,18 @@ import androidx.compose.ui.graphics.Color
  * Synchronized with 'The Scroll' Web Design System (Tailwind Config)
  */
 
-// Primary Palette
-val Slate950 = Color(0xFF020617) // Base Background
-val Slate900 = Color(0xFF0F172A) // Surface / Card Background
-val Slate800 = Color(0xFF1E293B) // Border / Secondary Surface
-val Slate700 = Color(0xFF334155) // Tertiary Surface
-val Slate400 = Color(0xFF94A3B8) // Secondary Text
-val Slate100 = Color(0xFFF1F5F9) // Primary Text
+/**
+ * Alexandria+ Unified Design Tokens - 'Heritage Gold' Palette
+ * Optimized for Cinematic Dark Mode with an Ancient Egyptian aesthetic.
+ */
 
-// Brand Accents
-val Blue500 = Color(0xFF3B82F6) // Primary Action / Highlight
-val Blue600_20 = Color(0x332563EB) // Accent Glow / Translucent Overlay
-val Emerald600 = Color(0xFF059669) // Success State
+// Primary Palette (Warm Stone)
+val HeritageBlack = Color(0xFF0C0A09) // Base Background
+val Stone900 = Color(0xFF1C1917)      // Surface / Card Background
+val Stone800 = Color(0xFF292524)      // Border / Secondary Surface
+val Stone400 = Color(0xFFA8A29E)      // Secondary Text
+val Parchment = Color(0xFFFAF7F5)     // Primary Text (Warm Off-White)
+
+// Brand Accents (Desert Sun & Sunset)
+val Amber500 = Color(0xFFF59E0B)      // Primary Gold / Action Highlight
+val Orange600 = Color(0xFFEA580C)     // Sunset Secondary / Badges

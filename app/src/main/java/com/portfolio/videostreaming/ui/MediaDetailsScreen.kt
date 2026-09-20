@@ -37,8 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.portfolio.videostreaming.core.data.model.MediaFile
-import com.portfolio.videostreaming.ui.theme.Blue500
-import com.portfolio.videostreaming.ui.theme.Slate950
+import com.portfolio.videostreaming.ui.theme.Amber500
+import com.portfolio.videostreaming.ui.theme.HeritageBlack
+import com.portfolio.videostreaming.ui.theme.Orange600
 
 @Composable
 fun MediaDetailsScreen(
@@ -47,7 +48,7 @@ fun MediaDetailsScreen(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.fillMaxSize().background(Slate950)) {
+    Box(modifier = modifier.fillMaxSize().background(HeritageBlack)) {
         // Cinematic Background Backdrop
         AsyncImage(
             model = video.thumbnailUrl,
@@ -65,7 +66,7 @@ fun MediaDetailsScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Slate950.copy(alpha = 0.6f), Slate950),
+                        colors = listOf(Color.Transparent, HeritageBlack.copy(alpha = 0.6f), HeritageBlack),
                         startY = 0f
                     )
                 )
@@ -76,7 +77,7 @@ fun MediaDetailsScreen(
                 .fillMaxSize()
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(Slate950, Color.Transparent, Color.Transparent),
+                        colors = listOf(HeritageBlack, Color.Transparent, Color.Transparent),
                         startX = 0f
                     )
                 )
@@ -118,15 +119,16 @@ fun MediaDetailsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .background(Color(0xFF0055FF).copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                            .background(Orange600.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .border(1.dp, Orange600.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                     ) {
                         Text(
                             text = video.genre.uppercase(),
-                            color = Color(0xFF4488FF),
+                            color = Orange600,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
+                            letterSpacing = 1.2.sp
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -170,7 +172,7 @@ fun MediaDetailsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    colors = ButtonDefaults.buttonColors(containerColor = Amber500),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

@@ -15,7 +15,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
@@ -44,6 +43,7 @@ import com.portfolio.videostreaming.ui.ScreenTimeViewModel
 import com.portfolio.videostreaming.ui.VideoPlayer
 import com.portfolio.videostreaming.ui.VideoPlayerViewModel
 import com.portfolio.videostreaming.ui.theme.AlexandriaTheme
+import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.net.URLEncoder
@@ -81,7 +81,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AlexandriaTheme {
-                Box(modifier = Modifier.fillMaxSize().background(Color(0xFF020617))) {
+                Box(modifier = Modifier.fillMaxSize().background(HeritageBlack)) {
                     // Subtle background texture matching 'The Scroll'
                     Image(
                         painter = painterResource(id = R.drawable.pixel9pro_background),

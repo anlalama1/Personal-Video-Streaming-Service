@@ -1,18 +1,17 @@
 package com.portfolio.videostreaming.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,7 +19,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -30,15 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.portfolio.videostreaming.R
 import com.portfolio.videostreaming.core.data.model.MediaFile
-import com.portfolio.videostreaming.ui.theme.Blue500
-import com.portfolio.videostreaming.ui.theme.Slate900
-import com.portfolio.videostreaming.ui.theme.Slate400
+import com.portfolio.videostreaming.ui.theme.Stone900
+import com.portfolio.videostreaming.ui.theme.Stone400
 
 @Composable
 fun CatalogScreen(
@@ -74,24 +73,17 @@ fun CatalogScreen(
                 modifier = Modifier.fillMaxSize().padding(16.dp)
             ) {
                 item {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 24.dp)) {
-                        // Cinematic Blue Glow indicator matching 'The Scroll'
-                        Box(
-                            modifier = Modifier
-                                .width(4.dp)
-                                .height(32.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(Blue500)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Cloud Library",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.5).sp
-                        )
-                    }
+                    // Branded Heritage Logo Header
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_flat),
+                        contentDescription = "Alexandria+ Logo",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .padding(bottom = 24.dp),
+                        contentScale = ContentScale.Fit,
+                        alignment = Alignment.CenterStart
+                    )
                 }
                 
                 items(videoList) { video ->
@@ -117,7 +109,7 @@ fun VideoItem(
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = Slate900.copy(alpha = 0.8f)
+            containerColor = Stone900.copy(alpha = 0.8f)
         ),
         border = null // Senior Strategy: Use shadow and color instead of hard borders
     ) {
@@ -144,7 +136,7 @@ fun VideoItem(
                 )
                 Text(
                     text = "${video.genre.uppercase()} • ${video.releaseYear}",
-                    color = Slate400,
+                    color = Stone400,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp

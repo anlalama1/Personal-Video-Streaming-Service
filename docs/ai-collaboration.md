@@ -717,19 +717,22 @@ This document tracks the high-level collaboration between the human developer an
     - Orchestrated a coordinated upgrade of the `minSdk` to **26** across both the `:app` and `:core:data` modules.
 - **Outcome**: Resolved the pipeline bottleneck and established the baseline for modern Android identity features.
 
-### 79. Build System: SDK Version Upgrade for Adaptive Icons (Sept 20, 2026)
-- **Challenge**: The Android CI/CD pipeline failed during resource linking due to the introduction of `<adaptive-icon>` elements, which require a minimum SDK version of 26 (Android 8.0).
-- **AI Contribution**: 
-    - Diagnosed the version mismatch between the new branded assets and the legacy `minSdk = 24` configuration.
-    - Orchestrated a coordinated upgrade of the `minSdk` to **26** across both the `:app` and `:core:data` modules.
-- **Outcome**: Resolved the pipeline bottleneck and established the baseline for modern Android identity features.
-
 ### 80. CI/CD Troubleshooting: Web Module Resolution (Sept 20, 2026)
-- **Challenge**: The `DeployScrollViewer` stage failed with a `TS2307` error, claiming it could not find the newly created `Navbar` component, despite the file existing in the local workspace.
+- **Challenge**: The `DeployScrollViewer` stage failed with a `TS2307` error, claiming it could not find the `Navbar` module, likely due to file-casing sensitivity or Git-tracking artifacts in the Linux-based CI environment.
 - **AI Contribution**: 
-    - Conducted a multi-stage resolution strategy: introduced an `index.ts` barrel export, renamed the component to `Navigation` to rule out naming collisions, and finally flattened the directory structure by moving the component to the `src` root.
-    - Verified path resolution and casing against Linux-based CI environment expectations.
-- **Outcome**: Hardened the web module's import structure to ensure reliable compilation across all pipeline environments.
+    - Conducted a **"Force-New-File"** resolution strategy by renaming the component to `AppNavbar.tsx` and moving it back to a dedicated `components/` directory.
+    - Eliminated all barrel exports (`index.ts`) and simplified the import chain in `App.tsx` to use direct relative paths.
+    - Verified the removal of potentially conflicting legacy artifacts in the local workspace.
+- **Outcome**: Hardened the web module's structure to bypass environment-specific resolution issues, ensuring a reliable build in the AWS pipeline.
+
+### 81. Personalization Strategy: Dynamic Theme Library (Sept 20, 2026)
+- **Challenge**: Shifting from a single fixed brand identity to a flexible, user-centric aesthetic that allows families to personalize their digital vaults.
+- **AI Contribution**: 
+    - Designed the **Dynamic Theme Architecture** for a multi-platform ecosystem.
+    - Formulated the migration from static Tailwind classes to **CSS Runtime Variables** for the web clients.
+    - Planned the implementation of a `ThemeRepository` in the Android app to allow for real-time `ColorScheme` swapping via Jetpack Compose.
+    - Recommended the integration of **Material You (Monet)** as a premium Android feature to align the vault with system-level aesthetics.
+- **Outcome**: Established the roadmap for user-driven personalization, turning "Theming" into a key SaaS value proposition.
 
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.

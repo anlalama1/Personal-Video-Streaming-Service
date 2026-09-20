@@ -213,6 +213,13 @@ The project is **done** when all of the following are true:
 - [ ] **Event-Driven Handlers**: Transition from direct Lambda-to-Lambda invocations to **Amazon EventBridge** or SQS for asynchronous workflows (e.g., triggering metadata extraction).
 - [ ] **Micro-Service Deployment**: Deploy decoupled functions with scoped IAM permissions to minimize the "Blast Radius" of any single service failure.
 
+### Milestone 27 — Personalized Aesthetics: Dynamic Theme Library
+- [ ] **Theme Schema Registry**: Define a collection of premium, historically-inspired themes (e.g., *Heritage Gold*, *Midnight Ocean*, *Royal Library*) in a centralized JSON registry.
+- [ ] **User Preference Persistence**: Update the User Profile layer (Cognito/DynamoDB) to store and sync a user's `selectedThemeId`.
+- [ ] **Runtime Token Injection (Web)**: Refactor the React apps to utilize **CSS Variables** (`var(--heritage-gold)`) instead of static Tailwind colors, allowing for real-time theme switching without a rebuild.
+- [ ] **Dynamic Palette Switching (Android)**: Refactor `AlexandriaTheme` to be driven by a `ThemeRepository`, enabling the app to swap the entire `ColorScheme` at runtime based on user preference.
+- [ ] **Material You (Monet) Integration**: (Stretch) Integrate Android 12+ dynamic coloring to allow the vault's aesthetic to match the user's device wallpaper.
+
 ---
 
 ## Requirement Coverage Map

@@ -734,6 +734,92 @@ This document tracks the high-level collaboration between the human developer an
     - Recommended the integration of **Material You (Monet)** as a premium Android feature to align the vault with system-level aesthetics.
 - **Outcome**: Established the roadmap for user-driven personalization, turning "Theming" into a key SaaS value proposition.
 
+### 82. Visual Hardening: High-Fidelity Asset Migration (Sept 20, 2026)
+- **Challenge**: Persistent "generic" icons in web clients and "baked-in" checkerboard artifacts in the Android logo created a disjointed and unprofessional visual experience.
+- **AI Contribution**: 
+    - Orchestrated the **Global Logo Deployment**, replacing generic `lucide-react` icons with the official `logo_flat.png` in both the Web Viewer and Admin Portal headers.
+    - Diagnosed the Android "checkerboard" issue as a artifact of "fake" transparency in the converted PNG pixels.
+    - Optimized the Android **MainActivity** to utilize a strictly theme-aware `Surface` with `HeritageBlack`, eliminating legacy Pixel background dependencies.
+- **Outcome**: Unified the brand identity across all digital touchpoints and identified the "Asset Quality" bottleneck for final production polish.
+
+### 83. Architectural Hardening: Asset Single Source of Truth (SSOT) (Sept 20, 2026)
+- **Challenge**: Redundant copies of brand logos across multiple project directories (`app-admin`, `app-viewer`, `app`) leads to maintenance overhead and risk of visual drift.
+- **AI Contribution**: 
+    - Established a **Single Source of Truth** for visual assets by centralizing high-fidelity PNGs in the Android resource directory (`app/src/main/res/drawable`).
+    - Refactored the **CI/CD Pipeline** ([PipelineStack.ts](file:///I:/Android%20Projects/infrastructure/lib/PipelineStack.ts)) to automatically copy the master logo into the web projects' `public/` folders during the build process.
+    - Automated the cleanup of legacy JPG assets to ensure strictly PNG usage across the ecosystem.
+- **Outcome**: Optimized the project structure for "Maintenance Excellence," ensuring that a single asset update propagates to all platforms without manual intervention.
+
+### 84. Global Navigation: Android 'Heritage Navbar' Integration (Sept 21, 2026)
+- **Challenge**: The Android app lacked a persistent, branded navigation experience compared to the high-fidelity web viewer, leading to inconsistent user journeys.
+- **AI Contribution**: 
+    - Engineered a global `AlexandriaNavbar` Composable mirroring the **Heritage Gold** aesthetic of the web's global navigation.
+    - Implemented **Backstack-Aware Visibility** in the `MainActivity` to automatically hide the navbar on the cinematic player screen.
+    - Refactored the `CatalogScreen` and root layout to support a translucent, persistent header with the official `logo_flat.png` visual anchor.
+- **Outcome**: Achieved total cross-platform parity for navigation and branding, establishing a unified premium experience across the entire digital ecosystem.
+
+### 85. UX Refinement: Edge-to-Edge & System Insets (Sept 21, 2026)
+- **Challenge**: The global navbar was colliding with system-level UI elements (Status Bar icons like clock and battery), impacting legibility and touch ergonomics.
+- **AI Contribution**: 
+    - Migrated the application to a **True Edge-to-Edge** model by implementing `enableEdgeToEdge()` in the `MainActivity`.
+    - Engineered the `AlexandriaNavbar` to utilize **Window Insets** (`statusBarsPadding`), allowing the branded background to bleed behind the status bar while safely padding the navigation content.
+    - Standardized bottom-of-screen ergonomics by applying `navigationBarsPadding` to the main navigation host.
+- **Outcome**: Delivered a professional, OS-integrated layout that respects system-level "safe areas" while maximizing visual immersion.
+
+### 86. UX Refinement: Context-Aware Screen Time Overlay (Sept 21, 2026)
+- **Challenge**: The Parental Screen Time timer was visible globally, including on the media catalog and detail screens, creating visual clutter and a disjointed navigation experience.
+- **AI Contribution**: 
+    - Implemented **Context-Aware Visibility** for the telemetry overlay in `MainActivity`.
+    - Integrated backstack-aware logic to ensure the timer only renders when a video title is actively playing (in the `Player` screen).
+- **Outcome**: Improved UI focus by restricting monitoring tools to the relevant playback context, aligning the experience with premium streaming standards.
+
+### 87. Brand Identity: Wordmark Integration (Sept 21, 2026)
+- **Challenge**: The platform's wordmark ("ALEXANDRIA+") felt disconnected from the iconic logo glyph, creating a visual redundancy in the header.
+- **AI Contribution**: 
+    - Conceptualized and implemented the **"Logo-as-a-Letter"** wordmark integration.
+    - Refactored all three clients (Android App, Web Viewer, and Demetrius Portal) to replace the initial 'A' in the brand name with the high-fidelity logo glyph.
+    - Fine-tuned typography alignments and spacing across Kotlin/Compose and React/Tailwind to create a seamless, integrated brand unit.
+- **Outcome**: Delivered a unique, professional visual signature that maximizes brand recognition and reduces UI clutter in restricted header spaces.
+
+### 88. Brand Identity: Wordmark Refinement (Sept 21, 2026)
+- **Challenge**: The integrated wordmark needed better visual balance, and the italicized text clashed with the geometric sharp edges of the logo glyph.
+- **AI Contribution**: 
+    - Refined the **"Logo-as-a-Letter"** lockup by increasing the glyph scale (to 38dp on mobile) for better vertical alignment with adjacent text.
+    - Removed all padding between the logo and text and transitioned the font style to **Normal (Non-Italic)** to emphasize the clean, bold, geometric nature of the brand.
+- **Outcome**: Achieved a perfectly balanced, authoritative brand signature that feels modern and architectural.
+
+### 89. Brand Identity: High-Fidelity Lockup Polish (Sept 21, 2026)
+- **Challenge**: Lingering transparent padding within the logo asset created an unintended visual gap between the logo glyph and the "LEXANDRIA+" text, breaking the cohesive wordmark illusion.
+- **AI Contribution**: 
+    - Engineered a **Negative-Offset Lockup** strategy across all three clients (Kotlin/Compose and React/Tailwind).
+    - Applied negative horizontal offsets and margins (e.g., `-8dp` on Android, `-ml-3` on Web) to "swallow" internal asset padding and pull the typography into a tight, professional unit.
+    - Increased the logo scale to **44dp** (Android) and comparable web sizes to establish the glyph as the dominant 'A' in the brand name.
+- **Outcome**: Delivered a pixel-perfect, custom-tailored brand signature that masks asset limitations through smart UI engineering, a key skill for senior-level interface development.
+
+### 90. Brand Identity: Optical Alignment Polish (Sept 21, 2026)
+- **Challenge**: The logo glyph (acting as the 'A') appeared vertically misaligned with the text baseline, sitting slightly higher than the adjacent "LEXANDRIA+" characters.
+- **AI Contribution**: 
+    - Conducted an **Optical Alignment Audit** across the multi-platform ecosystem.
+    - Engineered a **Baseline-Correction Strategy** by applying precise vertical offsets (e.g., `offset(y = 3.dp)` in Kotlin/Compose and `translate-y-1` in Tailwind/CSS).
+    - Synchronized these corrections across Android, Web Viewer, and Admin Portal to ensure a stable, architecturally-sound visual signature.
+- **Outcome**: Achieved a perfectly balanced "Geometric Lockup" where the logo and text share a unified baseline, fulfilling the highest standards of professional brand integration.
+
+### 91. Brand Identity: High-Density Lockup Finalization (Sept 21, 2026)
+- **Challenge**: The brand wordmark required final weighting and density adjustments to ensure the logo glyph felt fully integrated as the lead 'A' without floating or excessive negative space.
+- **AI Contribution**: 
+    - Conducted a **Visual Weight Optimization** pass across all three clients.
+    - Increased the logo scale to **52dp** (Android) and comparable web sizes to provide the necessary "Hero" presence.
+    - Engineered an **Advanced Offset Lockup**, shifting the logo "up and to the right" within its alignment box while simultaneously tightening the horizontal text gap (up to `-12dp` on mobile) to eliminate all perceived visual padding.
+- **Outcome**: Delivered an ultra-tight, high-density brand signature that successfully merges the iconic glyph with the wordmark into a single, unbreakable visual unit.
+
+### 92. Ecosystem Branding: Cross-Platform Lockup Synchronization (Sept 21, 2026)
+- **Challenge**: Disjointed brand presentation across the multi-platform ecosystem due to varying manual tweaks and asset interpretations.
+- **AI Contribution**: 
+    - Synchronized the **"Perfect Lockup"** parameters across Android and Web clients.
+    - Replicated the user-perfected Android dimensions (52px height, precise x/y offsets, and -12px negative margins) into the React/Tailwind codebase.
+    - Standardized the visual signature baseline to ensure brand authority remains constant regardless of the user's primary device.
+- **Outcome**: Achieved absolute visual parity across the entire Alexandria+ digital footprint.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

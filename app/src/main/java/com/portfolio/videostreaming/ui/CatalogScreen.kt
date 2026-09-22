@@ -73,17 +73,7 @@ fun CatalogScreen(
                 modifier = Modifier.fillMaxSize().padding(16.dp)
             ) {
                 item {
-                    // Branded Heritage Logo Header
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_flat),
-                        contentDescription = "Alexandria+ Logo",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                            .padding(bottom = 24.dp),
-                        contentScale = ContentScale.Fit,
-                        alignment = Alignment.CenterStart
-                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
                 
                 items(videoList) { video ->

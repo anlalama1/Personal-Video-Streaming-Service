@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -13,7 +14,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +37,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.portfolio.videostreaming.ui.CatalogScreen
 import com.portfolio.videostreaming.ui.MediaBrowserViewModel
@@ -42,6 +46,7 @@ import com.portfolio.videostreaming.ui.PlayerIntent
 import com.portfolio.videostreaming.ui.ScreenTimeViewModel
 import com.portfolio.videostreaming.ui.VideoPlayer
 import com.portfolio.videostreaming.ui.VideoPlayerViewModel
+import com.portfolio.videostreaming.ui.components.AlexandriaNavbar
 import com.portfolio.videostreaming.ui.theme.AlexandriaTheme
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import java.util.Locale
@@ -76,6 +81,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         checkAndRequestPermission()
 
@@ -94,73 +100,90 @@ class MainActivity : ComponentActivity() {
                         val dailySeconds by screenTimeViewModel.dailySeconds.collectAsState()
                         val isCounterVisible by screenTimeViewModel.isCounterVisible.collectAsState()
 
+                        val navBackStackEntry by navController.currentBackStackEntryAsState()
+                        val currentRoute = navBackStackEntry?.destination?.route
+                        val isPlayerScreen = currentRoute?.startsWith("player") == true
+
                         Box(modifier = Modifier.fillMaxSize()) {
-                            NavHost(navController = navController, startDestination = Screen.Catalog.route) {
-                                composable(Screen.Catalog.route) {
-                                    CatalogScreen(
-                                        viewModel = mediaBrowserViewModel,
-                                        onVideoSelected = { video ->
-                                            mediaBrowserViewModel.selectVideo(video)
-                                            navController.navigate(Screen.Details.route)
-                                        }
-                                    )
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                // Principal Strategy: Global Navbar with Visibility Intelligence
+                                if (!isPlayerScreen) {
+                                    AlexandriaNavbar()
                                 }
-                                composable(Screen.Details.route) {
-                                    val selectedVideo by mediaBrowserViewModel.selectedVideo.collectAsState()
-                                    selectedVideo?.let { video ->
-                                        MediaDetailsScreen(
-                                            video = video,
-                                            onBack = { navController.popBackStack() },
-                                            onPlay = {
-                                                navController.navigate(Screen.Player.createRoute(video.id, video.videoUrl))
+
+                                NavHost(
+                                    navController = navController, 
+                                    startDestination = Screen.Catalog.route,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .navigationBarsPadding()
+                                ) {
+                                    composable(Screen.Catalog.route) {
+                                        CatalogScreen(
+                                            viewModel = mediaBrowserViewModel,
+                                            onVideoSelected = { video ->
+                                                mediaBrowserViewModel.selectVideo(video)
+                                                navController.navigate(Screen.Details.route)
                                             }
                                         )
                                     }
-                                }
-                                composable(Screen.Player.route) { backStackEntry ->
-                                    val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
-                                    val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
-                                    val playerViewModel: VideoPlayerViewModel = viewModel()
-
-                                    val viewState by playerViewModel.viewState.collectAsState()
-
-                                    // 1. Sync the global timer with this specific player's state
-                                    LaunchedEffect(viewState.isPlaying) {
-                                        screenTimeViewModel.setTicking(viewState.isPlaying)
-                                    }
-
-                                    // 2. Stop the timer immediately when this screen is destroyed
-                                    DisposableEffect(Unit) {
-                                        onDispose {
-                                            screenTimeViewModel.setTicking(false)
+                                    composable(Screen.Details.route) {
+                                        val selectedVideo by mediaBrowserViewModel.selectedVideo.collectAsState()
+                                        selectedVideo?.let { video ->
+                                            MediaDetailsScreen(
+                                                video = video,
+                                                onBack = { navController.popBackStack() },
+                                                onPlay = {
+                                                    navController.navigate(Screen.Player.createRoute(video.id, video.videoUrl))
+                                                }
+                                            )
                                         }
                                     }
+                                    composable(Screen.Player.route) { backStackEntry ->
+                                        val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
+                                        val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+                                        val playerViewModel: VideoPlayerViewModel = viewModel()
 
-                                    // Start playing as soon as we enter this screen
-                                    LaunchedEffect(videoId, videoUri) {
-                                        playerViewModel.processIntent(PlayerIntent.LoadVideo(videoId, videoUri))
+                                        val viewState by playerViewModel.viewState.collectAsState()
+
+                                        // 1. Sync the global timer with this specific player's state
+                                        LaunchedEffect(viewState.isPlaying) {
+                                            screenTimeViewModel.setTicking(viewState.isPlaying)
+                                        }
+
+                                        // 2. Stop the timer immediately when this screen is destroyed
+                                        DisposableEffect(Unit) {
+                                            onDispose {
+                                                screenTimeViewModel.setTicking(false)
+                                            }
+                                        }
+
+                                        // Start playing as soon as we enter this screen
+                                        LaunchedEffect(videoId, videoUri) {
+                                            playerViewModel.processIntent(PlayerIntent.LoadVideo(videoId, videoUri))
+                                        }
+
+                                        VideoPlayer(
+                                            player = playerViewModel.exoPlayer,
+                                            state = viewState,
+                                            onIntent = { playerViewModel.processIntent(it) },
+                                            isScreenTimeVisible = isCounterVisible,
+                                            onBack = { navController.popBackStack() },
+                                            onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
                                     }
-
-                                    VideoPlayer(
-                                        player = playerViewModel.exoPlayer,
-                                        state = viewState,
-                                        onIntent = { playerViewModel.processIntent(it) },
-                                        isScreenTimeVisible = isCounterVisible,
-                                        onBack = { navController.popBackStack() },
-                                        onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
-                                        modifier = Modifier.fillMaxSize()
-                                    )
                                 }
                             }
 
-                            // Parental Screen Time Overlay
+                            // Parental Screen Time Overlay (Absolute Position)
                             AnimatedVisibility(
-                                visible = isCounterVisible,
+                                visible = isCounterVisible && isPlayerScreen,
                                 enter = fadeIn(),
                                 exit = fadeOut(),
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
-                                    .padding(16.dp)
+                                    .padding(top = 80.dp) // Below the Navbar
                             ) {
                                 Text(
                                     text = "Session: ${formatSeconds(sessionSeconds)} | Daily: ${formatSeconds(dailySeconds)}",

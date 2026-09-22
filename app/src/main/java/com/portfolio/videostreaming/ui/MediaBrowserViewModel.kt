@@ -42,9 +42,9 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                // Call the Lambda-backed API Gateway with the tenant context
+                // Call the Lambda-backed API Gateway. Tenancy is now handled via JWT in the interceptor.
                 val dtos = withContext(Dispatchers.IO) {
-                    StreamingApi.service.getCatalog("GLOBAL") // Hardcoded for MVP
+                    StreamingApi.service.getCatalog()
                 }
                 
                 // Map DTOs to UI Models

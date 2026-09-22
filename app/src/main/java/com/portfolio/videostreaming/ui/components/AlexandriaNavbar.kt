@@ -1,7 +1,6 @@
-package com.portfolio.videostreaming.ui.components
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Surface
@@ -25,6 +24,7 @@ import com.portfolio.videostreaming.ui.theme.Stone400
 
 @Composable
 fun AlexandriaNavbar(
+    onSignOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -77,12 +77,13 @@ fun AlexandriaNavbar(
                         letterSpacing = 1.sp
                     )
                     
-                    // Profile Circle
+                    // Profile Circle with Logout action
                     Box(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Amber500),
+                            .background(Amber500)
+                            .clickable { onSignOut() },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

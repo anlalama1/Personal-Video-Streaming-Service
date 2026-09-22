@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Library } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const location = useLocation();
+  const { signOut } = useAuth();
 
   // Hide navbar in the player for full-screen immersion
   if (location.pathname === '/player') return null;
@@ -19,7 +21,10 @@ const Navbar = () => {
           <Link to="/" className="cursor-pointer hover:text-heritage-parchment transition-colors">Home</Link>
           <span className="cursor-pointer hover:text-heritage-parchment transition-colors opacity-50 cursor-not-allowed">Movies</span>
           <span className="cursor-pointer hover:text-heritage-parchment transition-colors opacity-50 cursor-not-allowed">Music</span>
-          <div className="w-9 h-9 rounded-full bg-heritage-gold flex items-center justify-center text-heritage-black text-xs font-black shadow-lg shadow-heritage-gold/20 cursor-pointer hover:scale-105 transition-all">
+          <div
+            onClick={() => window.confirm('Sign out of the Heritage Vault?') && signOut()}
+            className="w-9 h-9 rounded-full bg-heritage-gold flex items-center justify-center text-heritage-black text-xs font-black shadow-lg shadow-heritage-gold/20 cursor-pointer hover:scale-105 transition-all"
+          >
             AL
           </div>
       </div>

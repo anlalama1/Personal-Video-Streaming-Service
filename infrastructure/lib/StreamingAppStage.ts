@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { StorageStack } from './StorageStack';
 import { DatabaseStack } from './DatabaseStack';
 import { ApiStack } from './ApiStack';
+import { AuthStack } from './AuthStack';
 import { MediaProcessingStack } from './MediaProcessingStack';
 import { ObservabilityStack } from './ObservabilityStack';
 import { Config } from '../bin/config';
@@ -34,6 +35,8 @@ export class StreamingAppStage extends cdk.Stage {
 
     const database = new DatabaseStack(this, 'DatabaseStack', { env });
 
+    const auth = new AuthStack(this, 'AuthStack', { env });
+
     const mediaProcessing = new MediaProcessingStack(this, 'MediaProcessingStack', {
       env,
       sourceBucket: storage.mediaBucket,
@@ -45,6 +48,7 @@ export class StreamingAppStage extends cdk.Stage {
     const api = new ApiStack(this, 'ApiStack', {
       env,
       table: database.table,
+      userPool: auth.userPool,
       cdnDomain: storage.distribution.distributionDomainName,
       mediaBucket: storage.mediaBucket,
       orchestratorLambda: mediaProcessing.orchestratorLambda

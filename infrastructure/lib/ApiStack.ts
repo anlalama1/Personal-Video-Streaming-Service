@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -9,6 +10,7 @@ import * as path from 'path';
 
 interface ApiStackProps extends cdk.StackProps {
   table: dynamodb.ITable;
+  userPool: cognito.IUserPool;
   cdnDomain: string;
   mediaBucket: s3.IBucket;
   orchestratorLambda?: lambda.IFunction;
@@ -84,32 +86,36 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
+    const authorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'AlexandriaAuthorizer', {
+      cognitoUserPools: [props.userPool]
+    });
+
     const catalog = api.root.addResource('catalog');
-    catalog.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda));
+    catalog.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
 
     const catalogPublish = catalog.addResource('publish');
-    catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
+    catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
 
     const videoResource = catalog.addResource('{videoId}');
     const familyResource = videoResource.addResource('{familyId}');
-    familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda));
+    familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
 
     const ingest = api.root.addResource('ingest');
-    ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
+    ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
 
     const upload = api.root.addResource('upload');
 
     const start = upload.addResource('start');
-    start.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
+    start.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
 
     const part = upload.addResource('part');
-    part.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
+    part.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
 
     const complete = upload.addResource('complete');
-    complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda));
+    complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
 
     const play = api.root.addResource('play');
-    play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda));
+    play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda)); // Keep telemetry public for now or auth later
 
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.url });
   }

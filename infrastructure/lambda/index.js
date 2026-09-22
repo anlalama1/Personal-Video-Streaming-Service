@@ -23,8 +23,13 @@ exports.handler = async (event) => {
     try {
         const path = event.resource;
         const method = event.httpMethod;
-        const headers = event.headers || {};
-        const tenantId = headers['x-tenant-id'] || headers['X-Tenant-Id'] || 'GLOBAL';
+        const requestContext = event.requestContext || {};
+        const authorizer = requestContext.authorizer || {};
+        const claims = authorizer.claims || {};
+
+        // Principal Strategy: Identity-Driven Tenancy.
+        // We derive the Tenant ID (familyId) directly from the cryptographically signed JWT.
+        const tenantId = claims['custom:familyId'] || 'GLOBAL';
 
         console.log(`Scribe Request: ${method} ${path} for Tenant: ${tenantId}`);
 

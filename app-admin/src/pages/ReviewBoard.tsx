@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { RefreshCcw, ClipboardCheck, Sparkles, CheckCircle, Loader2, Trash2 } from 'lucide-react';
 import { SYSTEM_CONFIG } from '../config';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import api from '../api';
 
 interface MediaItem {
   videoId: string;
@@ -37,9 +35,7 @@ const ReviewBoard = () => {
   const fetchReviewQueue = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}catalog?adminView=true`, {
-        headers: { 'x-tenant-id': 'GLOBAL' }
-      });
+      const res = await api.get('catalog?adminView=true');
       // Filter for items explicitly in REVIEW_PENDING state or currently being prepared (UPLOADING/PROCESSING)
       const reviewItems = res.data.filter((item: MediaItem) =>
         ['REVIEW_PENDING', 'UPLOADING', 'PROCESSING'].includes(item.transcodeStatus)
@@ -92,7 +88,7 @@ const ReviewBoard = () => {
         .map(t => t.trim())
         .filter(t => t.length > 0);
 
-      await axios.post(`${API_BASE_URL}catalog/publish`, {
+      await api.post('catalog/publish', {
         videoId: selectedItem.videoId,
         familyId: selectedItem.familyId,
         videoKey: selectedItem.videoKey,
@@ -101,8 +97,6 @@ const ReviewBoard = () => {
         releaseYear: formData.releaseYear,
         description: formData.description,
         tags: tagsArray
-      }, {
-        headers: { 'x-tenant-id': 'GLOBAL' }
       });
 
       setSuccessMsg(`"${formData.title}" officially approved and queued for full HLS transcoding!`);
@@ -121,9 +115,7 @@ const ReviewBoard = () => {
 
     setSubmitting(true);
     try {
-      await axios.delete(`${API_BASE_URL}catalog/${selectedItem.videoId}/${selectedItem.familyId}`, {
-        headers: { 'x-tenant-id': 'GLOBAL' }
-      });
+      await api.delete(`catalog/${selectedItem.videoId}/${selectedItem.familyId}`);
 
       setSuccessMsg(`"${selectedItem.title}" rejected and staged for deletion.`);
       setSelectedItem(null);

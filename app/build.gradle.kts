@@ -50,13 +50,16 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    
+
     // Shared Core Modules
     implementation(project(":core:data"))
-    
+
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.7.0")
-    
+
+    // Authentication
+    implementation("com.amplifyframework:aws-auth-cognito:2.42.0")
+
     val media3Version = "1.11.0"
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-exoplayer-hls:$media3Version")

@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Play, Info, Library } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { Play, Info } from 'lucide-react';
+import api from '../api';
 
 interface MediaItem {
   videoId: string;
@@ -24,9 +22,7 @@ const Home = () => {
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}catalog`, {
-          headers: { 'x-tenant-id': 'GLOBAL' }
-        });
+        const res = await api.get('catalog');
         setVideos(res.data);
       } catch (err) {
         console.error('Failed to fetch catalog:', err);

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
 interface CompletedPart {
@@ -84,7 +84,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const blob = file.slice(start, end);
 
-        const urlRes = await axios.post(`${API_BASE_URL}upload/part`, {
+        const urlRes = await api.post('upload/part', {
             key: s3Key,
             uploadId,
             partNumber,
@@ -109,7 +109,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       // Finalize the upload
-      await axios.post(`${API_BASE_URL}upload/complete`, { key: s3Key, uploadId, parts: completedParts });
+      await api.post('upload/complete', { key: s3Key, uploadId, parts: completedParts });
       updateTask(taskId, { status: 'completed', progress: 100 });
 
     } catch (err) {
@@ -138,16 +138,16 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setTasks(prev => [...prev, newTask]);
 
     try {
-      // 1. Database Lock
-      await axios.post(`${API_BASE_URL}ingest`, {
+      // 1. Database Lock. Tenancy handled by JWT.
+      await api.post('ingest', {
         ...metadata,
         videoId,
         videoFileName: file.name,
         status: 'UPLOADING'
-      }, { headers: { 'x-tenant-id': tenantId } });
+      });
 
       // 2. S3 Handshake
-      const startRes = await axios.post(`${API_BASE_URL}upload/start`, { key: s3Key, contentType: file.type });
+      const startRes = await api.post('upload/start', { key: s3Key, contentType: file.type });
       const { uploadId } = startRes.data;
 
       updateTask(taskId, { uploadId });

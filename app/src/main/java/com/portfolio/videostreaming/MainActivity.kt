@@ -11,15 +11,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,8 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -46,21 +45,24 @@ import com.portfolio.videostreaming.ui.PlayerIntent
 import com.portfolio.videostreaming.ui.ScreenTimeViewModel
 import com.portfolio.videostreaming.ui.VideoPlayer
 import com.portfolio.videostreaming.ui.VideoPlayerViewModel
+import com.portfolio.videostreaming.ui.auth.AuthState
+import com.portfolio.videostreaming.ui.auth.AuthViewModel
+import com.portfolio.videostreaming.ui.auth.LoginScreen
+import com.portfolio.videostreaming.ui.auth.SignupScreen
 import com.portfolio.videostreaming.ui.components.AlexandriaNavbar
 import com.portfolio.videostreaming.ui.theme.AlexandriaTheme
+import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-/**
- * Senior/Lead Approach: A Sealed Class or Object for Routes.
- * This eliminates "Magic Strings" and provides a single source of truth for the whole app.
- */
 sealed class Screen(val route: String) {
     object Catalog : Screen("catalog")
     object Details : Screen("details")
+    object Login : Screen("login")
+    object Signup : Screen("signup")
     object Player : Screen("player/{videoId}/{videoUri}") {
         fun createRoute(videoId: String, videoUri: String): String {
             val encoded = URLEncoder.encode(videoUri, StandardCharsets.UTF_8.toString())
@@ -92,110 +94,139 @@ class MainActivity : ComponentActivity() {
                     color = HeritageBlack
                 ) {
                     if (hasPermission) {
-                        val screenTimeViewModel: ScreenTimeViewModel = viewModel()
-                        val mediaBrowserViewModel: MediaBrowserViewModel = viewModel()
-                        val navController = rememberNavController()
+                        val authViewModel: AuthViewModel = viewModel()
+                        val authState by authViewModel.authState.collectAsState()
 
-                        val sessionSeconds by screenTimeViewModel.sessionSeconds.collectAsState()
-                        val dailySeconds by screenTimeViewModel.dailySeconds.collectAsState()
-                        val isCounterVisible by screenTimeViewModel.isCounterVisible.collectAsState()
-
-                        val navBackStackEntry by navController.currentBackStackEntryAsState()
-                        val currentRoute = navBackStackEntry?.destination?.route
-                        val isPlayerScreen = currentRoute?.startsWith("player") == true
-
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                // Principal Strategy: Global Navbar with Visibility Intelligence
-                                if (!isPlayerScreen) {
-                                    AlexandriaNavbar()
-                                }
-
-                                NavHost(
-                                    navController = navController, 
-                                    startDestination = Screen.Catalog.route,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .navigationBarsPadding()
-                                ) {
-                                    composable(Screen.Catalog.route) {
-                                        CatalogScreen(
-                                            viewModel = mediaBrowserViewModel,
-                                            onVideoSelected = { video ->
-                                                mediaBrowserViewModel.selectVideo(video)
-                                                navController.navigate(Screen.Details.route)
-                                            }
-                                        )
-                                    }
-                                    composable(Screen.Details.route) {
-                                        val selectedVideo by mediaBrowserViewModel.selectedVideo.collectAsState()
-                                        selectedVideo?.let { video ->
-                                            MediaDetailsScreen(
-                                                video = video,
-                                                onBack = { navController.popBackStack() },
-                                                onPlay = {
-                                                    navController.navigate(Screen.Player.createRoute(video.id, video.videoUrl))
-                                                }
-                                            )
-                                        }
-                                    }
-                                    composable(Screen.Player.route) { backStackEntry ->
-                                        val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
-                                        val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
-                                        val playerViewModel: VideoPlayerViewModel = viewModel()
-
-                                        val viewState by playerViewModel.viewState.collectAsState()
-
-                                        // 1. Sync the global timer with this specific player's state
-                                        LaunchedEffect(viewState.isPlaying) {
-                                            screenTimeViewModel.setTicking(viewState.isPlaying)
-                                        }
-
-                                        // 2. Stop the timer immediately when this screen is destroyed
-                                        DisposableEffect(Unit) {
-                                            onDispose {
-                                                screenTimeViewModel.setTicking(false)
-                                            }
-                                        }
-
-                                        // Start playing as soon as we enter this screen
-                                        LaunchedEffect(videoId, videoUri) {
-                                            playerViewModel.processIntent(PlayerIntent.LoadVideo(videoId, videoUri))
-                                        }
-
-                                        VideoPlayer(
-                                            player = playerViewModel.exoPlayer,
-                                            state = viewState,
-                                            onIntent = { playerViewModel.processIntent(it) },
-                                            isScreenTimeVisible = isCounterVisible,
-                                            onBack = { navController.popBackStack() },
-                                            onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                        when (authState) {
+                            is AuthState.SignedIn -> {
+                                MainAppContent(authViewModel)
+                            }
+                            is AuthState.Loading -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = Amber500)
                                 }
                             }
-
-                            // Parental Screen Time Overlay (Absolute Position)
-                            AnimatedVisibility(
-                                visible = isCounterVisible && isPlayerScreen,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(top = 80.dp) // Below the Navbar
-                            ) {
-                                Text(
-                                    text = "Session: ${formatSeconds(sessionSeconds)} | Daily: ${formatSeconds(dailySeconds)}",
-                                    color = Color.White.copy(alpha = 0.5f),
-                                    fontSize = 12.sp
-                                )
+                            else -> {
+                                val navController = rememberNavController()
+                                NavHost(navController = navController, startDestination = Screen.Login.route) {
+                                    composable(Screen.Login.route) {
+                                        LoginScreen(
+                                            viewModel = authViewModel,
+                                            onNavigateToSignUp = { navController.navigate(Screen.Signup.route) }
+                                        )
+                                    }
+                                    composable(Screen.Signup.route) {
+                                        SignupScreen(
+                                            viewModel = authViewModel,
+                                            onNavigateToLogin = { navController.popBackStack() }
+                                        )
+                                    }
+                                }
                             }
                         }
                     } else {
-                        // In a real app, we'd show a UI to explain why we need permission
+                        // Permission missing
                     }
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun MainAppContent(authViewModel: AuthViewModel) {
+        val screenTimeViewModel: ScreenTimeViewModel = viewModel()
+        val mediaBrowserViewModel: MediaBrowserViewModel = viewModel()
+        val navController = rememberNavController()
+
+        val sessionSeconds by screenTimeViewModel.sessionSeconds.collectAsState()
+        val dailySeconds by screenTimeViewModel.dailySeconds.collectAsState()
+        val isCounterVisible by screenTimeViewModel.isCounterVisible.collectAsState()
+
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry?.destination?.route
+        val isPlayerScreen = currentRoute?.startsWith("player") == true
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (!isPlayerScreen) {
+                    AlexandriaNavbar(onSignOut = { authViewModel.signOut() })
+                }
+
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Catalog.route,
+                    modifier = Modifier
+                        .weight(1f)
+                        .navigationBarsPadding()
+                ) {
+                    composable(Screen.Catalog.route) {
+                        CatalogScreen(
+                            viewModel = mediaBrowserViewModel,
+                            onVideoSelected = { video ->
+                                mediaBrowserViewModel.selectVideo(video)
+                                navController.navigate(Screen.Details.route)
+                            }
+                        )
+                    }
+                    composable(Screen.Details.route) {
+                        val selectedVideo by mediaBrowserViewModel.selectedVideo.collectAsState()
+                        selectedVideo?.let { video ->
+                            MediaDetailsScreen(
+                                video = video,
+                                onBack = { navController.popBackStack() },
+                                onPlay = {
+                                    navController.navigate(Screen.Player.createRoute(video.id, video.videoUrl))
+                                }
+                            )
+                        }
+                    }
+                    composable(Screen.Player.route) { backStackEntry ->
+                        val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
+                        val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+                        val playerViewModel: VideoPlayerViewModel = viewModel()
+
+                        val viewState by playerViewModel.viewState.collectAsState()
+
+                        LaunchedEffect(viewState.isPlaying) {
+                            screenTimeViewModel.setTicking(viewState.isPlaying)
+                        }
+
+                        DisposableEffect(Unit) {
+                            onDispose {
+                                screenTimeViewModel.setTicking(false)
+                            }
+                        }
+
+                        LaunchedEffect(videoId, videoUri) {
+                            playerViewModel.processIntent(PlayerIntent.LoadVideo(videoId, videoUri))
+                        }
+
+                        VideoPlayer(
+                            player = playerViewModel.exoPlayer,
+                            state = viewState,
+                            onIntent = { playerViewModel.processIntent(it) },
+                            isScreenTimeVisible = isCounterVisible,
+                            onBack = { navController.popBackStack() },
+                            onToggleScreenTime = { screenTimeViewModel.toggleVisibility() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isCounterVisible && isPlayerScreen,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 80.dp)
+            ) {
+                Text(
+                    text = "Session: ${formatSeconds(sessionSeconds)} | Daily: ${formatSeconds(dailySeconds)}",
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 12.sp
+                )
             }
         }
     }

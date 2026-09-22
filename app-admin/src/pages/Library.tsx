@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { RefreshCcw, CheckCircle2, Clock, XCircle, AlertTriangle, Sparkles, Database, Trash2, Loader2 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import api from '../api';
 
 interface MediaItem {
   videoId: string;
@@ -24,9 +22,7 @@ const Library = () => {
   const fetchLibrary = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}catalog?adminView=true`, {
-        headers: { 'x-tenant-id': 'GLOBAL' }
-      });
+      const res = await api.get('catalog?adminView=true');
       setItems(res.data);
     } catch (err) {
       console.error('Failed to fetch library:', err);
@@ -40,9 +36,7 @@ const Library = () => {
 
     setDeletingId(videoId);
     try {
-      await axios.delete(`${API_BASE_URL}catalog/${videoId}/${familyId}`, {
-        headers: { 'x-tenant-id': 'GLOBAL' }
-      });
+      await api.delete(`catalog/${videoId}/${familyId}`);
       await fetchLibrary();
     } catch (err) {
       console.error('Deletion failed:', err);

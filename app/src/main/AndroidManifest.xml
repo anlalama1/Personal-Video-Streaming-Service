@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".AlexandriaApplication"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher_heritage_adaptive"
         android:roundIcon="@drawable/ic_launcher_heritage_adaptive"

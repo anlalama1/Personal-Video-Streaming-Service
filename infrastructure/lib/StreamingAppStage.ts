@@ -18,6 +18,8 @@ export class StreamingAppStage extends cdk.Stage {
   public readonly viewerPortalBucketName: cdk.CfnOutput;
   public readonly distributionId: cdk.CfnOutput;
   public readonly apiUrl: cdk.CfnOutput;
+  public readonly userPoolId: cdk.CfnOutput;
+  public readonly webClientId: cdk.CfnOutput;
 
   constructor(scope: Construct, id: string, props?: cdk.StageProps) {
     super(scope, id, props);
@@ -36,6 +38,8 @@ export class StreamingAppStage extends cdk.Stage {
     const database = new DatabaseStack(this, 'DatabaseStack', { env });
 
     const auth = new AuthStack(this, 'AuthStack', { env });
+    this.userPoolId = auth.node.findChild('UserPoolId') as cdk.CfnOutput;
+    this.webClientId = auth.node.findChild('WebClientId') as cdk.CfnOutput;
 
     const mediaProcessing = new MediaProcessingStack(this, 'MediaProcessingStack', {
       env,

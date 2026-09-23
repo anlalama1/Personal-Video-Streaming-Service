@@ -5,15 +5,21 @@ import { getCurrentUser, signIn, signUp, confirmSignUp, signOut, type AuthUser }
 const USER_POOL_ID = import.meta.env.VITE_USER_POOL_ID;
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 
-Amplify.configure({
-  Auth: {
-    Cognito: {
-      userPoolId: USER_POOL_ID,
-      userPoolClientId: APP_CLIENT_ID,
-      signUpVerificationMethod: 'code'
+console.log('Auth Configuration:', { USER_POOL_ID, APP_CLIENT_ID });
+
+if (USER_POOL_ID && APP_CLIENT_ID) {
+  Amplify.configure({
+    Auth: {
+      Cognito: {
+        userPoolId: USER_POOL_ID,
+        userPoolClientId: APP_CLIENT_ID,
+        signUpVerificationMethod: 'code'
+      }
     }
-  }
-});
+  });
+} else {
+  console.error('CRITICAL: Cognito User Pool or Client ID is missing. Check environment variables.');
+}
 
 interface AuthContextType {
   user: AuthUser | null;

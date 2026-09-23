@@ -123,6 +123,8 @@ export class PipelineStack extends cdk.Stack {
         input: source,
         envFromCfnOutputs: {
           VITE_API_BASE_URL: prodStage.apiUrl,
+          VITE_USER_POOL_ID: prodStage.userPoolId,
+          VITE_APP_CLIENT_ID: prodStage.webClientId,
           ADMIN_BUCKET: prodStage.adminPortalBucketName,
           DISTRIBUTION_ID: prodStage.distributionId,
         },
@@ -134,7 +136,7 @@ export class PipelineStack extends cdk.Stack {
           'mkdir -p public',
           'cp ../app/src/main/res/drawable/logo_flat.png ./public/logo_flat.png',
           'npm install',
-          'VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_BEDROCK_MODEL_ID=$VITE_BEDROCK_MODEL_ID npm run build',
+          'VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_USER_POOL_ID=$VITE_USER_POOL_ID VITE_APP_CLIENT_ID=$VITE_APP_CLIENT_ID VITE_BEDROCK_MODEL_ID=$VITE_BEDROCK_MODEL_ID npm run build',
           'aws s3 sync dist s3://$ADMIN_BUCKET --delete',
           'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/admin/*"'
         ],
@@ -156,6 +158,8 @@ export class PipelineStack extends cdk.Stack {
         input: source,
         envFromCfnOutputs: {
           VITE_API_BASE_URL: prodStage.apiUrl,
+          VITE_USER_POOL_ID: prodStage.userPoolId,
+          VITE_APP_CLIENT_ID: prodStage.webClientId,
           VIEWER_BUCKET: prodStage.viewerPortalBucketName,
           DISTRIBUTION_ID: prodStage.distributionId,
         },
@@ -164,7 +168,7 @@ export class PipelineStack extends cdk.Stack {
           'mkdir -p public',
           'cp ../app/src/main/res/drawable/logo_flat.png ./public/logo_flat.png',
           'npm install',
-          'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',
+          'VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_USER_POOL_ID=$VITE_USER_POOL_ID VITE_APP_CLIENT_ID=$VITE_APP_CLIENT_ID npm run build',
           'aws s3 sync dist s3://$VIEWER_BUCKET --delete',
           'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"'
         ],

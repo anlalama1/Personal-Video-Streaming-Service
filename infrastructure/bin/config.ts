@@ -23,6 +23,10 @@ export const Config = {
     // The prefix used for various production resources
     projectPrefix: 'StreamingService',
 
+    // Primary domain and sender identity for transactional emails
+    domainName: 'alexandria-plus.com',
+    fromEmail: 'no-reply@alexandria-plus.com',
+
     // The active foundation model ID used for GenAI metadata enrichment via AWS Bedrock
     bedrockModelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
 };

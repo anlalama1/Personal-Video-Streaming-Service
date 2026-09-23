@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import { Config } from '../bin/config';
 
 export class AuthStack extends cdk.Stack {
   public readonly userPool: cognito.UserPool;
@@ -42,23 +43,18 @@ export class AuthStack extends cdk.Stack {
         challengeRequiredOnNewDevice: true,
         deviceOnlyRememberedOnUserPrompt: false, // Automatically remember if user chooses
       },
+      // Amazon SES Configuration for Custom Email Identity (no-reply@alexandria-plus.com)
+      email: cognito.UserPoolEmail.withSES({
+        fromEmail: Config.fromEmail,
+        fromName: 'Alexandria+ Vault',
+        sesVerifiedDomain: Config.domainName,
+      }),
       // Customizing Verification Email branding
       userVerification: {
         emailSubject: 'Your Alexandria+ Vault Verification Code',
         emailBody: 'Welcome to Alexandria+ Preservation Vault!\n\nYour verification code is: {####}\n\nEnter this code to activate your family heritage vault.',
         emailStyle: cognito.VerificationEmailStyle.CODE,
       },
-      /*
-       * To send from 'no-reply@alexandriaplus.com' via Amazon SES:
-       * 1. Verify 'alexandriaplus.com' in Amazon SES console or Route53
-       * 2. Uncomment the email config below:
-       *
-       * email: cognito.UserPoolEmail.withSES({
-       *   fromEmail: 'no-reply@alexandriaplus.com',
-       *   fromName: 'Alexandria+ Vault',
-       *   sesVerifiedDomain: 'alexandriaplus.com',
-       * }),
-       */
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For spike - change to RETAIN for prod
     });

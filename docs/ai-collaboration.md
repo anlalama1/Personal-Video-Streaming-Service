@@ -824,7 +824,7 @@ This document tracks the high-level collaboration between the human developer an
 - **Challenge**: Login failed with `"USER_SRP_AUTH is not enabled for the client"` on web portals, and verification emails were sent from a generic `no-reply@verificationemail.com` address.
 - **AI Contribution**: 
     - Resolved authentication failures by enabling both `userSrp` and `userPassword` flows in `AuthStack.ts`, `app-admin`, and `app-viewer`.
-    - Formulated **Milestone 28 — Verification Code Identity & Custom Email Sender (Amazon SES)** in the Definition of Done to transition verification emails to `no-reply@alexandriaplus.com`.
+    - Formulated **Milestone 28 — Verification Code Identity & Custom Email Sender (Amazon SES)** in the Definition of Done to transition verification emails to `no-reply@alexandria-plus.com`.
     - Added custom Alexandria+ email verification templates and Amazon SES CDK integration pathways to `AuthStack.ts`.
 - **Outcome**: Fixed authentication blockers across Demetrius and Desktop Viewer while establishing a roadmap for enterprise custom-domain email identity.
 

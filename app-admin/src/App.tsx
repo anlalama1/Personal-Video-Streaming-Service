@@ -34,7 +34,7 @@ const AppContent = () => {
   return (
     <div className="flex h-screen bg-heritage-black text-heritage-parchment">
       {/* Sidebar */}
-      <aside className="w-64 bg-heritage-900 border-r border-heritage-800 p-6">
+      <aside className="w-64 bg-heritage-900 border-r border-heritage-800 p-6 flex flex-col">
             <div className="flex flex-col gap-4 mb-10 px-2">
               <Link to="/home" className="flex items-center group">
                 <img src="/logo_flat.png" alt="Alexandria+ Logo" className="h-[52px] w-auto group-hover:scale-105 transition-transform translate-x-[3px] translate-y-[1px]" />
@@ -43,7 +43,7 @@ const AppContent = () => {
               <span className="text-[10px] font-black block text-heritage-400 tracking-[0.2em]">Demetrius Portal</span>
             </div>
 
-            <nav className="space-y-2">
+            <nav className="space-y-2 flex-1">
               <Link to="/home" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-heritage-800 transition-colors font-bold text-sm">
                 <UploadCloud size={20} className="text-heritage-gold" />
                 <span>Ingestion</span>
@@ -81,9 +81,7 @@ const AppContent = () => {
 
           <UploadDrawer />
         </div>
-      </Router>
-    </UploadProvider>
   );
-}
+};
 
 export default App;

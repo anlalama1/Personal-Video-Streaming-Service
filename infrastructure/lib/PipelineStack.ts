@@ -131,6 +131,7 @@ export class PipelineStack extends cdk.Stack {
         },
         commands: [
           'cd app-admin',
+          'mkdir -p public',
           'cp ../app/src/main/res/drawable/logo_flat.png ./public/logo_flat.png',
           'npm install',
           'VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_BEDROCK_MODEL_ID=$VITE_BEDROCK_MODEL_ID npm run build',
@@ -160,6 +161,7 @@ export class PipelineStack extends cdk.Stack {
         },
         commands: [
           'cd app-viewer',
+          'mkdir -p public',
           'cp ../app/src/main/res/drawable/logo_flat.png ./public/logo_flat.png',
           'npm install',
           'VITE_API_BASE_URL=$VITE_API_BASE_URL npm run build',

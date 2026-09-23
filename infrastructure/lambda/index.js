@@ -28,8 +28,9 @@ exports.handler = async (event) => {
         const claims = authorizer.claims || {};
 
         // Principal Strategy: Identity-Driven Tenancy.
-        // We derive the Tenant ID (familyId) directly from the cryptographically signed JWT.
-        const tenantId = claims['custom:familyId'] || 'GLOBAL';
+        // Tenant ID defaults to 'GLOBAL' unless overridden via the x-tenant-id header.
+        const headers = event.headers || {};
+        const tenantId = headers['x-tenant-id'] || headers['X-Tenant-Id'] || 'GLOBAL';
 
         console.log(`Scribe Request: ${method} ${path} for Tenant: ${tenantId}`);
 

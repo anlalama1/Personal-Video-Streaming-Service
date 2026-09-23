@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.sp
 import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
-import java.util.UUID
 
 @Composable
 fun SignupScreen(
@@ -24,9 +23,7 @@ fun SignupScreen(
     var password by remember { mutableStateOf("") }
     var familyId by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
-    
-    // Requirement 3: Create new vs Join existing
-    var isNewFamily by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val authState by viewModel.authState.collectAsState()
 
@@ -39,22 +36,25 @@ fun SignupScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = if (authState is AuthState.NeedsVerification) "Verify your Identity" else "Create your Vault",
+                text = if (authState is AuthState.NeedsVerification) "Verify your Account" else "Join Family Vault",
                 color = Parchment,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = if (authState is AuthState.NeedsVerification)
+                    "Enter the code sent to your email address."
+                else
+                    "Enter the Family Code provided by your digitization shop operator.",
+                color = Parchment.copy(alpha = 0.6f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
 
             if (authState is AuthState.NeedsVerification) {
-                Text(
-                    text = "Please enter the code sent to your email.",
-                    color = Parchment.copy(alpha = 0.6f),
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-
                 OutlinedTextField(
                     value = verificationCode,
                     onValueChange = { verificationCode = it },
@@ -70,7 +70,7 @@ fun SignupScreen(
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Amber500)
                 ) {
-                    Text("VERIFY", color = HeritageBlack, fontWeight = FontWeight.Black)
+                    Text("VERIFY & LAUNCH", color = HeritageBlack, fontWeight = FontWeight.Black)
                 }
 
             } else {
@@ -93,35 +93,23 @@ fun SignupScreen(
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Requirement 3: Family Selection
-                Row(
+                OutlinedTextField(
+                    value = familyId,
+                    onValueChange = { familyId = it },
+                    label = { Text("Family Code (Required)") },
+                    placeholder = { Text("e.g. FAM_LALAMA") },
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(selected = isNewFamily, onClick = { isNewFamily = true })
-                    Text("Create New Family", color = Parchment, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    RadioButton(selected = !isNewFamily, onClick = { isNewFamily = false })
-                    Text("Join Family", color = Parchment, fontSize = 14.sp)
-                }
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
+                )
 
-                if (!isNewFamily) {
-                    OutlinedTextField(
-                        value = familyId,
-                        onValueChange = { familyId = it },
-                        label = { Text("Family Code") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
-                    )
-                }
+                Spacer(modifier = Modifier.height(24.dp))
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                if (authState is AuthState.Error) {
+                val displayError = errorMessage ?: (authState as? AuthState.Error)?.message
+                if (displayError != null) {
                     Text(
-                        text = (authState as AuthState.Error).message,
+                        text = displayError,
                         color = Color.Red,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -129,9 +117,13 @@ fun SignupScreen(
                 }
 
                 Button(
-                    onClick = { 
-                        val finalFamilyId = if (isNewFamily) "FAM_${UUID.randomUUID().toString().take(8)}" else familyId
-                        viewModel.signUp(email, password, finalFamilyId) 
+                    onClick = {
+                        if (familyId.isBlank()) {
+                            errorMessage = "A valid Family Code from your shop operator is required."
+                            return@Button
+                        }
+                        errorMessage = null
+                        viewModel.signUp(email, password, familyId.trim().uppercase())
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     enabled = authState !is AuthState.Loading,
@@ -140,14 +132,14 @@ fun SignupScreen(
                     if (authState is AuthState.Loading) {
                         CircularProgressIndicator(color = HeritageBlack, modifier = Modifier.size(24.dp))
                     } else {
-                        Text("SIGN UP", color = HeritageBlack, fontWeight = FontWeight.Black)
+                        Text("JOIN VAULT", color = HeritageBlack, fontWeight = FontWeight.Black)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 TextButton(onClick = onNavigateToLogin) {
-                    Text("Already have an account? Sign In", color = Amber500)
+                    Text("Already registered? Sign In", color = Amber500)
                 }
             }
         }

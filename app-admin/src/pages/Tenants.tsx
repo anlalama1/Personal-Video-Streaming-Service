@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTenants } from '../context/TenantContext';
-import { Users, Plus, Trash2, Building, ShieldCheck, Mail, Key } from 'lucide-react';
+import { Users, Plus, Trash2, Building, ShieldCheck, Mail, Key, Copy } from 'lucide-react';
 
 const Tenants = () => {
   const { tenants, addTenant, removeTenant } = useTenants();
@@ -18,13 +18,18 @@ const Tenants = () => {
     setShowModal(false);
   };
 
+  const handleCopyCode = (familyId: string) => {
+    navigator.clipboard.writeText(familyId);
+    alert(`Copied Family Vault Code "${familyId}" to clipboard!\n\nShare this code with the customer so they can register and access their digital vault on the Desktop Viewer or Android app.`);
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <header className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-black text-heritage-parchment text-glow-gold">Family Tenant Registry</h2>
           <p className="text-heritage-400 font-medium text-sm mt-1">
-            Manage registered family partitions. Each family tenant receives an isolated media vault and unique Family ID.
+            Manage registered family partitions. Provide the generated Family Vault Code to family members so they can register on the Desktop or Android Viewer.
           </p>
         </div>
         <button
@@ -43,7 +48,7 @@ const Tenants = () => {
             key={tenant.familyId}
             className="bg-heritage-900 border border-heritage-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-4 hover:border-heritage-gold/50 transition-all"
           >
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-heritage-black border border-heritage-800 rounded-xl text-heritage-gold">
@@ -69,13 +74,23 @@ const Tenants = () => {
               </div>
 
               <div className="bg-heritage-black/60 border border-heritage-800 rounded-xl p-3 space-y-2 text-xs font-mono text-heritage-400">
-                <div className="flex items-center gap-2 text-heritage-parchment">
-                  <Key size={14} className="text-heritage-gold shrink-0" />
-                  <span className="font-bold text-[11px]">ID:</span>
-                  <span className="text-heritage-gold font-bold select-all tracking-wide">{tenant.familyId}</span>
+                <div className="flex items-center justify-between text-heritage-parchment">
+                  <div className="flex items-center gap-2">
+                    <Key size={14} className="text-heritage-gold shrink-0" />
+                    <span className="font-bold text-[11px]">Vault Code:</span>
+                    <span className="text-heritage-gold font-bold select-all tracking-wide">{tenant.familyId}</span>
+                  </div>
+                  <button
+                    onClick={() => handleCopyCode(tenant.familyId)}
+                    className="text-[10px] bg-heritage-gold/10 border border-heritage-gold/30 text-heritage-gold font-bold px-2 py-1 rounded hover:bg-heritage-gold/20 transition-all flex items-center gap-1 uppercase"
+                    title="Copy Vault Code for Customer"
+                  >
+                    <Copy size={12} />
+                    Copy Code
+                  </button>
                 </div>
                 {tenant.contactEmail && (
-                  <div className="flex items-center gap-2 text-heritage-400">
+                  <div className="flex items-center gap-2 text-heritage-400 pt-1 border-t border-heritage-800/60">
                     <Mail size={14} className="shrink-0 text-heritage-400" />
                     <span>{tenant.contactEmail}</span>
                   </div>

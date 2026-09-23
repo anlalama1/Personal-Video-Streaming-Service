@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Sparkles, Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, Key } from 'lucide-react';
 
 const Auth = () => {
   const { signIn, signUp, confirmSignUp } = useAuth();
@@ -28,13 +28,19 @@ const Auth = () => {
       } else if (isLogin) {
         await signIn({ username: email, password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
       } else {
+        if (!familyId.trim()) {
+          setError("A valid Family Vault Code from your digitization shop operator is required.");
+          setLoading(false);
+          return;
+        }
+
         await signUp({
           username: email,
           password,
           options: {
             userAttributes: {
               email,
-              'custom:familyId': familyId || `FAM_${Math.random().toString(36).substring(2, 10).toUpperCase()}`
+              'custom:familyId': familyId.trim().toUpperCase()
             }
           }
         });
@@ -55,12 +61,12 @@ const Auth = () => {
                 <img src="/logo_flat.png" alt="Logo" className="h-20 w-auto" />
             </div>
             <h2 className="text-3xl font-black text-heritage-parchment uppercase tracking-tighter italic">
-                {needsVerification ? 'Secure the Vault' : isLogin ? 'Welcome Back' : 'Create Vault'}
+                {needsVerification ? 'Secure the Vault' : isLogin ? 'Welcome Back' : 'Join Family Vault'}
             </h2>
-            <p className="text-heritage-400 text-sm font-medium px-4">
-                {needsVerification ? 'Enter the code sent to your email to activate your family heritage vault.' :
+            <p className="text-heritage-400 text-xs font-medium px-4">
+                {needsVerification ? 'Enter the code sent to your email to activate your account.' :
                  isLogin ? 'Access your family’s digital legacy scrolls.' :
-                 'Start preserving your family heritage for future generations.'}
+                 'Enter the Family Vault Code provided by your digitization shop to create your account.'}
             </p>
         </div>
 
@@ -70,7 +76,7 @@ const Auth = () => {
                     <input
                         type="email"
                         placeholder="Email Address"
-                        className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all"
+                        className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all text-sm font-medium"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                         required
@@ -78,21 +84,28 @@ const Auth = () => {
                     <input
                         type="password"
                         placeholder="Password"
-                        className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all"
+                        className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all text-sm font-medium"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         required
                     />
                     {!isLogin && (
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-heritage-gold uppercase tracking-widest pl-1">Optional: Family Code</label>
+                            <label className="text-[10px] font-black text-heritage-gold uppercase tracking-widest pl-1 flex items-center gap-1">
+                                <Key size={12} />
+                                Family Vault Code (Required)
+                            </label>
                             <input
                                 type="text"
-                                placeholder="Enter code to join existing vault"
-                                className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all"
+                                placeholder="e.g. FAM_LALAMA or FAM_HARRISON_9A21"
+                                className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all text-sm font-bold tracking-wider"
                                 value={familyId}
                                 onChange={e => setFamilyId(e.target.value)}
+                                required
                             />
+                            <p className="text-[10px] text-heritage-400 italic px-1">
+                              Provided by your Demetrius digitization shop operator.
+                            </p>
                         </div>
                     )}
                 </>
@@ -102,7 +115,7 @@ const Auth = () => {
                 <input
                     type="text"
                     placeholder="Verification Code"
-                    className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all"
+                    className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all text-sm font-medium"
                     value={code}
                     onChange={e => setCode(e.target.value)}
                     required
@@ -114,10 +127,10 @@ const Auth = () => {
             <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-heritage-gold to-heritage-sunset text-heritage-black font-black py-4 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-heritage-gold to-heritage-sunset text-heritage-black font-black py-4 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2"
             >
                 {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck size={18} />}
-                {needsVerification ? 'Verify & Launch' : isLogin ? 'Open the Vault' : 'Initialize Preservation'}
+                {needsVerification ? 'Verify & Launch' : isLogin ? 'Open the Vault' : 'Join Family Vault'}
             </button>
         </form>
 
@@ -127,7 +140,7 @@ const Auth = () => {
                     onClick={() => setIsLogin(!isLogin)}
                     className="text-heritage-gold text-xs font-black uppercase tracking-widest hover:underline"
                 >
-                    {isLogin ? 'Need a new vault? Create Account' : 'Already have a vault? Sign In'}
+                    {isLogin ? 'Have a Family Code? Join Vault' : 'Already registered? Sign In'}
                 </button>
             </div>
         )}

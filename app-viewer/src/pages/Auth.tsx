@@ -26,7 +26,7 @@ const Auth = () => {
         setNeedsVerification(false);
         setIsLogin(true);
       } else if (isLogin) {
-        await signIn({ username: email, password });
+        await signIn({ username: email, password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
       } else {
         await signUp({
           username: email,

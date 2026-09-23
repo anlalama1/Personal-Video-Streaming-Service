@@ -220,6 +220,14 @@ The project is **done** when all of the following are true:
 - [ ] **Dynamic Palette Switching (Android)**: Refactor `AlexandriaTheme` to be driven by a `ThemeRepository`, enabling the app to swap the entire `ColorScheme` at runtime based on user preference.
 - [ ] **Material You (Monet) Integration**: (Stretch) Integrate Android 12+ dynamic coloring to allow the vault's aesthetic to match the user's device wallpaper.
 
+### Milestone 28 — Verification Code Identity & Custom Email Sender (Amazon SES)
+- [x] **Auth Flow Parity**: Configure `USER_PASSWORD_AUTH` and `USER_SRP_AUTH` explicitly in `AuthStack.ts`, `app-admin`, and `app-viewer` for cross-platform login parity.
+- [ ] **Custom Domain Verification (SES)**: Verify `alexandriaplus.com` identity and DKIM keys in Amazon SES.
+- [ ] **Custom FROM Identity**: Configure AWS Cognito User Pool to send transactional emails (verification codes, password resets) from `no-reply@alexandriaplus.com`.
+- [ ] **Branded Verification Templates**: Configure custom HTML/text verification email templates with the Alexandria+ Heritage Gold aesthetic and logo.
+- [ ] **SES Production Access**: Transition Amazon SES out of Sandbox mode to enable delivery to external family member email addresses.
+- [ ] **CDK Integration**: Update `AuthStack.ts` to programmatically provision `cognito.UserPoolEmail.withSES` and link SES domain identity.
+
 ---
 
 ## Requirement Coverage Map

@@ -1,6 +1,8 @@
 package com.portfolio.videostreaming.core.data.network
 
 import android.util.Log
+import com.amplifyframework.auth.cognito.AWSCognitoAuthSession
+import com.amplifyframework.core.Amplify
 import com.portfolio.videostreaming.core.data.BuildConfig
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.Serializable
@@ -13,6 +15,8 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Senior/Lead Strategy: Use Data Transfer Objects (DTOs) for the API layer.
@@ -65,8 +69,23 @@ object StreamingApi {
         val requestBuilder = originalRequest.newBuilder()
         
         try {
-            val session = com.amplifyframework.core.Amplify.Auth.fetchAuthSession() as com.amplifyframework.auth.cognito.AWSCognitoAuthSession
-            val idToken = session.userPoolTokensResult.value?.idToken
+            var cognitoSession: AWSCognitoAuthSession? = null
+            val latch = CountDownLatch(1)
+
+            Amplify.Auth.fetchAuthSession(
+                { session ->
+                    cognitoSession = session as? AWSCognitoAuthSession
+                    latch.countDown()
+                },
+                { error ->
+                    Log.e("StreamingApi", "Failed to fetch auth session", error)
+                    latch.countDown()
+                }
+            )
+
+            latch.await(5, TimeUnit.SECONDS)
+
+            val idToken = cognitoSession?.userPoolTokensResult?.value?.idToken
             if (idToken != null) {
                 requestBuilder.addHeader("Authorization", "Bearer $idToken")
             }

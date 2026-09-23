@@ -35,6 +35,10 @@ exports.handler = async (event) => {
 
         if (path === '/catalog' && method === 'GET') {
             return await handleGetCatalog(event, tenantId);
+        } else if (path === '/tenants' && method === 'GET') {
+            return await handleGetTenants(event, tenantId);
+        } else if (path === '/tenants' && method === 'POST') {
+            return await handleCreateTenant(event, tenantId);
         } else if (path === '/ingest' && method === 'POST') {
             return await handleIngest(event, tenantId);
         } else if (path === '/upload/start' && method === 'POST') {
@@ -271,6 +275,76 @@ async function handleDeleteVideo(event, tenantId) {
     }));
 
     return response(200, { success: true, message: "Asset moved to trash. Will be permanently purged after retention period." });
+}
+
+async function handleGetTenants(event, tenantId) {
+    const tableName = process.env.TABLE_NAME;
+
+    try {
+        const command = new QueryCommand({
+            TableName: tableName,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": "TENANTS_REGISTRY",
+                ":sk": "TENANT#"
+            }
+        });
+
+        const result = await docClient.send(command);
+        const items = (result.Items || []).map(item => ({
+            familyId: item.familyId,
+            familyName: item.familyName,
+            contactEmail: item.contactEmail || '',
+            createdAt: item.createdAt || new Date().toISOString()
+        }));
+
+        if (items.length === 0) {
+            return response(200, [
+                { familyId: 'PUBLIC', familyName: 'Public Access Pool', contactEmail: 'public@alexandria-plus.com', createdAt: new Date().toISOString() },
+                { familyId: 'FAM_LALAMA', familyName: 'Lalama Family Vault', contactEmail: 'family@lalama.com', createdAt: new Date().toISOString() },
+                { familyId: 'FAM_SMITH', familyName: 'Smith Family Vault', contactEmail: 'smith@familyvault.com', createdAt: new Date().toISOString() }
+            ]);
+        }
+
+        return response(200, items);
+    } catch (err) {
+        console.error("handleGetTenants Error:", err);
+        return response(500, { error: err.message });
+    }
+}
+
+async function handleCreateTenant(event, tenantId) {
+    const tableName = process.env.TABLE_NAME;
+    const body = JSON.parse(event.body || "{}");
+    const { familyName, contactEmail } = body;
+
+    if (!familyName) {
+        return response(400, { error: "familyName is required" });
+    }
+
+    const slug = familyName.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    const uniqueHash = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const familyId = `FAM_${slug}_${uniqueHash}`;
+    const createdAt = new Date().toISOString();
+
+    try {
+        await docClient.send(new PutCommand({
+            TableName: tableName,
+            Item: {
+                PK: "TENANTS_REGISTRY",
+                SK: `TENANT#${familyId}`,
+                familyId,
+                familyName,
+                contactEmail: contactEmail || '',
+                createdAt
+            }
+        }));
+
+        return response(201, { familyId, familyName, contactEmail, createdAt });
+    } catch (err) {
+        console.error("handleCreateTenant Error:", err);
+        return response(500, { error: err.message });
+    }
 }
 
 exports.logPlayHandler = async (event) => {

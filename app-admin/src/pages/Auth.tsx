@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Sparkles, Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, Building2 } from 'lucide-react';
 
 const Auth = () => {
   const { signIn, signUp, confirmSignUp } = useAuth();
@@ -9,7 +9,6 @@ const Auth = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [familyId, setFamilyId] = useState('');
   const [code, setCode] = useState('');
 
   const [loading, setLoading] = useState(false);
@@ -34,7 +33,7 @@ const Auth = () => {
           options: {
             userAttributes: {
               email,
-              'custom:familyId': familyId || `FAM_${Math.random().toString(36).substring(2, 10).toUpperCase()}`
+              'custom:familyId': 'SHOP_ADMIN'
             }
           }
         });
@@ -50,17 +49,21 @@ const Auth = () => {
   return (
     <div className="h-screen bg-heritage-black flex items-center justify-center p-6">
       <div className="max-w-md w-full bg-heritage-900 border border-heritage-800 rounded-3xl p-10 shadow-2xl space-y-8">
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
             <div className="flex justify-center">
                 <img src="/logo_flat.png" alt="Logo" className="h-20 w-auto" />
             </div>
-            <h2 className="text-3xl font-black text-heritage-parchment uppercase tracking-tighter italic">
-                {needsVerification ? 'Demetrius: Secure' : isLogin ? 'Demetrius: Login' : 'Demetrius: Signup'}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-heritage-gold/10 border border-heritage-gold/20 text-heritage-gold text-[10px] font-black uppercase tracking-widest">
+              <Building2 size={12} />
+              Demetrius Shop Operator Portal
+            </div>
+            <h2 className="text-2xl font-black text-heritage-parchment uppercase tracking-tight">
+                {needsVerification ? 'Verify Operator Account' : isLogin ? 'Shop Operator Login' : 'Register Shop Operator'}
             </h2>
-            <p className="text-heritage-400 text-sm font-medium px-4">
-                {needsVerification ? 'Enter the verification code to activate your shop admin account.' :
-                 isLogin ? 'Manage your digitization shop vault operations.' :
-                 'Join the Alexandria+ ecosystem as a professional preservationist.'}
+            <p className="text-heritage-400 text-xs font-medium px-4">
+                {needsVerification ? 'Enter the verification code to activate your shop operator credentials.' :
+                 isLogin ? 'Manage raw ingestion passes and register family tenant vaults.' :
+                 'Join the Alexandria+ ecosystem as a professional preservation shop operator.'}
             </p>
         </div>
 
@@ -69,16 +72,16 @@ const Auth = () => {
                 <>
                     <input
                         type="email"
-                        placeholder="Shop Email"
-                        className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all"
+                        placeholder="Shop Operator Email"
+                        className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all text-sm font-medium"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                         required
                     />
                     <input
                         type="password"
-                        placeholder="Password"
-                        className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all"
+                        placeholder="Operator Password"
+                        className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all text-sm font-medium"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         required
@@ -90,7 +93,7 @@ const Auth = () => {
                 <input
                     type="text"
                     placeholder="Verification Code"
-                    className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all"
+                    className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all text-sm font-medium"
                     value={code}
                     onChange={e => setCode(e.target.value)}
                     required
@@ -102,10 +105,10 @@ const Auth = () => {
             <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-heritage-gold to-heritage-sunset text-heritage-black font-black py-4 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-heritage-gold to-heritage-sunset text-heritage-black font-black py-4 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2"
             >
                 {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck size={18} />}
-                {needsVerification ? 'Verify Shop' : isLogin ? 'Enter Portal' : 'Register Shop'}
+                {needsVerification ? 'Verify Operator' : isLogin ? 'Access Operator Portal' : 'Register Operator Account'}
             </button>
         </form>
 
@@ -115,7 +118,7 @@ const Auth = () => {
                     onClick={() => setIsLogin(!isLogin)}
                     className="text-heritage-gold text-xs font-black uppercase tracking-widest hover:underline"
                 >
-                    {isLogin ? 'Register a new shop?' : 'Already have a shop account?'}
+                    {isLogin ? 'Register a new shop operator?' : 'Already have a shop operator account?'}
                 </button>
             </div>
         )}

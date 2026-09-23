@@ -1,9 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { Database, UploadCloud, Library as LibraryIcon, ClipboardCheck, LogOut } from 'lucide-react';
+import { Database, UploadCloud, Library as LibraryIcon, ClipboardCheck, LogOut, Users } from 'lucide-react';
 import Ingestion from './pages/Ingestion';
 import Library from './pages/Library';
 import ReviewBoard from './pages/ReviewBoard';
+import Tenants from './pages/Tenants';
 import { UploadProvider } from './context/UploadContext';
+import { TenantProvider } from './context/TenantContext';
 import UploadDrawer from './components/UploadDrawer';
 import Auth from './pages/Auth';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -11,11 +13,13 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 function App() {
   return (
     <AuthProvider>
-      <UploadProvider>
-        <Router basename="/admin">
-          <AppContent />
-        </Router>
-      </UploadProvider>
+      <TenantProvider>
+        <UploadProvider>
+          <Router basename="/admin">
+            <AppContent />
+          </Router>
+        </UploadProvider>
+      </TenantProvider>
     </AuthProvider>
   );
 }
@@ -52,6 +56,10 @@ const AppContent = () => {
                 <ClipboardCheck size={20} className="text-heritage-gold" />
                 <span>Review Board</span>
               </Link>
+              <Link to="/tenants" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-heritage-800 transition-colors font-bold text-sm">
+                <Users size={20} className="text-heritage-gold" />
+                <span>Family Tenants</span>
+              </Link>
               <Link to="/library" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-heritage-800 transition-colors font-bold text-sm">
                 <LibraryIcon size={20} className="text-heritage-gold" />
                 <span>Library</span>
@@ -74,6 +82,7 @@ const AppContent = () => {
             <Routes>
               <Route path="/home" element={<Ingestion />} />
               <Route path="/review" element={<ReviewBoard />} />
+              <Route path="/tenants" element={<Tenants />} />
               <Route path="/library" element={<Library />} />
               <Route path="/" element={<Navigate to="/home" replace />} />
             </Routes>

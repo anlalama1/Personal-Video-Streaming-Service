@@ -103,6 +103,10 @@ export class ApiStack extends cdk.Stack {
     const ingest = api.root.addResource('ingest');
     ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
 
+    const tenants = api.root.addResource('tenants');
+    tenants.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    tenants.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+
     const upload = api.root.addResource('upload');
 
     const start = upload.addResource('start');

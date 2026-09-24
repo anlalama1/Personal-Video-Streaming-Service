@@ -257,30 +257,45 @@ async function handleCompleteMultipart(event, tenantId) {
  */
 async function handlePublishVideo(event, tenantId) {
     const body = JSON.parse(event.body || "{}");
-    const { videoId, familyId, title, genre, releaseYear, description, tags, videoKey } = body;
+    const { videoId, familyId, oldFamilyId, title, genre, releaseYear, description, tags, videoKey } = body;
     const tableName = process.env.TABLE_NAME;
 
     if (!videoId || !familyId || !videoKey || !title) {
         return response(400, { error: "videoId, familyId, videoKey, and title are required" });
     }
 
-    console.log(`PUBLISH: Finalizing ${videoId} for Tenant ${tenantId}`);
+    console.log(`PUBLISH: Finalizing ${videoId} for Tenant ${tenantId}, Target Family: ${familyId}`);
 
-    await docClient.send(new UpdateCommand({
+    // If familyId was reassigned on the Review Board (e.g. from PUBLIC to FAM_LALAMA)
+    if (oldFamilyId && oldFamilyId !== familyId) {
+        console.log(`REASSIGN: Moving item from FAMILY#${oldFamilyId} to FAMILY#${familyId}`);
+        try {
+            await docClient.send(new DeleteCommand({
+                TableName: tableName,
+                Key: {
+                    PK: `TENANT#${tenantId}`,
+                    SK: `FAMILY#${oldFamilyId}#VIDEO#${videoId}`
+                }
+            }));
+        } catch (delErr) {
+            console.warn("Failed to delete old partition key draft:", delErr.message);
+        }
+    }
+
+    // Write the published record under the target familyId
+    await docClient.send(new PutCommand({
         TableName: tableName,
-        Key: {
+        Item: {
             PK: `TENANT#${tenantId}`,
-            SK: `FAMILY#${familyId}#VIDEO#${videoId}`
-        },
-        UpdateExpression: "SET title = :t, genre = :g, releaseYear = :ry, description = :d, tags = :tg, transcodeStatus = :s, lastUpdated = :lu",
-        ExpressionAttributeValues: {
-            ":t": title,
-            ":g": genre,
-            ":ry": releaseYear,
-            ":d": description || "",
-            ":tg": tags || [],
-            ":s": "TRANSCODING",
-            ":lu": Date.now()
+            SK: `FAMILY#${familyId}#VIDEO#${videoId}`,
+            title,
+            genre,
+            releaseYear,
+            description: description || "",
+            tags: tags || [],
+            transcodeStatus: "TRANSCODING",
+            videoKey,
+            lastUpdated: Date.now()
         }
     }));
 

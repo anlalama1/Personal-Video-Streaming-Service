@@ -116,13 +116,17 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Confirms registration with 6-digit email verification code.
+     * Confirms registration with 6-digit email verification code, automatically signing in upon completion.
      */
-    fun confirmSignUp(email: String, code: String) {
+    fun confirmSignUp(email: String, code: String, password: String? = null) {
         _authState.value = AuthState.Loading
         Amplify.Auth.confirmSignUp(email, code,
             { result ->
-                _authState.value = AuthState.SignedOut // Ready for login
+                if (!password.isNullOrBlank()) {
+                    signIn(email, password)
+                } else {
+                    _authState.value = AuthState.SignedOut
+                }
             },
             { error ->
                 _authState.value = AuthState.Error(error.message ?: "Verification failed")

@@ -874,6 +874,21 @@ This document tracks the high-level collaboration between the human developer an
     - Isolated the reset function from public API Gateway routes, requiring manual execution via AWS CLI or AWS Console Test tabs.
 - **Outcome**: Delivered an enterprise-grade, highly guarded administrative utility for automated environment purges.
 
+### 100. Review Queue Governance: Multi-Tenant Filtering & Partition Reassignment (Sept 24, 2026)
+- **Challenge**: Ingested media items default to `PUBLIC` if unselected, displaying `Partition: PUBLIC` in the Review Board without a mechanism to reassign the target family vault prior to HLS cluster activation.
+- **AI Contribution**: 
+    - Enhanced [`ReviewBoard.tsx`](file:///I:/Android%20Projects/app-admin/src/pages/ReviewBoard.tsx) with a **Family Vault Filter Dropdown** and item-level partition badges (`FAM_LALAMA`, `PUBLIC`, `FAM_SMITH`).
+    - Engineered **Partition Reassignment on Approval**: Enabled shop operators to reassign the target family vault partition directly on the Review Board before approving AI metadata.
+    - Updated `handlePublishVideo` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js) to atomically migrate DynamoDB records (`SK = FAMILY#<oldFamilyId>#VIDEO#...` -> `SK = FAMILY#<newFamilyId>#VIDEO#...`) upon publishing.
+- **Outcome**: Delivered flexible, human-in-the-loop partition key reassignment before triggering heavy Fargate transcoding jobs.
+
+### 101. Mobile Auth Flow Optimization: Post-Verification Auto-Login (Sept 24, 2026)
+- **Challenge**: After completing email confirmation, Android users were returned to a signed-out screen state, causing token gaps and 401/404 catalog errors if requests triggered before manual login.
+- **AI Contribution**: 
+    - Updated `confirmSignUp` in [`AuthViewModel.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/AuthViewModel.kt) to accept cached user credentials and automatically execute `signIn(email, password)` upon verification code confirmation.
+    - Updated [`SignupScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/SignupScreen.kt) to forward user credentials into `confirmSignUp`, triggering direct seamless launch into the Family Vault Catalog (`AuthState.SignedIn`).
+- **Outcome**: Eliminated manual re-authentication gaps and post-registration network authorization errors on Android.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

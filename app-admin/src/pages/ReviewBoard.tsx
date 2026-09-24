@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { RefreshCcw, ClipboardCheck, Sparkles, CheckCircle, Loader2, Trash2 } from 'lucide-react';
+import { RefreshCcw, ClipboardCheck, Sparkles, CheckCircle, Loader2, Trash2, Building, Filter } from 'lucide-react';
 import { SYSTEM_CONFIG } from '../config';
+import { useTenants } from '../context/TenantContext';
 import api from '../api';
 
 interface MediaItem {
@@ -18,14 +19,17 @@ interface MediaItem {
 }
 
 const ReviewBoard = () => {
+  const { tenants } = useTenants();
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const [familyFilter, setFamilyFilter] = useState('ALL');
 
   const [formData, setFormData] = useState({
     title: '',
     genre: 'Unknown',
     releaseYear: new Date().getFullYear().toString(),
+    familyId: 'PUBLIC',
     description: '',
     tags: ''
   });
@@ -67,12 +71,13 @@ const ReviewBoard = () => {
       title: item.aiTitle || item.title || '',
       genre: item.genre && item.genre !== 'Unknown' ? item.genre : 'Family Archive',
       releaseYear: item.releaseYear && item.releaseYear !== '0' ? item.releaseYear : new Date().getFullYear().toString(),
+      familyId: item.familyId || 'PUBLIC',
       description: item.aiDescription || '',
       tags: formattedTags
     });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -90,7 +95,8 @@ const ReviewBoard = () => {
 
       await api.post('catalog/publish', {
         videoId: selectedItem.videoId,
-        familyId: selectedItem.familyId,
+        familyId: formData.familyId, // Allow reassigning family tenant partition
+        oldFamilyId: selectedItem.familyId,
         videoKey: selectedItem.videoKey,
         title: formData.title,
         genre: formData.genre,
@@ -99,7 +105,7 @@ const ReviewBoard = () => {
         tags: tagsArray
       });
 
-      setSuccessMsg(`"${formData.title}" officially approved and queued for full HLS transcoding!`);
+      setSuccessMsg(`"${formData.title}" officially assigned to ${formData.familyId} and queued for full HLS transcoding!`);
       setSelectedItem(null);
       await fetchReviewQueue();
     } catch (err) {
@@ -127,21 +133,25 @@ const ReviewBoard = () => {
     }
   };
 
+  const filteredQueueItems = items.filter(item =>
+    familyFilter === 'ALL' || item.familyId === familyFilter
+  );
+
   return (
     <div className="space-y-6">
-      <header className="flex justify-between items-center mb-6">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h2 className="text-3xl font-black text-heritage-parchment flex items-center gap-2 text-glow-gold">
             <ClipboardCheck className="text-heritage-gold" /> Metadata Review Board
           </h2>
           <p className="text-heritage-400">Human-in-the-Loop approval loop. Review AI metadata defaults before transcoding clusters launch.</p>
           <p className="text-[11px] text-heritage-gold bg-heritage-gold/10 border border-heritage-gold/20 rounded-md px-3 py-1.5 mt-2 max-w-max flex items-center gap-1.5 italic font-medium">
-            <Sparkles size={12} className="text-heritage-gold animate-pulse" /> Staged properties are automatically drafted by Amazon Bedrock using the <span className="font-bold underline text-heritage-gold font-mono">{SYSTEM_CONFIG.BEDROCK_MODEL_ID}</span> foundation model. Review and amend details before initializing full production HLS transcoding.
+            <Sparkles size={12} className="text-heritage-gold animate-pulse" /> Staged properties are automatically drafted by Amazon Bedrock using the <span className="font-bold underline text-heritage-gold font-mono">{SYSTEM_CONFIG.BEDROCK_MODEL_ID}</span> foundation model.
           </p>
         </div>
         <button
           onClick={fetchReviewQueue}
-          className="flex items-center gap-2 bg-heritage-800 hover:bg-heritage-700 text-heritage-parchment px-4 py-2 rounded-lg border border-heritage-800 transition-all text-sm shadow-lg"
+          className="flex items-center gap-2 bg-heritage-800 hover:bg-heritage-700 text-heritage-parchment px-4 py-2 rounded-lg border border-heritage-800 transition-all text-sm shadow-lg shrink-0"
         >
           <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
           <span>Refresh</span>
@@ -158,9 +168,32 @@ const ReviewBoard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left column - Queue list */}
         <div className="lg:col-span-1 bg-heritage-900 rounded-xl border border-heritage-800 p-5 h-[calc(100vh-240px)] overflow-y-auto space-y-4 shadow-inner">
-          <h3 className="text-xs font-black uppercase tracking-widest text-heritage-400 mb-2">Review Queue ({items.length})</h3>
+          <div className="space-y-3 pb-2 border-b border-heritage-800">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-widest text-heritage-400">Review Queue ({filteredQueueItems.length})</h3>
+            </div>
 
-          {items.map((item) => {
+            {/* Family Vault Filter Dropdown */}
+            <div className="relative">
+              <div className="flex items-center gap-2 bg-heritage-black border border-heritage-800 rounded-lg px-3 py-1.5 text-xs text-heritage-parchment">
+                <Filter size={12} className="text-heritage-gold shrink-0" />
+                <select
+                  value={familyFilter}
+                  onChange={e => setFamilyFilter(e.target.value)}
+                  className="bg-transparent outline-none w-full cursor-pointer font-bold text-xs text-heritage-parchment"
+                >
+                  <option value="ALL">All Family Vaults ({items.length})</option>
+                  {tenants.map(t => (
+                    <option key={t.familyId} value={t.familyId}>
+                      {t.familyName} ({t.familyId})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {filteredQueueItems.map((item) => {
             const isReady = item.transcodeStatus === 'REVIEW_PENDING';
             const isSelected = selectedItem?.videoId === item.videoId;
 
@@ -188,16 +221,19 @@ const ReviewBoard = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-heritage-parchment truncate">{item.aiTitle || item.title}</div>
-                  <div className="text-xs text-heritage-400/60 font-mono truncate">{item.videoId}</div>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="font-bold text-heritage-parchment truncate text-sm">{item.aiTitle || item.title}</div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-heritage-gold font-mono font-bold truncate">
+                    <Building size={10} />
+                    <span>{item.familyId}</span>
+                  </div>
 
                   {isReady ? (
-                    <div className="mt-1 flex items-center gap-1 text-[10px] text-heritage-gold bg-heritage-gold/10 px-2 py-0.5 rounded w-max font-black border border-heritage-gold/20 uppercase tracking-tighter">
+                    <div className="flex items-center gap-1 text-[10px] text-heritage-gold bg-heritage-gold/10 px-2 py-0.5 rounded w-max font-black border border-heritage-gold/20 uppercase tracking-tighter">
                       <Sparkles size={10} /> AI Staged
                     </div>
                   ) : (
-                    <div className="mt-1 flex items-center gap-1 text-[10px] text-heritage-sunset bg-heritage-sunset/10 px-2 py-0.5 rounded w-max font-black border border-heritage-sunset/20 uppercase tracking-tighter">
+                    <div className="flex items-center gap-1 text-[10px] text-heritage-sunset bg-heritage-sunset/10 px-2 py-0.5 rounded w-max font-black border border-heritage-sunset/20 uppercase tracking-tighter">
                       <Loader2 size={10} className="animate-spin" /> AI Processing...
                     </div>
                   )}
@@ -206,9 +242,9 @@ const ReviewBoard = () => {
             );
           })}
 
-          {items.length === 0 && !loading && (
+          {filteredQueueItems.length === 0 && !loading && (
             <div className="text-center py-20 text-heritage-400 italic text-sm">
-              All uploads reviewed! Queue is empty.
+              No media items found for this filter.
             </div>
           )}
         </div>
@@ -227,8 +263,29 @@ const ReviewBoard = () => {
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-heritage-gold">Staged Video Context</span>
                   <h4 className="text-xl font-black text-heritage-parchment">{selectedItem.title}</h4>
                   <p className="text-xs text-heritage-400 font-mono opacity-60">Key: {selectedItem.videoKey}</p>
-                  <p className="text-xs text-heritage-400 font-mono opacity-60">Partition: {selectedItem.familyId}</p>
                 </div>
+              </div>
+
+              {/* Target Family Partition Reassignment Dropdown */}
+              <div className="space-y-2 bg-heritage-black/50 border border-heritage-gold/30 p-4 rounded-xl">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-heritage-gold flex items-center gap-1.5">
+                  <Building size={12} /> Target Family Vault Partition
+                </label>
+                <select
+                  name="familyId"
+                  value={formData.familyId}
+                  onChange={handleInputChange}
+                  className="w-full bg-heritage-black border border-heritage-800 rounded-lg px-4 py-2.5 text-heritage-parchment outline-none font-bold text-sm cursor-pointer"
+                >
+                  {tenants.map(t => (
+                    <option key={t.familyId} value={t.familyId}>
+                      {t.familyName} ({t.familyId})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-heritage-400 italic">
+                  Verify or reassign the target family vault before triggering HLS transcoding.
+                </p>
               </div>
 
               <div className="space-y-2">

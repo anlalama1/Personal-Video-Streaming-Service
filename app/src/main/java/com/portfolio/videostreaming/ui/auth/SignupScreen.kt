@@ -80,7 +80,7 @@ fun SignupScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
-                    onClick = { viewModel.confirmSignUp(email, verificationCode) },
+                    onClick = { viewModel.confirmSignUp(email, verificationCode, password) },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Amber500)
                 ) {

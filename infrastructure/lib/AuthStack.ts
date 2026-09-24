@@ -53,10 +53,11 @@ export class AuthStack extends cdk.Stack {
         requireDigits: true,
         requireSymbols: false,
       },
-      // Remember Device support for frictionless repeated logins
+      // Frictionless Device Tracking across Web & Mobile
+      // Set challengeRequiredOnNewDevice to false to prevent deviceKey missing errors on new web browsers
       deviceTracking: {
-        challengeRequiredOnNewDevice: true,
-        deviceOnlyRememberedOnUserPrompt: false,
+        challengeRequiredOnNewDevice: false,
+        deviceOnlyRememberedOnUserPrompt: true,
       },
       // Amazon SES Configuration for Custom Email Identity (no-reply@alexandria-plus.com)
       email: cognito.UserPoolEmail.withSES({

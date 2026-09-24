@@ -844,6 +844,21 @@ This document tracks the high-level collaboration between the human developer an
     - Integrated ID Token payload decoding in `AuthContext` across both web portals and built interactive Account Details Modals displaying the authenticated user's email address (`userProfile.email`) and family partition key.
 - **Outcome**: Achieved airtight data isolation between family vaults while delivering transparent account identity visibility across the entire ecosystem.
 
+### 96. Brand Consolidation: Unified Logo Flat & Dark-Grey Adaptive Launcher (Sept 23, 2026)
+- **Challenge**: Multiple conflicting branding assets (`logo_hero_3d.png`, `ic_launcher_heritage.png`) created visual inconsistency across Android screens and launcher icon backgrounds.
+- **AI Contribution**: 
+    - Consolidated all branding displays across Android screens (`LoginScreen.kt`) to utilize the official flat brand signature (`logo_flat.png`).
+    - Configured Android Adaptive Icon vector layers (`ic_launcher_heritage_adaptive.xml`), binding `logo_flat.png` as the foreground element.
+    - Updated launcher background vector (`ic_heritage_background.xml`) to a rich Stone 900 Dark Grey (`#1C1917`), providing visual contrast against app icon boundaries.
+- **Outcome**: Established complete asset uniformity across Android UI screens and OS launcher icon surfaces.
+
+### 97. Web Browser Favicon & Reactive Auth Redirection (Sept 23, 2026)
+- **Challenge**: Successful login required a manual browser page refresh to navigate to the home portal, and browser tabs displayed generic `vite.svg` or globe icons.
+- **AI Contribution**: 
+    - Wrapped `signIn` and `confirmSignUp` calls inside `AuthContext` across Demetrius (`app-admin`) and Desktop Viewer (`app-viewer`) to trigger instant `checkUser()` state synchronization (`null` -> `AuthUser`), executing zero-refresh reactive redirects upon authentication.
+    - Copied `logo_flat.png` to the public web assets directories of both web applications and updated `index.html` favicon declarations (`<link rel="icon" type="image/png" href="/logo_flat.png" />`).
+- **Outcome**: Delivered instant, seamless login navigation and professional brand identity across browser tabs.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

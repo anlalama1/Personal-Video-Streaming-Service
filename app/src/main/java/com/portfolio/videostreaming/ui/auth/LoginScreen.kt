@@ -43,9 +43,9 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Branded 3D Hero Logo
+            // Consolidated Flat Brand Logo Glyph
             Image(
-                painter = painterResource(id = R.drawable.logo_hero_3d),
+                painter = painterResource(id = R.drawable.logo_flat),
                 contentDescription = "Alexandria+ Logo",
                 modifier = Modifier.size(180.dp),
                 contentScale = ContentScale.Fit

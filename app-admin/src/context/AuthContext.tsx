@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * Demetrius Admin Portal Authentication Context & Token Decoder
+ * ============================================================================
+ * Enterprise Architecture Strategy: Global Auth State & Reactive State Sync.
+ * Configures AWS Amplify Auth, manages reactive user session state, and wraps
+ * signIn / confirmSignUp calls to trigger instant UI redirection upon login.
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Amplify } from 'aws-amplify';
 import { getCurrentUser, fetchAuthSession, signIn, signUp, confirmSignUp, signOut, type AuthUser } from 'aws-amplify/auth';
@@ -44,6 +53,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile>({ email: null, role: 'Shop Operator' });
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Verifies active Cognito user session and extracts ID Token payload claims.
+   */
   const checkUser = async () => {
     try {
       const currentUser = await getCurrentUser();
@@ -66,6 +78,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkUser();
   }, []);
 
+  /**
+   * Wrapped SignIn Function: Triggers instant React state sync on successful authentication.
+   */
+  const handleSignIn: typeof signIn = async (input) => {
+    const result = await signIn(input);
+    if (result.isSignedIn) {
+      await checkUser();
+    }
+    return result;
+  };
+
+  /**
+   * Wrapped ConfirmSignUp Function: Triggers state check on confirmation complete.
+   */
+  const handleConfirmSignUp: typeof confirmSignUp = async (input) => {
+    const result = await confirmSignUp(input);
+    if (result.isSignUpComplete) {
+      await checkUser();
+    }
+    return result;
+  };
+
+  /**
+   * Signs out active user and clears in-memory profile state.
+   */
   const handleSignOut = async () => {
     await signOut();
     setUser(null);
@@ -78,9 +115,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         userProfile,
         loading,
-        signIn,
+        signIn: handleSignIn,
         signUp,
-        confirmSignUp,
+        confirmSignUp: handleConfirmSignUp,
         signOut: handleSignOut,
         refreshProfile: checkUser
       }}

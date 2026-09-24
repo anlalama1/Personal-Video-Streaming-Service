@@ -3,8 +3,8 @@
  * Desktop Viewer Authentication Context & Token Decoder
  * ============================================================================
  * Enterprise Architecture Strategy: Global Auth Context & ID Token Claims Extraction.
- * Configures AWS Amplify Auth, checks active Cognito session states, and decodes
- * user attributes (email & custom:familyId) directly from the Cognito ID Token.
+ * Configures AWS Amplify Auth, checks active Cognito session states, decodes
+ * user attributes (email & custom:familyId), and triggers instant UI state sync.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -81,6 +81,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
+   * Wrapped SignIn Function: Triggers instant React state sync on successful authentication.
+   */
+  const handleSignIn: typeof signIn = async (input) => {
+    const result = await signIn(input);
+    if (result.isSignedIn) {
+      await checkUser();
+    }
+    return result;
+  };
+
+  /**
+   * Wrapped ConfirmSignUp Function: Triggers state check on confirmation complete.
+   */
+  const handleConfirmSignUp: typeof confirmSignUp = async (input) => {
+    const result = await confirmSignUp(input);
+    if (result.isSignUpComplete) {
+      await checkUser();
+    }
+    return result;
+  };
+
+  /**
    * Signs out current user and resets in-memory profile state.
    */
   const handleSignOut = async () => {
@@ -95,9 +117,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         userProfile,
         loading,
-        signIn,
+        signIn: handleSignIn,
         signUp,
-        confirmSignUp,
+        confirmSignUp: handleConfirmSignUp,
         signOut: handleSignOut,
         refreshProfile: checkUser
       }}

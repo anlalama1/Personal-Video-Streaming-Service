@@ -866,6 +866,14 @@ This document tracks the high-level collaboration between the human developer an
     - Integrated Lucide-React `Eye` / `EyeOff` input toggles into Demetrius Admin (`app-admin/src/pages/Auth.tsx`) and Desktop Viewer (`app-viewer/src/pages/Auth.tsx`).
 - **Outcome**: Delivered intuitive, accessible credential entry UX synchronized across all mobile and web login portals.
 
+### 99. System Governance: "Nuclear Option" Factory Reset Lambda (Sept 24, 2026)
+- **Challenge**: The account lacked a secure, automated mechanism to perform a complete system factory reset (purging all customer data across S3, DynamoDB, and Cognito) for development testing or teardowns.
+- **AI Contribution**: 
+    - Designed and implemented [`nuclearReset.js`](file:///I:/Android%20Projects/infrastructure/lambda/nuclearReset.js), a destructive administrative Lambda handler featuring a mandatory confirmation payload gate (`CONFIRM_SYSTEM_FACTORY_RESET_ALEXANDRIA`).
+    - Provisioned [`SystemGovernanceStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/SystemGovernanceStack.ts) with strict, least-privilege IAM permissions scoped to S3 buckets (`SOURCE`, `THUMBNAIL`, `DEST`), DynamoDB `VideoMetadataTable`, and Cognito `AlexandriaUserPool`.
+    - Isolated the reset function from public API Gateway routes, requiring manual execution via AWS CLI or AWS Console Test tabs.
+- **Outcome**: Delivered an enterprise-grade, highly guarded administrative utility for automated environment purges.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

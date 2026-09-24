@@ -6,6 +6,7 @@ import { ApiStack } from './ApiStack';
 import { AuthStack } from './AuthStack';
 import { MediaProcessingStack } from './MediaProcessingStack';
 import { ObservabilityStack } from './ObservabilityStack';
+import { SystemGovernanceStack } from './SystemGovernanceStack';
 import { Config } from '../bin/config';
 
 /**
@@ -68,6 +69,17 @@ export class StreamingAppStage extends cdk.Stage {
     new ObservabilityStack(this, 'ObservabilityStack', {
       env,
       logGroup: api.logGroup
+    });
+
+    // Principal Strategy: Isolated Administrative System Governance.
+    // Provisions the "Nuclear Option" System Factory Reset Lambda function.
+    new SystemGovernanceStack(this, 'SystemGovernanceStack', {
+      env,
+      sourceBucket: storage.mediaBucket,
+      thumbnailBucket: storage.thumbnailBucket,
+      hlsBucket: storage.hlsBucket,
+      metadataTable: database.table,
+      userPool: auth.userPool,
     });
   }
 }

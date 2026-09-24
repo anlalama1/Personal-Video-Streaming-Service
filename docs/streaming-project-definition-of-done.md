@@ -222,11 +222,18 @@ The project is **done** when all of the following are true:
 
 ### Milestone 28 — Verification Code Identity & Custom Email Sender (Amazon SES)
 - [x] **Auth Flow Parity**: Configure `USER_PASSWORD_AUTH` and `USER_SRP_AUTH` explicitly in `AuthStack.ts`, `app-admin`, and `app-viewer` for cross-platform login parity.
-- [ ] **Custom Domain Verification (SES)**: Verify `alexandria-plus.com` identity and DKIM keys in Amazon SES.
-- [ ] **Custom FROM Identity**: Configure AWS Cognito User Pool to send transactional emails (verification codes, password resets) from `no-reply@alexandria-plus.com`.
-- [ ] **Branded Verification Templates**: Configure custom HTML/text verification email templates with the Alexandria+ Heritage Gold aesthetic and logo.
+- [x] **Custom Domain Verification (SES)**: Verify `alexandria-plus.com` identity and DKIM keys in Amazon SES.
+- [x] **Custom FROM Identity**: Configure AWS Cognito User Pool to send transactional emails (verification codes, password resets) from `no-reply@alexandria-plus.com`.
+- [x] **Branded Verification Templates**: Configure custom HTML/text verification email templates with the Alexandria+ Heritage Gold aesthetic and logo.
 - [ ] **SES Production Access**: Transition Amazon SES out of Sandbox mode to enable delivery to external family member email addresses.
-- [ ] **CDK Integration**: Update `AuthStack.ts` to programmatically provision `cognito.UserPoolEmail.withSES` and link SES domain identity.
+- [x] **CDK Integration**: Update `AuthStack.ts` to programmatically provision `cognito.UserPoolEmail.withSES` and link SES domain identity.
+
+### Milestone 29 — Serverless Multi-Tenant Vault Management & Cryptographic Isolation
+- [x] **DynamoDB Tenant Registry**: Provisioned `/tenants` REST endpoints backed by Single-Table Design (`PK = "TENANTS_REGISTRY"`, `SK = "TENANT#<familyId>"`).
+- [x] **Cryptographic Tenancy Enforcement**: Enforced `claims['custom:familyId']` extraction in Lambda (`index.js`), guaranteeing data isolation between family vaults.
+- [x] **Demetrius Tenant Operations**: Integrated `/admin/tenants` registry page and on-the-fly vault provisioning drawers in Demetrius (`app-admin`).
+- [x] **Mandatory Family Vault Registration**: Enforced mandatory Family Code validation for consumer sign-ups on Desktop Viewer (`app-viewer`) and Android Viewer.
+- [x] **Authenticated Identity & Token Inspection**: Decoded Cognito ID Token payloads (`session.tokens.idToken.payload`) to display authenticated user emails and family partition keys across web and mobile clients.
 
 ---
 

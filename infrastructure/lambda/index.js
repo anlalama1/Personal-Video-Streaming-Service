@@ -35,7 +35,7 @@ exports.handler = async (event) => {
         console.log(`Scribe Request: ${method} ${path} for Tenant: ${tenantId}`);
 
         if (path === '/catalog' && method === 'GET') {
-            return await handleGetCatalog(event, tenantId);
+            return await handleGetCatalog(event, tenantId, claims);
         } else if (path === '/tenants' && method === 'GET') {
             return await handleGetTenants(event, tenantId);
         } else if (path === '/tenants' && method === 'POST') {
@@ -61,11 +61,20 @@ exports.handler = async (event) => {
     }
 };
 
-async function handleGetCatalog(event, tenantId) {
+async function handleGetCatalog(event, tenantId, claims = {}) {
     const headers = event.headers || {};
     const queryParams = event.queryStringParameters || {};
-    const familyId = headers['x-family-id'] || headers['X-Family-Id'];
     const isAdminView = queryParams.adminView === 'true';
+    const jwtFamilyId = claims['custom:familyId'];
+
+    // Enforce Strict Family Vault Isolation:
+    // If a consumer user (non-admin view) has a custom:familyId in their Cognito JWT,
+    // force familyId to match their JWT claim so they can ONLY access their family vault.
+    let familyId = headers['x-family-id'] || headers['X-Family-Id'] || jwtFamilyId;
+
+    if (!isAdminView && jwtFamilyId && jwtFamilyId !== 'SHOP_ADMIN') {
+        familyId = jwtFamilyId;
+    }
 
     const tableName = process.env.TABLE_NAME;
     const cdnDomain = process.env.CLOUDFRONT_DOMAIN;
@@ -88,13 +97,21 @@ async function handleGetCatalog(event, tenantId) {
     // We always filter out items in the 'DELETED' state to support the two-phase purge.
     items = items.filter(item => item.transcodeStatus !== 'DELETED');
 
-    // Principal Strategy: Catalog Visibility Gating.
-    // Consumer apps (Android/Scroll) only see items that are past the approval gate.
+    // Principal Strategy: Catalog Visibility Gating & Tenancy Isolation.
+    // Consumer apps (Android/Scroll) only see items that are past the approval gate and belong to their family vault.
     if (!isAdminView) {
         items = items.filter(item =>
             item.transcodeStatus === 'COMPLETED' ||
             item.transcodeStatus === 'TRANSCODING'
         );
+
+        if (jwtFamilyId && jwtFamilyId !== 'SHOP_ADMIN') {
+            items = items.filter(item => {
+                const skParts = (item.SK || '').split('#');
+                const itemFamilyId = skParts[1];
+                return itemFamilyId === jwtFamilyId || itemFamilyId === 'PUBLIC';
+            });
+        }
     }
 
     const mapToCdn = (item) => {

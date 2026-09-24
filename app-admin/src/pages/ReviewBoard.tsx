@@ -179,7 +179,7 @@ const ReviewBoard = () => {
                 <div className="relative">
                   <img
                     src={item.thumbnailUrl || "https://via.placeholder.com/150"}
-                    alt="AI thumbnail"
+                    alt="thumbnail"
                     className="w-20 h-14 object-cover rounded-lg border border-heritage-800 bg-heritage-900"
                   />
                   {!isReady && (

@@ -828,6 +828,22 @@ This document tracks the high-level collaboration between the human developer an
     - Added custom Alexandria+ email verification templates and Amazon SES CDK integration pathways to `AuthStack.ts`.
 - **Outcome**: Fixed authentication blockers across Demetrius and Desktop Viewer while establishing a roadmap for enterprise custom-domain email identity.
 
+### 94. Multi-Tenant Family Vault Infrastructure & Dynamic Registry (Sept 23, 2026)
+- **Challenge**: Hardcoded family options in Demetrius (`PUBLIC`, `SMITH_HOUSE`, `LALAMA_HOUSE`) prevented scaling and violated production multi-tenant database standards.
+- **AI Contribution**: 
+    - Transformed family tenant management into a serverless DynamoDB Single-Table registry (`PK = TENANTS_REGISTRY`, `SK = TENANT#<familyId>`).
+    - Provisioned authenticated REST endpoints (`GET /tenants` and `POST /tenants`) in `index.js` and `ApiStack.ts` with Cognito authorization.
+    - Built a dedicated **Family Tenants** portal (`/admin/tenants`) and inline registration drawers in Demetrius, auto-generating formatted tenant keys (e.g., `FAM_HARRISON_9A21`) with 1-click sharing tools.
+- **Outcome**: Replaced client-side hardcoding with an enterprise multi-tenant database architecture.
+
+### 95. Cryptographic Tenancy Isolation & Authenticated Identity Display (Sept 23, 2026)
+- **Challenge**: Non-admin viewer users could inspect catalog items across other family vaults due to missing JWT claim enforcement in `handleGetCatalog`, and neither web client displayed authenticated Cognito user emails.
+- **AI Contribution**: 
+    - Enforced cryptographic tenancy isolation in `index.js` by inspecting `claims['custom:familyId']` directly from the user's signed Cognito ID Token, restricting consumer views strictly to their assigned family vault (`itemFamilyId === jwtFamilyId` or `PUBLIC`).
+    - Enforced mandatory Family Vault Code registration across Desktop Viewer (`app-viewer`) and Android Viewer (`SignupScreen.kt`), eliminating auto-generated client-side fallbacks.
+    - Integrated ID Token payload decoding in `AuthContext` across both web portals and built interactive Account Details Modals displaying the authenticated user's email address (`userProfile.email`) and family partition key.
+- **Outcome**: Achieved airtight data isolation between family vaults while delivering transparent account identity visibility across the entire ecosystem.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

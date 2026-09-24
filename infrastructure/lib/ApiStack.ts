@@ -6,7 +6,11 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as path from 'path';
+import { Config } from '../bin/config';
 
 interface ApiStackProps extends cdk.StackProps {
   table: dynamodb.ITable;
@@ -120,6 +124,36 @@ export class ApiStack extends cdk.Stack {
 
     const play = api.root.addResource('play');
     play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda)); // Keep telemetry public for now or auth later
+
+    // 4. Custom Domain Routing for API Gateway
+    if (Config.useCustomDomain && Config.domainName) {
+      const apiDomain = Config.apiSubdomain || `api.${Config.domainName}`;
+
+      const hostedZone = route53.HostedZone.fromLookup(this, 'ApiHostedZone', {
+        domainName: Config.domainName,
+      });
+
+      const apiCertificate = new acm.Certificate(this, 'ApiDomainCertificate', {
+        domainName: apiDomain,
+        validation: acm.CertificateValidation.fromDns(hostedZone),
+      });
+
+      const customDomain = new apigateway.DomainName(this, 'CustomApiDomain', {
+        domainName: apiDomain,
+        certificate: apiCertificate,
+        endpointType: apigateway.EndpointType.REGIONAL,
+      });
+
+      customDomain.addBasePathMapping(api);
+
+      new route53.ARecord(this, 'ApiAliasRecord', {
+        zone: hostedZone,
+        recordName: 'api',
+        target: route53.RecordTarget.fromAlias(new targets.ApiGatewayDomain(customDomain)),
+      });
+
+      new cdk.CfnOutput(this, 'CustomApiUrl', { value: `https://${apiDomain}/` });
+    }
 
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.url });
   }

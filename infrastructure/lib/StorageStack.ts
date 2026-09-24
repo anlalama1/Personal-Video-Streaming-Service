@@ -4,6 +4,10 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import { Config } from '../bin/config';
 
 export class StorageStack extends cdk.Stack {
   public readonly mediaBucket: s3.IBucket;
@@ -78,7 +82,23 @@ export class StorageStack extends cdk.Stack {
       enforceSSL: true,
     });
 
-    // 2. CloudFront OAC
+    // 2. Custom Domain & SSL Certificate Provisioning
+    let certificate: acm.ICertificate | undefined;
+    let hostedZone: route53.IHostedZone | undefined;
+
+    if (Config.useCustomDomain && Config.domainName) {
+      hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
+        domainName: Config.domainName,
+      });
+
+      certificate = new acm.Certificate(this, 'CustomDomainCertificate', {
+        domainName: Config.domainName,
+        subjectAlternativeNames: [`*.${Config.domainName}`],
+        validation: acm.CertificateValidation.fromDns(hostedZone),
+      });
+    }
+
+    // 3. CloudFront OAC
     const oac = new cloudfront.CfnOriginAccessControl(this, 'StreamingOAC', {
       originAccessControlConfig: {
         name: 'Alexandria-OAC-Integrated',
@@ -88,7 +108,7 @@ export class StorageStack extends cdk.Stack {
       },
     });
 
-    // 3. Edge Functions (The Scribe's Gate)
+    // 4. Edge Functions (The Scribe's Gate)
     const rewriteFunction = new cloudfront.Function(this, 'RewritePath', {
       code: cloudfront.FunctionCode.fromInline(`
         function handler(event) {
@@ -134,9 +154,13 @@ export class StorageStack extends cdk.Stack {
       `),
     });
 
-    // 4. Unified Distribution
+    // 5. Unified Distribution
     this.distribution = new cloudfront.Distribution(this, 'StreamingDistribution', {
       comment: 'Unified CDN for Alexandria+ Ecosystem',
+      domainNames: Config.useCustomDomain && Config.domainName
+        ? [Config.domainName, `www.${Config.domainName}`]
+        : undefined,
+      certificate: certificate,
       // Default: The Scroll (Web Viewer)
       defaultBehavior: {
         origin: new origins.S3Origin(this.viewerPortalBucket),
@@ -196,6 +220,20 @@ export class StorageStack extends cdk.Stack {
       }
     });
 
+    // Route 53 Alias Records
+    if (Config.useCustomDomain && hostedZone) {
+      new route53.ARecord(this, 'ApexAliasRecord', {
+        zone: hostedZone,
+        target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(this.distribution)),
+      });
+
+      new route53.ARecord(this, 'WwwAliasRecord', {
+        zone: hostedZone,
+        recordName: 'www',
+        target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(this.distribution)),
+      });
+    }
+
     // OAC Attachment (L1 Escape Hatch)
     const cfnDistribution = this.distribution.node.defaultChild as cloudfront.CfnDistribution;
     // Indices: 0:Default(Viewer), 1:Media, 2:Thumbnails, 3:HLS, 4:Download, 5:Admin
@@ -205,7 +243,7 @@ export class StorageStack extends cdk.Stack {
         cfnDistribution.addPropertyOverride(`DistributionConfig.Origins.${i}.S3OriginConfig.OriginAccessIdentity`, '');
     });
 
-    // 5. Bucket Policies
+    // 6. Bucket Policies
     const allowCloudFront = (bucket: s3.IBucket) => {
         bucket.addToResourcePolicy(new iam.PolicyStatement({
             actions: ['s3:GetObject'],

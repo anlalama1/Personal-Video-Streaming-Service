@@ -23,8 +23,11 @@ export const Config = {
     // The prefix used for various production resources
     projectPrefix: 'StreamingService',
 
-    // Primary domain and sender identity for transactional emails
+    // Custom Domain & Identity Configuration
+    // Set useCustomDomain to true to enable Route 53, ACM Certificates, and custom domain routing
+    useCustomDomain: true,
     domainName: 'alexandria-plus.com',
+    apiSubdomain: 'api.alexandria-plus.com',
     fromEmail: 'no-reply@alexandria-plus.com',
 
     // The active foundation model ID used for GenAI metadata enrichment via AWS Bedrock

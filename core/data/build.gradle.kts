@@ -12,7 +12,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         // Lead Strategy: Inject the API URL through Gradle.
-        buildConfigField("String", "BASE_URL", "\"https://ytlejkjznh.execute-api.us-east-1.amazonaws.com/prod/\"")
+        // Note: Custom Domain mapping (api.alexandria-plus.com) maps stage 'prod' directly to root '/', so NO '/prod/' prefix is needed.
+        buildConfigField("String", "BASE_URL", "\"https://api.alexandria-plus.com/\"")
     }
 
     compileOptions {

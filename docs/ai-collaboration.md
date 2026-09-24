@@ -859,6 +859,13 @@ This document tracks the high-level collaboration between the human developer an
     - Copied `logo_flat.png` to the public web assets directories of both web applications and updated `index.html` favicon declarations (`<link rel="icon" type="image/png" href="/logo_flat.png" />`).
 - **Outcome**: Delivered instant, seamless login navigation and professional brand identity across browser tabs.
 
+### 98. Cross-Platform UX Alignment: Password Visibility Toggles (Sept 24, 2026)
+- **Challenge**: Password fields across authentication screens lacked visual toggle controls, causing user friction during credential entry.
+- **AI Contribution**: 
+    - Added interactive trailing icon password visibility toggles (`Icons.Filled.Visibility` / `Icons.Filled.VisibilityOff`) to Jetpack Compose fields in [`LoginScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/LoginScreen.kt) and [`SignupScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/SignupScreen.kt).
+    - Integrated Lucide-React `Eye` / `EyeOff` input toggles into Demetrius Admin (`app-admin/src/pages/Auth.tsx`) and Desktop Viewer (`app-viewer/src/pages/Auth.tsx`).
+- **Outcome**: Delivered intuitive, accessible credential entry UX synchronized across all mobile and web login portals.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

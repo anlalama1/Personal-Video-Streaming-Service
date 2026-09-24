@@ -82,9 +82,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * Wrapped SignIn Function: Triggers instant React state sync on successful authentication.
+   * Uses rest parameters (...args) to resolve TypeScript overload signatures cleanly.
    */
-  const handleSignIn: typeof signIn = async (input) => {
-    const result = await signIn(input);
+  const handleSignIn = async (...args: Parameters<typeof signIn>) => {
+    const result = await signIn(...args);
     if (result.isSignedIn) {
       await checkUser();
     }
@@ -94,8 +95,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   /**
    * Wrapped ConfirmSignUp Function: Triggers state check on confirmation complete.
    */
-  const handleConfirmSignUp: typeof confirmSignUp = async (input) => {
-    const result = await confirmSignUp(input);
+  const handleConfirmSignUp = async (...args: Parameters<typeof confirmSignUp>) => {
+    const result = await confirmSignUp(...args);
     if (result.isSignUpComplete) {
       await checkUser();
     }
@@ -117,9 +118,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         userProfile,
         loading,
-        signIn: handleSignIn,
+        signIn: handleSignIn as typeof signIn,
         signUp,
-        confirmSignUp: handleConfirmSignUp,
+        confirmSignUp: handleConfirmSignUp as typeof confirmSignUp,
         signOut: handleSignOut,
         refreshProfile: checkUser
       }}

@@ -2,6 +2,9 @@ package com.portfolio.videostreaming.ui.auth
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,6 +14,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.portfolio.videostreaming.R
@@ -24,7 +28,7 @@ import com.portfolio.videostreaming.ui.theme.Parchment
  * ============================================================================
  * Enterprise Architecture Strategy: Declarative Auth Input UI.
  * Renders high-fidelity branded inputs for email/password authentication
- * and observes AuthViewModel state machine for loading spinners & error banners.
+ * with password visibility toggle and observes AuthViewModel state machine.
  */
 @Composable
 fun LoginScreen(
@@ -33,6 +37,7 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     val authState by viewModel.authState.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -83,7 +88,16 @@ fun LoginScreen(
                 onValueChange = { password = it },
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            tint = Parchment.copy(alpha = 0.6f)
+                        )
+                    }
+                },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Amber500,
                     unfocusedBorderColor = Parchment.copy(alpha = 0.3f),

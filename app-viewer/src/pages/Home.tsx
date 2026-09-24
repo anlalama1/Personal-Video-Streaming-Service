@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * Home Catalog View Page (The Scroll)
+ * ============================================================================
+ * Enterprise Architecture Strategy: Media Grid & Hero Section.
+ * Fetches authenticated catalog media items from Scribe API Gateway,
+ * rendering featured hero content and responsive catalog thumbnail grids.
+ */
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Info } from 'lucide-react';
@@ -19,6 +28,9 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  /**
+   * Fetches published catalog items for the authenticated user's family vault.
+   */
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
@@ -37,7 +49,7 @@ const Home = () => {
 
   return (
     <div className="pb-20">
-      {/* Hero Section */}
+      {/* Featured Selection Hero Section */}
       {featured && (
         <section className="relative h-[80vh] w-full overflow-hidden pt-20 lg:pt-0">
           <div className="absolute inset-0 z-0">
@@ -81,7 +93,7 @@ const Home = () => {
         </section>
       )}
 
-      {/* Catalog Grid */}
+      {/* Catalog Grid Section */}
       <section className="px-12 mt-12 space-y-12">
         <div>
           <h3 className="text-2xl font-bold text-heritage-parchment mb-6 flex items-center gap-3">

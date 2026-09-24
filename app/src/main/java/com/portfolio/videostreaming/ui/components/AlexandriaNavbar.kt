@@ -24,6 +24,14 @@ import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
 import com.portfolio.videostreaming.ui.theme.Stone400
 
+/**
+ * ============================================================================
+ * Global Heritage Header Navbar Composable
+ * ============================================================================
+ * Enterprise Architecture Strategy: Cross-Platform Brand Signature Parity.
+ * Replicates the "Logo-as-a-Letter" geometric lockup and statusBarsPadding window
+ * insets across Web and Android clients.
+ */
 @Composable
 fun AlexandriaNavbar(
     onSignOut: () -> Unit,
@@ -43,7 +51,7 @@ fun AlexandriaNavbar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Logo and Brand
+                // Logo Glyph and Integrated Wordmark Lockup
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
@@ -52,8 +60,8 @@ fun AlexandriaNavbar(
                         painter = painterResource(id = R.drawable.logo_flat),
                         contentDescription = "Alexandria+ Logo",
                         modifier = Modifier
-                            .height(52.dp) // Larger presence
-                            .offset(x = 3.dp, y = 1.dp), // Moved 'up and to the right' relative to container, aligned to baseline
+                            .height(52.dp)
+                            .offset(x = 3.dp, y = 1.dp),
                         contentScale = ContentScale.Fit
                     )
                     Text(
@@ -62,11 +70,11 @@ fun AlexandriaNavbar(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp,
-                        modifier = Modifier.offset(x = (-12).dp) // Tighter lockup to swallow remaining padding
+                        modifier = Modifier.offset(x = (-12).dp)
                     )
                 }
 
-                // Desktop-style Links (Simplified for Mobile)
+                // Desktop-style Navigation Items & Account Avatar
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(24.dp)
@@ -79,7 +87,7 @@ fun AlexandriaNavbar(
                         letterSpacing = 1.sp
                     )
                     
-                    // Profile Circle with Logout action
+                    // User Profile Avatar with Logout action
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -98,7 +106,7 @@ fun AlexandriaNavbar(
                 }
             }
             
-            // Subtle bottom border
+            // Subtle Heritage divider line
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

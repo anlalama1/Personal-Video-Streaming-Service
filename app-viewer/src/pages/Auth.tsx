@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * Consumer Viewer Auth & Family Vault Registration Page
+ * ============================================================================
+ * Enterprise Architecture Strategy: Mandatory Tenancy Validation.
+ * Enforces mandatory Family Vault Code validation during consumer sign-up,
+ * mapping custom:familyId directly into Cognito User Pool attributes.
+ */
+
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Loader2, ShieldCheck, Key } from 'lucide-react';
@@ -15,6 +24,9 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  /**
+   * Handles sign-in, registration, and email verification code confirmation.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -28,6 +40,7 @@ const Auth = () => {
       } else if (isLogin) {
         await signIn({ username: email, password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
       } else {
+        // Enforce mandatory Family Vault Code validation
         if (!familyId.trim()) {
           setError("A valid Family Vault Code from your digitization shop operator is required.");
           setLoading(false);

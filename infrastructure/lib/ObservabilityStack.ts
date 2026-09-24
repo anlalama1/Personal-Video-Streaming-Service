@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * CloudWatch Observability & Telemetry Infrastructure Stack
+ * ============================================================================
+ * Architecture Pattern: Unified CloudWatch Observability & Automated Alarms.
+ *
+ * Enterprise Decision Rationale:
+ * Combines graph widgets, log insights query widgets, and metric alarms into a
+ * single mission-control dashboard. Automatically alerts on pipeline failures.
+ */
+
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
@@ -11,10 +22,12 @@ export class ObservabilityStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ObservabilityStackProps) {
     super(scope, id, props);
 
+    // Create CloudWatch Operational Dashboard
     const dashboard = new cloudwatch.Dashboard(this, 'StreamingServiceDashboard', {
       dashboardName: 'StreamingService-Modular-Overview',
     });
 
+    // Widget 1: Catalog Requests
     dashboard.addWidgets(new cloudwatch.GraphWidget({
       title: 'Catalog Requests',
       left: [new cloudwatch.Metric({
@@ -27,6 +40,7 @@ export class ObservabilityStack extends cdk.Stack {
       width: 12
     }));
 
+    // Widget 2: Video Playback Telemetry Activity
     dashboard.addWidgets(new cloudwatch.GraphWidget({
       title: 'Video Playback Activity',
       left: [new cloudwatch.Metric({
@@ -38,6 +52,7 @@ export class ObservabilityStack extends cdk.Stack {
       width: 12
     }));
 
+    // Widget 3: Top 10 Most Played Videos (CloudWatch Log Insights Query)
     dashboard.addWidgets(new cloudwatch.LogQueryWidget({
       title: 'Top 10 Most Played Videos',
       logGroupNames: [props.logGroup.logGroupName],
@@ -52,6 +67,7 @@ export class ObservabilityStack extends cdk.Stack {
       height: 6
     }));
 
+    // Widget 4: API Gateway Error Tracking
     dashboard.addWidgets(new cloudwatch.GraphWidget({
       title: 'API Errors',
       left: [new cloudwatch.Metric({
@@ -64,7 +80,7 @@ export class ObservabilityStack extends cdk.Stack {
       width: 12
     }));
 
-    // Lead Strategy: Monitor Fatal Pipeline Failures
+    // Widget 5: Fatal Pipeline Failures Metric & CloudWatch Alarm
     const fatalMetric = new cloudwatch.Metric({
       namespace: 'StreamingService',
       metricName: 'FatalTranscodeFailure',
@@ -79,6 +95,7 @@ export class ObservabilityStack extends cdk.Stack {
       width: 12
     }));
 
+    // CloudWatch Alarm for Fatal Transcode Failures
     new cloudwatch.Alarm(this, 'FatalTranscodeAlarm', {
       metric: fatalMetric,
       threshold: 1,
@@ -87,8 +104,7 @@ export class ObservabilityStack extends cdk.Stack {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
     });
 
-    // Lead Strategy: Library Health Overview
-    // Shows the total count of videos broken down by their pipeline state.
+    // Widget 6: Library Health State Overview
     dashboard.addWidgets(new cloudwatch.GraphWidget({
       title: 'Library Transcoding Status',
       left: [

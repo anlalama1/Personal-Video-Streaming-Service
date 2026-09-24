@@ -9,7 +9,12 @@ import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
 
 /**
- * A UI component that layers the video engine and our custom controls.
+ * ============================================================================
+ * Video Player Surface Composable (ExoPlayer Interop Layer)
+ * ============================================================================
+ * Enterprise Architecture Strategy: AndroidView Interoperability.
+ * Uses AndroidView to bridge Android's native Media3 PlayerView surface with
+ * Jetpack Compose, overlaying custom glassmorphic Compose controls on top.
  */
 @Composable
 fun VideoPlayer(
@@ -22,18 +27,18 @@ fun VideoPlayer(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
-        // Bottom Layer: The Video
+        // Bottom Layer: Native ExoPlayer Video Surface
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     this.player = player
-                    useController = false 
+                    useController = false // Disable native controls to use custom Compose controls
                 }
             },
             modifier = Modifier.fillMaxSize()
         )
         
-        // Top Layer: Our Custom "Glass" Controls
+        // Top Layer: Custom Glassmorphic Controls
         PlayerControls(
             state = state,
             onIntent = onIntent,

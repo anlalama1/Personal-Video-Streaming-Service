@@ -58,6 +58,9 @@ import java.util.concurrent.TimeUnit
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
+/**
+ * Navigation Destination Routes.
+ */
 sealed class Screen(val route: String) {
     object Catalog : Screen("catalog")
     object Details : Screen("details")
@@ -71,10 +74,20 @@ sealed class Screen(val route: String) {
     }
 }
 
+/**
+ * ============================================================================
+ * MainActivity - Single-Activity Jetpack Compose Architecture
+ * ============================================================================
+ * Enterprise Architecture Strategy: Single-Activity Pattern.
+ * Rather than hosting multiple traditional Android Activities or Fragments,
+ * modern Jetpack Compose applications utilize a single Activity hosting
+ * declarative Navigation graphs and Compose UI trees for reduced lifecycle complexity.
+ */
 class MainActivity : ComponentActivity() {
 
     private var hasPermission by mutableStateOf(false)
 
+    // Modern ActivityResultContract for runtime media permissions
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -83,6 +96,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Enables Android 15 Edge-to-Edge window drawing behind system status & navigation bars
         enableEdgeToEdge()
 
         checkAndRequestPermission()
@@ -97,6 +111,7 @@ class MainActivity : ComponentActivity() {
                         val authViewModel: AuthViewModel = viewModel()
                         val authState by authViewModel.authState.collectAsState()
 
+                        // Reactive Root State Machine
                         when (authState) {
                             is AuthState.SignedIn -> {
                                 MainAppContent(authViewModel)
@@ -125,13 +140,16 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     } else {
-                        // Permission missing
+                        // Permission request state fallback
                     }
                 }
             }
         }
     }
 
+    /**
+     * Authenticated Navigation Shell containing Global Header Navbar and Telemetry Overlays.
+     */
     @Composable
     private fun MainAppContent(authViewModel: AuthViewModel) {
         val screenTimeViewModel: ScreenTimeViewModel = viewModel()
@@ -142,12 +160,14 @@ class MainActivity : ComponentActivity() {
         val dailySeconds by screenTimeViewModel.dailySeconds.collectAsState()
         val isCounterVisible by screenTimeViewModel.isCounterVisible.collectAsState()
 
+        // Observe current backstack destination to dynamically hide navbar during cinematic playback
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
         val isPlayerScreen = currentRoute?.startsWith("player") == true
 
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
+                // Conditionally render global Alexandria Navbar (hidden on cinematic player)
                 if (!isPlayerScreen) {
                     AlexandriaNavbar(onSignOut = { authViewModel.signOut() })
                 }
@@ -157,7 +177,7 @@ class MainActivity : ComponentActivity() {
                     startDestination = Screen.Catalog.route,
                     modifier = Modifier
                         .weight(1f)
-                        .navigationBarsPadding()
+                        .navigationBarsPadding() // Safe padding for Android navigation bar insets
                 ) {
                     composable(Screen.Catalog.route) {
                         CatalogScreen(
@@ -187,16 +207,19 @@ class MainActivity : ComponentActivity() {
 
                         val viewState by playerViewModel.viewState.collectAsState()
 
+                        // Synchronize ExoPlayer playback state with Parental Screen Time tracker
                         LaunchedEffect(viewState.isPlaying) {
                             screenTimeViewModel.setTicking(viewState.isPlaying)
                         }
 
+                        // Clean up screen time ticking when leaving player destination
                         DisposableEffect(Unit) {
                             onDispose {
                                 screenTimeViewModel.setTicking(false)
                             }
                         }
 
+                        // Load media source into ExoPlayer
                         LaunchedEffect(videoId, videoUri) {
                             playerViewModel.processIntent(PlayerIntent.LoadVideo(videoId, videoUri))
                         }
@@ -214,6 +237,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Parental Screen Time Overlay
             AnimatedVisibility(
                 visible = isCounterVisible && isPlayerScreen,
                 enter = fadeIn(),
@@ -231,6 +255,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Checks and requests version-appropriate Android storage / media permissions.
+     */
     private fun checkAndRequestPermission() {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_VIDEO
@@ -245,6 +272,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Formats raw seconds into human-readable MMm SSs format.
+     */
     private fun formatSeconds(totalSeconds: Long): String {
         val minutes = TimeUnit.SECONDS.toMinutes(totalSeconds)
         val seconds = totalSeconds % 60

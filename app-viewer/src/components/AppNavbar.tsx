@@ -1,3 +1,13 @@
+/**
+ * ============================================================================
+ * Desktop Viewer Header Navigation Bar & Account Profile Modal
+ * ============================================================================
+ * Enterprise Architecture Strategy: Responsive Header & Identity Display.
+ * Serves as global layout navigation header featuring "Logo-as-a-Letter" lockup,
+ * route hiding during video playback, and an interactive Account Details Modal
+ * displaying authenticated email and Family Vault Partition Code.
+ */
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, LogOut, Key, Mail, ShieldCheck, X, Copy } from 'lucide-react';
@@ -8,13 +18,16 @@ const Navbar = () => {
   const { userProfile, signOut } = useAuth();
   const [showAccountModal, setShowAccountModal] = useState(false);
 
-  // Hide navbar in the player for full-screen immersion
+  // Hide navbar in the player for full-screen cinematic immersion
   if (location.pathname === '/player') return null;
 
   const displayInitial = userProfile.email
     ? userProfile.email.charAt(0).toUpperCase()
     : 'U';
 
+  /**
+   * Copies the active Family Vault Partition Key to the user's clipboard.
+   */
   const handleCopyFamilyCode = () => {
     if (userProfile.familyId) {
       navigator.clipboard.writeText(userProfile.familyId);
@@ -25,16 +38,19 @@ const Navbar = () => {
   return (
     <>
       <nav className="fixed top-0 w-full z-40 bg-heritage-black/80 backdrop-blur-md border-b border-heritage-parchment/10 p-4 lg:p-6 flex items-center justify-between px-8 lg:px-12 transition-all">
+        {/* Brand Lockup */}
         <Link to="/" className="flex items-center group">
           <img src="/logo_flat.png" alt="Alexandria+ Logo" className="h-[52px] w-auto group-hover:scale-105 transition-transform translate-x-[3px] translate-y-[1px]" />
           <h1 className="text-2xl font-black tracking-tighter text-heritage-parchment uppercase hidden sm:block -ml-[12px]">Lexandria+</h1>
         </Link>
 
+        {/* Global Links & Account Avatar */}
         <div className="flex items-center gap-8 text-sm font-black uppercase tracking-widest text-heritage-400">
             <Link to="/" className="cursor-pointer hover:text-heritage-parchment transition-colors">Home</Link>
             <span className="cursor-pointer hover:text-heritage-parchment transition-colors opacity-50 cursor-not-allowed">Movies</span>
             <span className="cursor-pointer hover:text-heritage-parchment transition-colors opacity-50 cursor-not-allowed">Music</span>
 
+            {/* Account Button Trigger */}
             <button
               onClick={() => setShowAccountModal(true)}
               className="w-10 h-10 rounded-full bg-gradient-to-r from-heritage-gold to-heritage-sunset flex items-center justify-center text-heritage-black text-sm font-black shadow-lg shadow-heritage-gold/20 hover:scale-105 transition-all cursor-pointer border border-heritage-gold/30"

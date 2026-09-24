@@ -1,3 +1,18 @@
+/**
+ * ============================================================================
+ * Authentication Infrastructure Stack (AWS Cognito & Amazon SES Identity)
+ * ============================================================================
+ * Architecture Pattern: Identity Provider (IdP) & Multi-Tenant Identity Store.
+ *
+ * Enterprise Decision Rationale:
+ * 1. Custom User Attributes: 'custom:familyId' is embedded in JWT ID tokens,
+ *    enabling cryptographically verifiable data isolation at the API boundary.
+ * 2. Dedicated Client Applications: Separate App Clients for Web vs Mobile
+ *    allow platform-specific auth flow configuration and OAuth scope tuning.
+ * 3. Amazon SES Integration: Routes transactional emails (verification codes)
+ *    through verified custom domains rather than default Cognito shared quotas.
+ */
+
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
@@ -11,7 +26,7 @@ export class AuthStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // 1. The User Pool - The "Vault" of Identities
+    // 1. The User Pool - The Central Vault of User Identities
     this.userPool = new cognito.UserPool(this, 'AlexandriaUserPool', {
       userPoolName: 'Alexandria-User-Vault',
       selfSignUpEnabled: true,
@@ -27,7 +42,7 @@ export class AuthStack extends cdk.Stack {
           mutable: true,
         },
       },
-      // Principal Strategy: Custom Attributes for Tenancy
+      // Custom Attributes for Multi-Tenant Vault Isolation
       customAttributes: {
         'familyId': new cognito.StringAttribute({ mutable: true }),
       },
@@ -38,10 +53,10 @@ export class AuthStack extends cdk.Stack {
         requireDigits: true,
         requireSymbols: false,
       },
-      // Requirement 1: Remember Device support
+      // Remember Device support for frictionless repeated logins
       deviceTracking: {
         challengeRequiredOnNewDevice: true,
-        deviceOnlyRememberedOnUserPrompt: false, // Automatically remember if user chooses
+        deviceOnlyRememberedOnUserPrompt: false,
       },
       // Amazon SES Configuration for Custom Email Identity (no-reply@alexandria-plus.com)
       email: cognito.UserPoolEmail.withSES({
@@ -49,26 +64,26 @@ export class AuthStack extends cdk.Stack {
         fromName: 'Alexandria+ Vault',
         sesVerifiedDomain: Config.domainName,
       }),
-      // Customizing Verification Email branding
+      // Custom Verification Email Branding
       userVerification: {
         emailSubject: 'Your Alexandria+ Vault Verification Code',
         emailBody: 'Welcome to Alexandria+ Preservation Vault!\n\nYour verification code is: {####}\n\nEnter this code to activate your family heritage vault.',
         emailStyle: cognito.VerificationEmailStyle.CODE,
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // For spike - change to RETAIN for prod
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // Dev spike setting; change to RETAIN for production
     });
 
-    // 2. Web Client (The Scroll & Demetrius)
+    // 2. Web App Client (Serves Demetrius & The Scroll Web Viewers)
     this.webClient = this.userPool.addClient('WebClient', {
       userPoolClientName: 'Alexandria-Web-Client',
       authFlows: {
         userPassword: true,
-        userSrp: true,
+        userSrp: true, // Secure Remote Password protocol enabled
       },
     });
 
-    // 3. Android Client
+    // 3. Native Android App Client
     this.androidClient = this.userPool.addClient('AndroidClient', {
       userPoolClientName: 'Alexandria-Android-Client',
       authFlows: {
@@ -77,11 +92,7 @@ export class AuthStack extends cdk.Stack {
       },
     });
 
-    // Requirement 4 Placeholder: Google Identity Provider
-    // Note: Fully enabling this requires a ClientSecret from Google Console.
-    // We can add this via:
-    // new cognito.UserPoolIdentityProviderGoogle(this, 'GoogleIdP', { ... });
-
+    // Stack CloudFormation Outputs for cross-stack referencing
     new cdk.CfnOutput(this, 'UserPoolId', { value: this.userPool.userPoolId });
     new cdk.CfnOutput(this, 'WebClientId', { value: this.webClient.userPoolClientId });
     new cdk.CfnOutput(this, 'AndroidClientId', { value: this.androidClient.userPoolClientId });

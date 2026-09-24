@@ -39,6 +39,14 @@ import com.portfolio.videostreaming.core.data.model.MediaFile
 import com.portfolio.videostreaming.ui.theme.Stone900
 import com.portfolio.videostreaming.ui.theme.Stone400
 
+/**
+ * ============================================================================
+ * Media Catalog Screen Composable
+ * ============================================================================
+ * Enterprise Architecture Strategy: Lazy Column Virtualization & Coil Image Caching.
+ * Uses LazyColumn for smooth 60fps scrolling performance over large catalogs and
+ * Coil AsyncImage for asynchronous bitmap loading and memory caching.
+ */
 @Composable
 fun CatalogScreen(
     onVideoSelected: (MediaFile) -> Unit,
@@ -87,6 +95,9 @@ fun CatalogScreen(
     }
 }
 
+/**
+ * Individual Catalog Video Item Card with Coil Image Caching.
+ */
 @Composable
 fun VideoItem(
     video: MediaFile,
@@ -101,10 +112,10 @@ fun VideoItem(
         colors = CardDefaults.cardColors(
             containerColor = Stone900.copy(alpha = 0.8f)
         ),
-        border = null // Senior Strategy: Use shadow and color instead of hard borders
+        border = null
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Senior Strategy: Use Coil for optimized image loading
+            // Asynchronous Thumbnail Loading via Coil AsyncImage
             AsyncImage(
                 model = video.thumbnailUrl,
                 contentDescription = "Thumbnail for ${video.title}",

@@ -43,6 +43,14 @@ import com.portfolio.videostreaming.ui.theme.Orange600
 import com.portfolio.videostreaming.ui.theme.Parchment
 import com.portfolio.videostreaming.ui.theme.Stone400
 
+/**
+ * ============================================================================
+ * Media Details Screen (Cinematic Hero View)
+ * ============================================================================
+ * Enterprise Architecture Strategy: Cross-Platform Visual Parity.
+ * Replicates the cinematic backdrop blur and gradient overlays from 'The Scroll'
+ * React web viewer to deliver identical visual branding on Android.
+ */
 @Composable
 fun MediaDetailsScreen(
     video: MediaFile,
@@ -51,7 +59,7 @@ fun MediaDetailsScreen(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize().background(HeritageBlack)) {
-        // Cinematic Background Backdrop
+        // Blurred Background Hero Backdrop
         AsyncImage(
             model = video.thumbnailUrl,
             contentDescription = null,
@@ -62,7 +70,7 @@ fun MediaDetailsScreen(
             contentScale = ContentScale.Crop
         )
 
-        // Gradient Overlays for Readability - Pixel-perfect with 'The Scroll'
+        // Vertical & Horizontal Readability Gradient Overlays
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -111,13 +119,13 @@ fun MediaDetailsScreen(
 
             Spacer(modifier = Modifier.height(200.dp))
 
-            // Content Section
+            // Metadata & Action Section
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
             ) {
-                // Metadata Badges
+                // Genre & Release Year Badges
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
@@ -144,7 +152,7 @@ fun MediaDetailsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Title
+                // Media Title
                 Text(
                     text = video.title,
                     style = MaterialTheme.typography.headlineLarge,
@@ -155,7 +163,7 @@ fun MediaDetailsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Description
+                // AI Description
                 Text(
                     text = video.description.ifEmpty { 
                         "Experience the digital resurrection of family heritage. A professionally preserved digital scroll, now streaming in high fidelity across your entire ecosystem."
@@ -168,7 +176,7 @@ fun MediaDetailsScreen(
 
                 Spacer(modifier = Modifier.height(40.dp))
 
-                // Play Button
+                // Play Now Action Button
                 Button(
                     onClick = onPlay,
                     modifier = Modifier
@@ -194,8 +202,6 @@ fun MediaDetailsScreen(
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
 
                 Spacer(modifier = Modifier.height(100.dp))
             }

@@ -5,6 +5,13 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
+/**
+ * ============================================================================
+ * Jetpack Compose Material 3 Theme Wrapper
+ * ============================================================================
+ * Enterprise Architecture Strategy: Dynamic Dark Theme Scheme.
+ * Binds custom Heritage Design Tokens to Material 3 ColorScheme slots.
+ */
 private val DarkColorScheme = darkColorScheme(
     primary = Amber500,
     onPrimary = Color.Black,
@@ -23,7 +30,6 @@ fun AlexandriaTheme(
 ) {
     MaterialTheme(
         colorScheme = DarkColorScheme,
-        // Using default typography for now, but configured to scale with tokens
         content = content
     )
 }

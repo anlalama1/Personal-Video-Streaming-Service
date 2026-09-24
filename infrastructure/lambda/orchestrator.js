@@ -1,11 +1,28 @@
+/**
+ * ============================================================================
+ * Transcoder Orchestrator Lambda Function
+ * ============================================================================
+ * Architecture Pattern: Event-Driven Container Orchestrator.
+ *
+ * Enterprise Decision Rationale:
+ * Heavy video processing (FFmpeg multi-bitrate HLS encoding and Bedrock AI vision analysis)
+ * exceeds Lambda's 15-minute execution limit and temporary disk quotas.
+ * This Orchestrator bridges lightweight event streams (SQS / API Gateway) to
+ * AWS ECS Fargate serverless containers designed for heavy compute workloads.
+ */
+
 const { ECSClient, RunTaskCommand } = require("@aws-sdk/client-ecs");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const path = require("path");
 
+// SDK v3 client initialization outside handler for TCP connection pooling
 const ecsClient = new ECSClient({});
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
+/**
+ * Sanitizes raw filenames into URL-safe, lowercase video identifiers.
+ */
 function sanitizeId(filename) {
     return path.parse(filename).name
         .toLowerCase()
@@ -13,10 +30,13 @@ function sanitizeId(filename) {
         .replace(/[^\w]/g, '');
 }
 
+/**
+ * Main Handler: Processes direct publish invocations or S3 upload event notifications.
+ */
 exports.handler = async (event) => {
     console.log("Orchestrator triggered with event:", JSON.stringify(event));
 
-    // Handle Direct Invocation for Transcoding approval
+    // Case 1: Direct Ingestion Trigger for full HLS transcode pass after admin review approval
     if (event.action === "START_TRANSCODE") {
         const { tenantId, familyId, videoId, videoKey } = event;
         console.log(`Direct Ingestion Trigger: Launching full HLS Transcode for ${videoId}`);
@@ -27,6 +47,7 @@ exports.handler = async (event) => {
         };
 
         try {
+            // Update status to TRANSCODING to reflect in-progress state
             await ddb.send(new UpdateCommand({
                 TableName: process.env.TABLE_NAME,
                 Key: dbKey,
@@ -41,6 +62,7 @@ exports.handler = async (event) => {
             throw dbErr;
         }
 
+        // Configure ECS Fargate Task Override for 4 vCPU / 8GB RAM high-power FFmpeg encoding
         const params = {
             cluster: process.env.CLUSTER_NAME,
             taskDefinition: process.env.TASK_DEFINITION,
@@ -75,7 +97,7 @@ exports.handler = async (event) => {
         return { success: true, taskArn: data.tasks[0].taskArn };
     }
 
-    // Handle Ephemeral SQS Ingestion Event (Metadata Extract Mode)
+    // Case 2: S3 Object-Created Event via SQS Queue (Triggers Lightweight AI Metadata Extraction)
     if (event.Records) {
         for (const record of event.Records) {
             const body = JSON.parse(record.body);
@@ -91,6 +113,7 @@ exports.handler = async (event) => {
 
             if (!bucket || !key) continue;
 
+            // Parse S3 Key structure: <tenantId>/<familyId>/<filename.mp4>
             const parts = key.split('/');
             let tenantId = 'GLOBAL';
             let familyId = 'PUBLIC';
@@ -115,6 +138,7 @@ exports.handler = async (event) => {
                 SK: `FAMILY#${familyId}#VIDEO#${videoId}`
             };
 
+            // Lock record state using DynamoDB Conditional Write to prevent concurrent processing
             try {
                 await ddb.send(new UpdateCommand({
                     TableName: process.env.TABLE_NAME,
@@ -140,6 +164,7 @@ exports.handler = async (event) => {
                 throw err;
             }
 
+            // Launch Lightweight Fargate Task for Bedrock AI Vision Analysis & Thumbnail Extraction (0.25 vCPU / 512MB RAM)
             const params = {
                 cluster: process.env.CLUSTER_NAME,
                 taskDefinition: process.env.TASK_DEFINITION,
@@ -163,7 +188,7 @@ exports.handler = async (event) => {
                                 { name: "FAMILY_ID", value: familyId },
                                 { name: "VIDEO_ID", value: videoId },
                                 { name: "CONTAINER_MODE", value: "METADATA_EXTRACT" }
-                              ],
+                            ],
                         },
                     ],
                 },

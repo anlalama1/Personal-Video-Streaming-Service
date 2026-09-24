@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * Shaka Player Web Video Player Page
+ * ============================================================================
+ * Enterprise Architecture Strategy: HLS / Adaptive Bitrate (ABR) Engine.
+ * Utilizes Google Shaka Player to decode multi-bitrate HLS streams (.m3u8),
+ * handling dynamic track switching and browser playback polyfills.
+ */
+
 import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import shaka from 'shaka-player';
@@ -10,13 +19,16 @@ const PlayerPage = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { video } = location.state || {};
 
+  /**
+   * Initializes Shaka Player instance and attaches HLS media source.
+   */
   useEffect(() => {
     if (!video || !videoRef.current) return;
 
-    // Initialize Shaka Player
+    // Initialize Shaka Player instance
     const player = new shaka.Player(videoRef.current);
 
-    // Install polyfills
+    // Install browser polyfills for MSE / EME compatibility
     shaka.polyfill.installAll();
 
     if (!shaka.Player.isBrowserSupported()) {
@@ -36,6 +48,7 @@ const PlayerPage = () => {
     initPlayer();
 
     return () => {
+      // Destroy Shaka Player instance on component unmount
       player.destroy();
     };
   }, [video]);
@@ -44,7 +57,7 @@ const PlayerPage = () => {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden group">
-      {/* Custom Control Overlay (Top) */}
+      {/* Custom Control Overlay (Top Header) */}
       <div className="absolute top-0 left-0 w-full p-8 z-50 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-b from-heritage-black/80 to-transparent">
         <button
           onClick={() => navigate(-1)}
@@ -60,7 +73,7 @@ const PlayerPage = () => {
         </div>
       </div>
 
-      {/* The Video Element */}
+      {/* Native Video Element attached to Shaka Player */}
       <div ref={containerRef} className="w-full h-full flex items-center justify-center">
         <video
           ref={videoRef}
@@ -70,7 +83,7 @@ const PlayerPage = () => {
         />
       </div>
 
-      {/* Bottom Subtle Overlay */}
+      {/* Bottom Visual Gradient Overlay */}
       <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
     </div>
   );

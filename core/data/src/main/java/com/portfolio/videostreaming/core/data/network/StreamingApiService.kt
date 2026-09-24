@@ -19,8 +19,12 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * Senior/Lead Strategy: Use Data Transfer Objects (DTOs) for the API layer.
- * This keeps the API implementation details (JSON field names) from leaking into your UI logic.
+ * ============================================================================
+ * Network Data Transfer Objects (DTOs)
+ * ============================================================================
+ * Enterprise Architecture Strategy: Data Transfer Objects.
+ * Separating Network DTOs from UI Domain Models prevents external API schema changes
+ * (e.g. field renames or nullability shifts) from cascading into Compose UI layers.
  */
 @Serializable
 data class MediaItemDto(
@@ -39,6 +43,9 @@ data class PlayEventRequest(
     val videoId: String
 )
 
+/**
+ * Retrofit Interface definition for Scribe API endpoints.
+ */
 interface StreamingApiService {
     @GET("catalog")
     suspend fun getCatalog(): List<MediaItemDto>
@@ -50,28 +57,37 @@ interface StreamingApiService {
 }
 
 /**
- * Senior/Lead Strategy: Use a dedicated object or Dependency Injection (Hilt) to manage Singletons.
+ * ============================================================================
+ * Retrofit Network Client Singleton & Synchronous Auth Interceptor
+ * ============================================================================
+ * Enterprise Architecture Strategy: Transparent Auth Token Injection.
+ * OkHttp Interceptors intercept all outgoing HTTP requests and automatically
+ * attach the user's cryptographically signed Cognito JWT ID Token in the
+ * 'Authorization: Bearer <token>' header without polluting UI ViewModels with auth logic.
  */
 object StreamingApi {
     private const val BASE_URL = BuildConfig.BASE_URL
 
+    // Explicit Kotlinx Serialization JSON configuration
     private val json = Json { 
-        ignoreUnknownKeys = true 
-        coerceInputValues = true 
+        ignoreUnknownKeys = true // Resilient parsing: ignores unexpected backend JSON fields
+        coerceInputValues = true // Coerces nulls to defaults where possible
         isLenient = true 
     }
 
+    /**
+     * OkHttp Interceptor: Synchronously fetches active Cognito Auth Session
+     * on the background I/O thread before releasing the HTTP request.
+     */
     private val authInterceptor = Interceptor { chain ->
         val originalRequest = chain.request()
-        
-        // Principal Strategy: Direct JWT Injection
-        // We fetch the current session synchronously to attach the token.
         val requestBuilder = originalRequest.newBuilder()
         
         try {
             var cognitoSession: AWSCognitoAuthSession? = null
             val latch = CountDownLatch(1)
 
+            // Asynchronously fetch session from AWS Amplify Auth Plugin
             Amplify.Auth.fetchAuthSession(
                 { session ->
                     cognitoSession = session as? AWSCognitoAuthSession
@@ -83,8 +99,10 @@ object StreamingApi {
                 }
             )
 
+            // Block OkHttp network thread up to 5 seconds waiting for Amplify Auth callback
             latch.await(5, TimeUnit.SECONDS)
 
+            // Extract JWT ID Token and inject Bearer header
             val idToken = cognitoSession?.userPoolTokensResult?.value?.idToken
             if (idToken != null) {
                 requestBuilder.addHeader("Authorization", "Bearer $idToken")
@@ -96,10 +114,12 @@ object StreamingApi {
         chain.proceed(requestBuilder.build())
     }
 
+    // OkHttp Client configured with automated Auth Interceptor
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(authInterceptor)
         .build()
 
+    // Retrofit Instance lazy initialization
     private val retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)
         .client(okHttpClient)

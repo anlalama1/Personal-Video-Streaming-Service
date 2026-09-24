@@ -38,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.Parchment
@@ -49,9 +51,12 @@ import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Senior/Lead Strategy: MVI UI.
- * This component is now a "Pure Function". It doesn't perform logic; 
- * it only displays state and emits Intents.
+ * ============================================================================
+ * Glassmorphic Player Controls Overlay
+ * ============================================================================
+ * Enterprise Architecture Strategy: Pure Composable Functions in MVI.
+ * This component contains no business logic. It renders immutable PlayerViewState
+ * and dispatches User Intents (SeekTo, TogglePlay, Rewind, Forward) back to the ViewModel.
  */
 @Composable
 fun PlayerControls(
@@ -64,7 +69,7 @@ fun PlayerControls(
 ) {
     var isVisible by remember { mutableStateOf(true) }
 
-    // Auto-hide logic
+    // Auto-hide controls after 3 seconds of active playback
     LaunchedEffect(isVisible, state.isPlaying) {
         if (isVisible && state.isPlaying) {
             delay(3.seconds)
@@ -83,7 +88,7 @@ fun PlayerControls(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Buffering Indicator (Added as a Senior refinement)
+        // Buffering Indicator
         if (state.isBuffering) {
             CircularProgressIndicator(color = Amber500, modifier = Modifier.size(64.dp))
         }
@@ -149,7 +154,7 @@ fun PlayerControls(
                     )
                 }
 
-                // Progress Bar and Time at the Bottom
+                // Progress Bar and Time at Bottom
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -183,7 +188,7 @@ fun PlayerControls(
                         )
                     }
 
-                    // Screen Time Toggle Button
+                    // Screen Time Overlay Toggle Button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -203,15 +208,15 @@ fun PlayerControls(
 }
 
 /**
- * Senior Approach: Reusable UI components.
+ * Reusable Glassmorphic Icon Button Component.
  */
 @Composable
 private fun ControlIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
-    size: androidx.compose.ui.unit.Dp,
-    iconSize: androidx.compose.ui.unit.Dp
+    size: Dp,
+    iconSize: Dp
 ) {
     Surface(
         onClick = onClick,

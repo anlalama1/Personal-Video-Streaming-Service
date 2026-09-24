@@ -14,6 +14,14 @@ import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
 
+/**
+ * ============================================================================
+ * Registration & Family Code Validation Screen
+ * ============================================================================
+ * Enterprise Architecture Strategy: Mandatory Tenancy Validation.
+ * Enforces mandatory Family Code inputs provided by digitization shop operators,
+ * preventing unassigned consumer sign-ups and guaranteeing vault data isolation.
+ */
 @Composable
 fun SignupScreen(
     viewModel: AuthViewModel,
@@ -55,6 +63,7 @@ fun SignupScreen(
             )
 
             if (authState is AuthState.NeedsVerification) {
+                // Email Verification Pass
                 OutlinedTextField(
                     value = verificationCode,
                     onValueChange = { verificationCode = it },
@@ -74,6 +83,7 @@ fun SignupScreen(
                 }
 
             } else {
+                // User Credentials & Mandatory Family Code Input
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },

@@ -1,14 +1,30 @@
+/**
+ * ============================================================================
+ * Scribe Central Lambda Function (API Gateway Router & Backend BFF)
+ * ============================================================================
+ * Architecture Pattern: Backend-For-Frontend (BFF) & Single-Table Router.
+ *
+ * Enterprise Decision Rationale:
+ * Instead of spinning up individual Lambda microservices for every REST route
+ * during early-stage scaling, a unified router Lambda minimizes cold starts,
+ * reduces AWS CloudWatch log group clutter, and simplifies shared database connections.
+ */
+
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
+// Initialize AWS SDK v3 Clients outside the handler for TCP connection reuse across warm Lambda invocations.
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({});
 const lambdaClient = new LambdaClient({});
 
+/**
+ * Standardized HTTP response helper with cross-origin CORS headers enabled.
+ */
 const response = (statusCode, body) => ({
     statusCode,
     headers: {
@@ -19,6 +35,9 @@ const response = (statusCode, body) => ({
     body: JSON.stringify(body)
 });
 
+/**
+ * Main Lambda Entry Point (API Gateway Proxy Event Router)
+ */
 exports.handler = async (event) => {
     try {
         const path = event.resource;
@@ -27,13 +46,13 @@ exports.handler = async (event) => {
         const authorizer = requestContext.authorizer || {};
         const claims = authorizer.claims || {};
 
-        // Principal Strategy: Identity-Driven Tenancy.
-        // Tenant ID defaults to 'GLOBAL' unless overridden via the x-tenant-id header.
+        // System partition tenant ID defaults to 'GLOBAL' unless overridden in header
         const headers = event.headers || {};
         const tenantId = headers['x-tenant-id'] || headers['X-Tenant-Id'] || 'GLOBAL';
 
         console.log(`Scribe Request: ${method} ${path} for Tenant: ${tenantId}`);
 
+        // Route matching logic
         if (path === '/catalog' && method === 'GET') {
             return await handleGetCatalog(event, tenantId, claims);
         } else if (path === '/tenants' && method === 'GET') {
@@ -61,15 +80,17 @@ exports.handler = async (event) => {
     }
 };
 
+/**
+ * Handles fetching catalog media items for Viewers and Admins.
+ * Enforces Cryptographic Tenancy Isolation based on Cognito JWT claims.
+ */
 async function handleGetCatalog(event, tenantId, claims = {}) {
     const headers = event.headers || {};
     const queryParams = event.queryStringParameters || {};
     const isAdminView = queryParams.adminView === 'true';
     const jwtFamilyId = claims['custom:familyId'];
 
-    // Enforce Strict Family Vault Isolation:
-    // If a consumer user (non-admin view) has a custom:familyId in their Cognito JWT,
-    // force familyId to match their JWT claim so they can ONLY access their family vault.
+    // Enforce Strict Family Vault Isolation for non-admin viewers
     let familyId = headers['x-family-id'] || headers['X-Family-Id'] || jwtFamilyId;
 
     if (!isAdminView && jwtFamilyId && jwtFamilyId !== 'SHOP_ADMIN') {
@@ -81,6 +102,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
 
     const skPrefix = familyId ? `FAMILY#${familyId}#VIDEO#` : "FAMILY#";
 
+    // Query DynamoDB Single-Table Design using Partition Key (PK) & Sort Key (SK) range query
     const command = new QueryCommand({
         TableName: tableName,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
@@ -93,12 +115,10 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
     const result = await docClient.send(command);
     let items = result.Items || [];
 
-    // Principal Strategy: Governance Gating.
-    // We always filter out items in the 'DELETED' state to support the two-phase purge.
+    // Filter out deleted items (soft-delete governance)
     items = items.filter(item => item.transcodeStatus !== 'DELETED');
 
-    // Principal Strategy: Catalog Visibility Gating & Tenancy Isolation.
-    // Consumer apps (Android/Scroll) only see items that are past the approval gate and belong to their family vault.
+    // For consumer apps, filter items to only show COMPLETED or TRANSCODING assets belonging to their family
     if (!isAdminView) {
         items = items.filter(item =>
             item.transcodeStatus === 'COMPLETED' ||
@@ -114,6 +134,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
         }
     }
 
+    // Map DynamoDB records to CloudFront CDN URLs
     const mapToCdn = (item) => {
         if (!item.SK || !item.SK.includes("#VIDEO#")) return null;
         const skParts = item.SK.split('#');
@@ -122,9 +143,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
 
         const encodeUrlPath = (path) => path.split('/').map(p => encodeURIComponent(p)).join('/');
 
-        // Lead Strategy: Uniform Path Access.
-        // HLS streams use the /hls/ prefix.
-        // Raw MP4s now use the /media/ prefix for CDN routing consistency.
+        // Uniform Path Access for HLS master playlists vs raw MP4s
         const videoUrl = item.hlsKey
             ? `https://${cdnDomain}/hls/${tenantId}/${itemFamilyId}/${encodeURIComponent(item.hlsKey)}/master.m3u8`
             : `https://${cdnDomain}/media/${encodeUrlPath(item.videoKey)}`;
@@ -154,6 +173,9 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
     return response(200, items.map(mapToCdn).filter(i => i !== null));
 }
 
+/**
+ * Creates initial metadata record in DynamoDB when a shop operator initiates media upload.
+ */
 async function handleIngest(event, tenantId) {
     const body = JSON.parse(event.body || "{}");
     const { videoId, title, genre, releaseYear, familyId, videoFileName, status = "INGESTED" } = body;
@@ -177,6 +199,9 @@ async function handleIngest(event, tenantId) {
     return response(201, { message: "Metadata record created" });
 }
 
+/**
+ * Initiates an S3 Resumable Multipart Upload pass.
+ */
 async function handleStartMultipart(event, tenantId) {
     const { key, contentType } = JSON.parse(event.body);
     const res = await s3Client.send(new CreateMultipartUploadCommand({
@@ -187,6 +212,9 @@ async function handleStartMultipart(event, tenantId) {
     return response(200, { uploadId: res.UploadId });
 }
 
+/**
+ * Generates an S3 Pre-Signed URL for uploading an individual 10MB chunk.
+ */
 async function handleGetPartUrl(event, tenantId) {
     const { key, uploadId, partNumber, totalParts } = JSON.parse(event.body);
     console.log(`INGESTION: Part ${partNumber}/${totalParts || '?'} | Key=${key}`);
@@ -201,14 +229,12 @@ async function handleGetPartUrl(event, tenantId) {
     return response(200, { uploadUrl: url });
 }
 
+/**
+ * Finalizes an S3 Multipart Upload and normalizes ETag quotes.
+ */
 async function handleCompleteMultipart(event, tenantId) {
     const { key, uploadId, parts } = JSON.parse(event.body);
 
-    /**
-     * Principal Strategy: ETag Normalization.
-     * S3 requires ETags to be wrapped in double quotes for completion.
-     * We ensure each part's ETag is correctly quoted before sending to S3.
-     */
     const normalizedParts = parts.map(part => ({
         ETag: part.ETag.startsWith('"') ? part.ETag : `"${part.ETag}"`,
         PartNumber: parseInt(part.PartNumber)
@@ -226,6 +252,9 @@ async function handleCompleteMultipart(event, tenantId) {
     return response(200, { message: "Upload complete" });
 }
 
+/**
+ * Approves AI-drafted metadata and triggers asynchronous Fargate HLS transcoding pass.
+ */
 async function handlePublishVideo(event, tenantId) {
     const body = JSON.parse(event.body || "{}");
     const { videoId, familyId, title, genre, releaseYear, description, tags, videoKey } = body;
@@ -237,7 +266,6 @@ async function handlePublishVideo(event, tenantId) {
 
     console.log(`PUBLISH: Finalizing ${videoId} for Tenant ${tenantId}`);
 
-    // Lead Strategy: Transactional Locking not needed here; we just set the target state.
     await docClient.send(new UpdateCommand({
         TableName: tableName,
         Key: {
@@ -256,7 +284,7 @@ async function handlePublishVideo(event, tenantId) {
         }
     }));
 
-    // Invoke Orchestrator Lambda to trigger the full multi-bitrate HLS transcode in Fargate
+    // Trigger Orchestrator Lambda asynchronously to launch the ECS Fargate transcoder task
     await lambdaClient.send(new InvokeCommand({
         FunctionName: process.env.ORCHESTRATOR_LAMBDA_ARN,
         InvocationType: "Event", // Asynchronous execution
@@ -272,6 +300,9 @@ async function handlePublishVideo(event, tenantId) {
     return response(200, { success: true, message: "Asset approved. Full HLS transcoding kicked off." });
 }
 
+/**
+ * Executes soft-delete on a video record for two-phase retention.
+ */
 async function handleDeleteVideo(event, tenantId) {
     const { videoId, familyId } = event.pathParameters;
     const tableName = process.env.TABLE_NAME;
@@ -295,6 +326,9 @@ async function handleDeleteVideo(event, tenantId) {
     return response(200, { success: true, message: "Asset moved to trash. Will be permanently purged after retention period." });
 }
 
+/**
+ * Fetches all registered family tenants from DynamoDB Single-Table registry.
+ */
 async function handleGetTenants(event, tenantId) {
     const tableName = process.env.TABLE_NAME;
 
@@ -331,6 +365,9 @@ async function handleGetTenants(event, tenantId) {
     }
 }
 
+/**
+ * Creates a new family tenant record in DynamoDB Single-Table registry.
+ */
 async function handleCreateTenant(event, tenantId) {
     const tableName = process.env.TABLE_NAME;
     const body = JSON.parse(event.body || "{}");
@@ -365,6 +402,9 @@ async function handleCreateTenant(event, tenantId) {
     }
 }
 
+/**
+ * Handler for playback telemetry logging.
+ */
 exports.logPlayHandler = async (event) => {
     try {
         const body = JSON.parse(event.body || "{}");

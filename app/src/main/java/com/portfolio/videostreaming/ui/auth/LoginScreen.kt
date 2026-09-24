@@ -18,6 +18,14 @@ import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
 
+/**
+ * ============================================================================
+ * Login Screen Composable
+ * ============================================================================
+ * Enterprise Architecture Strategy: Declarative Auth Input UI.
+ * Renders high-fidelity branded inputs for email/password authentication
+ * and observes AuthViewModel state machine for loading spinners & error banners.
+ */
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
@@ -35,7 +43,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Branded Logo
+            // Branded 3D Hero Logo
             Image(
                 painter = painterResource(id = R.drawable.logo_hero_3d),
                 contentDescription = "Alexandria+ Logo",
@@ -87,6 +95,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Error Banner Display
             if (authState is AuthState.Error) {
                 Text(
                     text = (authState as AuthState.Error).message,
@@ -96,6 +105,7 @@ fun LoginScreen(
                 )
             }
 
+            // Sign In Action Button
             Button(
                 onClick = { viewModel.signIn(email, password) },
                 modifier = Modifier

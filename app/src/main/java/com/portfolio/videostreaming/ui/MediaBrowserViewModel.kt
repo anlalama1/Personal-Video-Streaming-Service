@@ -12,8 +12,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * ============================================================================
+ * Media Browser ViewModel (MVVM Architecture Layer)
+ * ============================================================================
+ * Enterprise Architecture Strategy: ViewModel State Flow Encapsulation.
+ * Exposes immutable StateFlow to the UI layer while keeping MutableStateFlow private.
+ * Coroutines dispatched to Dispatchers.IO handle asynchronous network I/O
+ * off the Main UI Thread.
+ */
 class MediaBrowserViewModel(application: Application) : AndroidViewModel(application) {
 
+    // Immutable state encapsulation pattern
     private val _videoList = MutableStateFlow<List<MediaFile>>(emptyList())
     val videoList = _videoList.asStateFlow()
 
@@ -35,19 +45,20 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
     }
 
     /**
-     * Senior/Lead Approach: Fetch from remote API instead of local disk.
+     * Fetches catalog media items from Lambda-backed API Gateway via Retrofit DTOs.
+     * Enforces cryptographically signed JWT auth via OkHttp interceptor.
      */
     fun loadVideos() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                // Call the Lambda-backed API Gateway. Tenancy is now handled via JWT in the interceptor.
+                // Network I/O offloaded to Dispatchers.IO thread pool
                 val dtos = withContext(Dispatchers.IO) {
                     StreamingApi.service.getCatalog()
                 }
                 
-                // Map DTOs to UI Models
+                // Map Network DTOs to UI Domain Models (MediaFile)
                 _videoList.value = dtos.map { dto ->
                     MediaFile(
                         id = dto.videoId,

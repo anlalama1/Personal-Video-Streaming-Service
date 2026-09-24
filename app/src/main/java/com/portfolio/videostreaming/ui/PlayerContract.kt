@@ -1,14 +1,17 @@
 package com.portfolio.videostreaming.ui
 
 /**
- * Senior/Lead Strategy: The "Contract".
- * By defining State and Intent in one place, we create a clear documentation 
- * of how this screen behaves. 
+ * ============================================================================
+ * Player Unidirectional Data Flow (MVI) Contract
+ * ============================================================================
+ * Enterprise Architecture Strategy: Model-View-Intent (MVI) Contract.
+ * Consolidating immutable ViewState and user Intent events in a single contract
+ * creates predictable state transitions, eliminates UI race conditions,
+ * and makes video playback interactions deterministic and testable.
  */
 
 /**
- * The Single Source of Truth for the UI.
- * This is immutable—the UI cannot change it directly.
+ * Single Immutable Source of Truth for Player View State.
  */
 data class PlayerViewState(
     val videoId: String = "",
@@ -21,7 +24,7 @@ data class PlayerViewState(
 )
 
 /**
- * Everything the user can "Intend" to do on this screen.
+ * User Intents (Actions) that can be dispatched to the PlayerViewModel.
  */
 sealed class PlayerIntent {
     data class LoadVideo(val videoId: String, val videoUri: String) : PlayerIntent()

@@ -17,23 +17,25 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * ============================================================================
+ * Video Player ViewModel (ExoPlayer State Machine & Telemetry)
+ * ============================================================================
+ * Enterprise Architecture Strategy: Unidirectional State Mutation.
+ * Listens to ExoPlayer engine callbacks and translates them into immutable StateFlow updates.
+ * Implements MVI 'processIntent' as the single entry point for UI user interactions.
+ */
 class VideoPlayerViewModel(application: Application) : AndroidViewModel(application) {
 
-    /**
-     * Senior Strategy: Single State Management.
-     * Instead of 3-4 separate flows, we have one. This makes the UI 
-     * incredibly predictable and easy to test.
-     */
     private val _viewState = MutableStateFlow(PlayerViewState())
     val viewState = _viewState.asStateFlow()
 
-    // Internal engine state
     private var currentUri: String? = null
 
+    // Instantiate ExoPlayer instance scoped to ViewModel lifecycle
     val exoPlayer = ExoPlayer.Builder(application).build().apply {
         addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                // Update only the isPlaying part of the state
                 _viewState.update { it.copy(isPlaying = isPlaying) }
             }
 
@@ -53,8 +55,7 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     /**
-     * The ONLY entry point for the UI.
-     * Senior Approach: Use a single "processIntent" function to centralize all logic.
+     * MVI Intent Processing Gateway.
      */
     fun processIntent(intent: PlayerIntent) {
         when (intent) {
@@ -66,13 +67,16 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    /**
+     * Loads media source into ExoPlayer and emits play telemetry to API Gateway.
+     */
     private fun handleLoadVideo(videoId: String, uriString: String) {
         if (currentUri == uriString) return
         
         currentUri = uriString
         _viewState.update { it.copy(videoId = videoId, videoUri = uriString) }
         
-        // Log telemetry (BFF)
+        // Asynchronously record playback telemetry event to API Gateway
         viewModelScope.launch {
             try {
                 StreamingApi.service.logPlayEvent(PlayEventRequest(videoId))
@@ -106,6 +110,9 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
         handleSeekTo(newPos)
     }
 
+    /**
+     * Polling Coroutine Loop: Updates current position state for smooth slider tracking.
+     */
     private fun startProgressPolling() {
         viewModelScope.launch {
             while (true) {
@@ -119,10 +126,11 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
 
     override fun onCleared() {
         super.onCleared()
+        // Release native ExoPlayer hardware codecs on ViewModel destruction
         exoPlayer.release()
     }
 
     companion object {
-        private const val SKIP_INCREMENT_MS = 10000L
+        private const val SKIP_INCREMENT_MS = 10000L // 10-second seek increments
     }
 }

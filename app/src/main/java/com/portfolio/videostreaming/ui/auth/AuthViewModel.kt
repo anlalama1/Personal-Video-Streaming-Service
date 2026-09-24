@@ -10,9 +10,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
+/**
+ * Sealed class representing discrete Auth Lifecycle States.
+ */
 sealed class AuthState {
     object Loading : AuthState()
     object SignedOut : AuthState()
@@ -21,6 +22,14 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
 }
 
+/**
+ * ============================================================================
+ * Authentication ViewModel (AWS Amplify Cognito Bridge)
+ * ============================================================================
+ * Enterprise Architecture Strategy: SDK Isolation Layer.
+ * ViewModel encapsulates AWS Amplify SDK calls, exposing reactive AuthState StateFlow
+ * to composable screens without leaking Amplify SDK dependencies into UI components.
+ */
 class AuthViewModel : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
@@ -32,6 +41,9 @@ class AuthViewModel : ViewModel() {
         checkSession()
     }
 
+    /**
+     * Checks if an active AWS Cognito Auth session exists.
+     */
     fun checkSession() {
         Amplify.Auth.fetchAuthSession(
             { session ->
@@ -49,6 +61,9 @@ class AuthViewModel : ViewModel() {
         )
     }
 
+    /**
+     * Fetches authenticated user email from Cognito User Pool attributes.
+     */
     private fun fetchUserAttributes() {
         Amplify.Auth.fetchUserAttributes(
             { attributes ->
@@ -59,6 +74,9 @@ class AuthViewModel : ViewModel() {
         )
     }
 
+    /**
+     * Authenticates user via email and password using Cognito SRP / UserPassword auth.
+     */
     fun signIn(email: String, pword: String) {
         _authState.value = AuthState.Loading
         Amplify.Auth.signIn(email, pword,
@@ -67,7 +85,6 @@ class AuthViewModel : ViewModel() {
                     _authState.value = AuthState.SignedIn
                     fetchUserAttributes()
                 } else {
-                    // Could be CHALLENGE_REQUIRED etc.
                     _authState.value = AuthState.Error("Sign in incomplete: ${result.nextStep}")
                 }
             },
@@ -77,6 +94,9 @@ class AuthViewModel : ViewModel() {
         )
     }
 
+    /**
+     * Registers a new user with email and custom:familyId tenancy attribute.
+     */
     fun signUp(email: String, pword: String, familyId: String) {
         _authState.value = AuthState.Loading
         
@@ -95,11 +115,14 @@ class AuthViewModel : ViewModel() {
         )
     }
 
+    /**
+     * Confirms registration with 6-digit email verification code.
+     */
     fun confirmSignUp(email: String, code: String) {
         _authState.value = AuthState.Loading
         Amplify.Auth.confirmSignUp(email, code,
             { result ->
-                _authState.value = AuthState.SignedOut // Now they can sign in
+                _authState.value = AuthState.SignedOut // Ready for login
             },
             { error ->
                 _authState.value = AuthState.Error(error.message ?: "Verification failed")
@@ -107,6 +130,9 @@ class AuthViewModel : ViewModel() {
         )
     }
 
+    /**
+     * Signs out active user and clears cached state.
+     */
     fun signOut() {
         Amplify.Auth.signOut {
             _authState.value = AuthState.SignedOut

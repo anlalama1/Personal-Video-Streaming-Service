@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * Media Details Information Page
+ * ============================================================================
+ * Enterprise Architecture Strategy: Deep Link & Details View.
+ * Renders full AI-generated descriptions, metadata badges, and play triggers
+ * for selected video assets.
+ */
+
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Play, ArrowLeft, Clock, Calendar } from 'lucide-react';
 
@@ -79,7 +88,7 @@ const MediaDetails = () => {
 
         </div>
 
-        {/* Right Column: Poster / Visual Hook (Optional but nice) */}
+        {/* Right Column: Poster / Visual Hook */}
         <div className="hidden lg:block lg:col-span-4">
            <div className="aspect-[2/3] w-full bg-heritage-900 rounded-3xl overflow-hidden border border-heritage-parchment/10 shadow-2xl group relative font-mono">
               <img

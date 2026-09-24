@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * Desktop Viewer Authentication Context & Token Decoder
+ * ============================================================================
+ * Enterprise Architecture Strategy: Global Auth Context & ID Token Claims Extraction.
+ * Configures AWS Amplify Auth, checks active Cognito session states, and decodes
+ * user attributes (email & custom:familyId) directly from the Cognito ID Token.
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Amplify } from 'aws-amplify';
 import { getCurrentUser, fetchAuthSession, signIn, signUp, confirmSignUp, signOut, type AuthUser } from 'aws-amplify/auth';
@@ -7,6 +16,7 @@ const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 
 console.log('Auth Configuration:', { USER_POOL_ID, APP_CLIENT_ID });
 
+// Initialize AWS Amplify Auth Plugin
 if (USER_POOL_ID && APP_CLIENT_ID) {
   Amplify.configure({
     Auth: {
@@ -44,6 +54,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile>({ email: null, familyId: null });
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Verifies active Cognito user session and extracts ID Token payload claims.
+   */
   const checkUser = async () => {
     try {
       const currentUser = await getCurrentUser();
@@ -67,6 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkUser();
   }, []);
 
+  /**
+   * Signs out current user and resets in-memory profile state.
+   */
   const handleSignOut = async () => {
     await signOut();
     setUser(null);

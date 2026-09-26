@@ -10,6 +10,7 @@ import { TenantProvider } from './context/TenantContext';
 import UploadDrawer from './components/UploadDrawer';
 import Auth from './pages/Auth';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useTenants } from './context/TenantContext';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
 
 const AppContent = () => {
   const { user, userProfile, loading, signOut } = useAuth();
+  const { refreshing: refreshingTenants, refreshProgress } = useTenants();
   const [showAccountModal, setShowAccountModal] = useState(false);
 
   if (loading) {
@@ -102,7 +104,7 @@ const AppContent = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header Bar */}
-        <header className="bg-heritage-900/60 border-b border-heritage-800/80 px-10 py-4 flex items-center justify-between backdrop-blur-md">
+        <header className="relative bg-heritage-900/60 border-b border-heritage-800/80 px-10 py-4 flex items-center justify-between backdrop-blur-md">
           <div className="flex items-center gap-2 text-xs font-bold text-heritage-400">
             <Building2 size={16} className="text-heritage-gold" />
             <span>Digitization Shop Operator Portal</span>
@@ -117,6 +119,19 @@ const AppContent = () => {
             </div>
             <span className="truncate max-w-[160px]">{userProfile.email || 'Account'}</span>
           </button>
+          <div
+            role="progressbar"
+            aria-label={refreshingTenants ? 'Refreshing family tenants' : 'Time until next family tenant refresh'}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(refreshProgress)}
+            className="absolute bottom-0 left-0 h-1 w-full bg-heritage-800/70"
+          >
+            <div
+              className="h-full bg-heritage-gold transition-[width] duration-200"
+              style={{ width: `${refreshProgress}%` }}
+            />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-10">

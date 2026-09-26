@@ -164,6 +164,9 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
         const itemTenantId = item.PK?.startsWith('TENANT#')
             ? item.PK.slice('TENANT#'.length)
             : tenantId;
+        const thumbnailKey = item.thumbnailKey || (item.videoKey
+            ? `${itemTenantId}/${itemFamilyId}/${videoId}/thumbnail.jpg`
+            : '');
 
         const encodeUrlPath = (path) => path.split('/').map(p => encodeURIComponent(p)).join('/');
 
@@ -172,8 +175,8 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
             ? `https://${cdnDomain}/hls/${itemTenantId}/${itemFamilyId}/${encodeURIComponent(item.hlsKey)}/master.m3u8`
             : `https://${cdnDomain}/media/${encodeUrlPath(item.videoKey)}`;
 
-        const thumbnailUrl = item.thumbnailKey
-            ? `https://${cdnDomain}/thumbnails/${encodeUrlPath(item.thumbnailKey)}`
+        const thumbnailUrl = thumbnailKey
+            ? `https://${cdnDomain}/thumbnails/${encodeUrlPath(thumbnailKey)}`
             : "https://via.placeholder.com/150";
 
         return {
@@ -190,6 +193,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
             aiDescription: item.aiDescription || '',
             aiTags: item.aiTags || [],
             videoKey: item.videoKey || '',
+            thumbnailKey,
             familyId: itemFamilyId
         };
     };
@@ -294,6 +298,16 @@ async function handlePublishVideo(event, tenantId) {
 
     console.log(`PUBLISH: Finalizing ${videoId} for Tenant ${tenantId}, Target Family: ${familyId}`);
 
+    const sourceFamilyId = oldFamilyId || familyId;
+    const existingDraft = await docClient.send(new GetCommand({
+        TableName: tableName,
+        Key: {
+            PK: `TENANT#${tenantId}`,
+            SK: `FAMILY#${sourceFamilyId}#VIDEO#${videoId}`
+        },
+        ProjectionExpression: "thumbnailKey"
+    }));
+
     // If familyId was reassigned on the Review Board (e.g. from PUBLIC to FAM_LALAMA)
     if (oldFamilyId && oldFamilyId !== familyId) {
         console.log(`REASSIGN: Moving item from FAMILY#${oldFamilyId} to FAMILY#${familyId}`);
@@ -317,6 +331,7 @@ async function handlePublishVideo(event, tenantId) {
             PK: `TENANT#${tenantId}`,
             SK: `FAMILY#${familyId}#VIDEO#${videoId}`,
             familyId,
+            ...(existingDraft.Item?.thumbnailKey ? { thumbnailKey: existingDraft.Item.thumbnailKey } : {}),
             title,
             genre,
             releaseYear,

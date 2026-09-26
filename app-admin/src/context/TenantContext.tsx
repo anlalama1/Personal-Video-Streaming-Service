@@ -7,7 +7,7 @@
  * alphanumeric Family Vault Codes.
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import api from '../api';
 
 export interface FamilyTenant {
@@ -20,12 +20,12 @@ export interface FamilyTenant {
 interface TenantContextType {
   tenants: FamilyTenant[];
   loading: boolean;
+  refreshing: boolean;
+  refreshProgress: number;
   addTenant: (familyName: string, contactEmail?: string) => Promise<FamilyTenant>;
   removeTenant: (familyId: string) => void;
   refreshTenants: () => Promise<void>;
 }
-
-const LOCAL_STORAGE_KEY = 'alexandria_registered_tenants';
 
 const DEFAULT_TENANTS: FamilyTenant[] = [
   {
@@ -61,41 +61,56 @@ const generate6CharAlphanumeric = (): string => {
 };
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
+const TENANT_REFRESH_INTERVAL_MS = 30_000;
+const TENANT_REFRESH_PROGRESS_INTERVAL_MS = 250;
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tenants, setTenants] = useState<FamilyTenant[]>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!saved) return DEFAULT_TENANTS;
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return DEFAULT_TENANTS;
-    }
-  });
+  const [tenants, setTenants] = useState<FamilyTenant[]>(DEFAULT_TENANTS);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState(0);
+  const refreshInFlight = useRef(false);
+  const nextRefreshAt = useRef(Date.now() + TENANT_REFRESH_INTERVAL_MS);
 
-  const fetchRemoteTenants = async () => {
-    setLoading(true);
+  const fetchRemoteTenants = useCallback(async (showLoading = true) => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    setRefreshing(true);
+    if (showLoading) setLoading(true);
     try {
       const res = await api.get('tenants');
-      if (Array.isArray(res.data) && res.data.length > 0) {
+      if (Array.isArray(res.data)) {
         setTenants(res.data);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(res.data));
       }
     } catch (err) {
-      console.warn('Could not fetch remote tenants from DynamoDB, falling back to cached state:', err);
+      console.warn('Could not fetch remote tenants from DynamoDB; keeping in-memory tenant state:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
+      refreshInFlight.current = false;
+      setRefreshing(false);
+      setRefreshProgress(0);
+      nextRefreshAt.current = Date.now() + TENANT_REFRESH_INTERVAL_MS;
     }
-  };
-
-  useEffect(() => {
-    fetchRemoteTenants();
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tenants));
-  }, [tenants]);
+    localStorage.removeItem('alexandria_registered_tenants');
+    void fetchRemoteTenants();
+
+    const refreshInterval = window.setInterval(() => {
+      const remainingMs = nextRefreshAt.current - Date.now();
+      setRefreshProgress(Math.min(
+        100,
+        ((TENANT_REFRESH_INTERVAL_MS - Math.max(remainingMs, 0)) / TENANT_REFRESH_INTERVAL_MS) * 100
+      ));
+
+      if (remainingMs <= 0) {
+        void fetchRemoteTenants(false);
+      }
+    }, TENANT_REFRESH_PROGRESS_INTERVAL_MS);
+
+    return () => window.clearInterval(refreshInterval);
+  }, [fetchRemoteTenants]);
 
   const addTenant = async (familyName: string, contactEmail?: string): Promise<FamilyTenant> => {
     const familyId = generate6CharAlphanumeric();
@@ -108,7 +123,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       createdAt
     };
 
-    // Optimistically update local UI & cache
+    // Optimistically update the current session's UI state.
     setTenants(prev => [...prev, newTenant]);
 
     // Persist asynchronously to DynamoDB via API Gateway
@@ -135,7 +150,15 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   return (
-    <TenantContext.Provider value={{ tenants, loading, addTenant, removeTenant, refreshTenants: fetchRemoteTenants }}>
+    <TenantContext.Provider value={{
+      tenants,
+      loading,
+      refreshing,
+      refreshProgress,
+      addTenant,
+      removeTenant,
+      refreshTenants: fetchRemoteTenants
+    }}>
       {children}
     </TenantContext.Provider>
   );

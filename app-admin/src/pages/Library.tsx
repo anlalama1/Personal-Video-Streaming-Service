@@ -90,7 +90,7 @@ const Library = () => {
           <thead>
             <tr className="bg-heritage-black/50 text-heritage-400 text-sm uppercase tracking-wider">
               <th className="px-6 py-4 font-black">Title</th>
-              <th className="px-6 py-4 font-black">Details</th>
+              <th className="px-6 py-4 font-black">Family Tenant Code</th>
               <th className="px-6 py-4 font-black text-center">Status</th>
               <th className="px-6 py-4 font-black text-center w-20">Actions</th>
             </tr>
@@ -110,8 +110,7 @@ const Library = () => {
                   <div className="text-xs text-heritage-400/60 font-mono">{item.videoId}</div>
                 </td>
                 <td className="px-6 py-5">
-                  <div className="text-sm text-heritage-parchment font-medium">{item.genre}</div>
-                  <div className="text-xs text-heritage-400 font-mono">{item.releaseYear}</div>
+                  <span className="text-sm text-heritage-gold font-mono font-bold tracking-wider">{item.familyId}</span>
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex justify-center">
@@ -134,7 +133,7 @@ const Library = () => {
             ))}
             {items.length === 0 && !loading && (
               <tr>
-                <td colSpan={5} className="px-6 py-20 text-center text-heritage-400 italic">No media scrolls found in your library.</td>
+                <td colSpan={4} className="px-6 py-20 text-center text-heritage-400 italic">No media scrolls found in your library.</td>
               </tr>
             )}
           </tbody>

@@ -46,16 +46,27 @@ npx cdk deploy StreamingPipelineStack
 
 ### 4. Close the Loop
 - **First Build**: The pipeline will trigger automatically. Once the `Synth` and `ParallelBuilds` stages finish, the infrastructure will be live.
-- **Android API URL**: 
-    - Find the `ApiUrl` in the **CloudFormation** -> `Prod-ApiStack` -> **Outputs**.
-    - Update `core/data/build.gradle.kts` with this new URL.
-- **Git Push**: Push the URL change to GitHub. The pipeline will build the final APK with the correct backend link.
+- **Android API URL & Cognito Customer Vault Configuration**: 
+    - Find the `ApiUrl` in **CloudFormation** -> `Prod-ApiStack` -> **Outputs**. Update `core/data/build.gradle.kts` with this backend API endpoint.
+    - Find `CustomerUserPoolId` and `CustomerAndroidClientId` in **CloudFormation** -> `Prod-AuthStack` -> **Outputs**.
+    - Update `app/src/main/res/raw/amplifyconfiguration.json` with your account's live User Pool credentials:
+      ```json
+      "CognitoUserPool": {
+          "Default": {
+              "PoolId": "<YOUR_CUSTOMER_USER_POOL_ID>",
+              "AppClientId": "<YOUR_CUSTOMER_ANDROID_CLIENT_ID>",
+              "Region": "us-east-1"
+          }
+      }
+      ```
+- **Git Push**: Push these configuration updates to GitHub. CodePipeline will automatically build the final production APK bound to your live backend and Cognito User Pool.
 
 ### 5. Centralized Configuration Reference (SDE Onboarding)
-For users onboarding to this codebase, all global behavior parameters are centralized across three configuration files:
-*   [**`infrastructure/bin/config.ts`**](./infrastructure/bin/config.ts): Handles target AWS deployment targets (`account`, `region`), GitHub source webhooks, and project resource prefixes. **Must be updated prior to running CDK deployments.**
+For users onboarding to this codebase, all global behavior parameters are centralized across four configuration files:
+*   [**`infrastructure/bin/config.ts`**](./infrastructure/bin/config.ts): Handles target AWS deployment targets (`account`, `region`), GitHub source webhooks, custom domain flags (`alexandria-plus.com`), and project resource prefixes. **Must be updated prior to running CDK deployments.**
 *   [**`app-admin/src/config.ts`**](./app-admin/src/config.ts): Configures the active Generative AI foundational model (`BEDROCK_MODEL_ID`) utilized by the **Demetrius Metadata Review Board** for auto-populating summaries.
 *   [**`core/data/build.gradle.kts`**](./core/data/build.gradle.kts): The dynamically generated `BASE_URL` connecting the Android consumer client to your live serverless backend API.
+*   [**`app/src/main/res/raw/amplifyconfiguration.json`**](./app/src/main/res/raw/amplifyconfiguration.json): Binds the Android mobile client to your account's live AWS Cognito Customer User Pool (`PoolId` and `AppClientId`). **Must be updated with your account's CloudFormation `Prod-AuthStack` outputs prior to building the mobile client.**
 
 ---
 

@@ -11,8 +11,8 @@
                 },
                 "CognitoUserPool": {
                     "Default": {
-                        "PoolId": "REPLACE_WITH_USER_POOL_ID",
-                        "AppClientId": "REPLACE_WITH_ANDROID_CLIENT_ID",
+                        "PoolId": "us-east-1_9XeXLRlY3",
+                        "AppClientId": "450aib3rtv77sglvalkneruf9c",
                         "Region": "us-east-1"
                     }
                 },

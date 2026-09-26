@@ -2,6 +2,19 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Loader2, ShieldCheck, Building2, Eye, EyeOff } from 'lucide-react';
 
+/**
+ * Generates a 5-character uppercase alphanumeric Operator Tenant ID (e.g. SHOP_A8K2P).
+ * Provides 60.46 Million unique combinations with zero length collision against 8-character Family Vault Codes.
+ */
+const generate5CharOperatorId = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `SHOP_${result}`;
+};
+
 const Auth = () => {
   const { signIn, signUp, confirmSignUp } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
@@ -28,13 +41,15 @@ const Auth = () => {
       } else if (isLogin) {
         await signIn({ username: email, password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
       } else {
+        const operatorTenantId = generate5CharOperatorId();
         await signUp({
           username: email,
           password,
           options: {
             userAttributes: {
               email,
-              'custom:familyId': 'SHOP_ADMIN'
+              'custom:role': 'ShopAdmin',
+              'custom:tenantId': operatorTenantId
             }
           }
         });

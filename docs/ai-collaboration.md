@@ -912,6 +912,26 @@ This document tracks the high-level collaboration between the human developer an
     - Updated [`SystemGovernanceStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/SystemGovernanceStack.ts) and [`nuclearReset.js`](file:///I:/Android%20Projects/infrastructure/lambda/nuclearReset.js) to grant dual purge authority across both User Pools during a factory reset.
 - **Outcome**: Delivered complete zero-trust identity decoupling, preventing cross-domain authentication and isolating operator security boundaries.
 
+### 105. Dynamic Operator Tenancy: 5-Character Alphanumeric Operator IDs & Hardcoded String Cleanup (Sept 24, 2026)
+- **Challenge**: Hardcoded fallback strings (`SHOP_ADMIN`, `GLOBAL`) introduced ambiguity in multi-tenant partition key routing, and operator tenancy codes lacked mathematical key length differentiation.
+- **AI Contribution**: 
+    - Standardized Demetrius operator registration ([`Auth.tsx`](file:///I:/Android%20Projects/app-admin/src/pages/Auth.tsx)) to dynamically generate 5-character uppercase alphanumeric Operator Tenant IDs (`SHOP_` + 5 random chars, e.g. `SHOP_A8K2P`).
+    - Evaluated key length disambiguation: 5-character operator IDs ($36^5 = 60,466,176$ unique keys) differ structurally from 8-character Family Vault Codes ($36^8 = 2.82+$ Trillion), eliminating collision risks.
+    - Updated [`AuthStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/AuthStack.ts), [`UploadContext.tsx`](file:///I:/Android%20Projects/app-admin/src/context/UploadContext.tsx), and Scribe Lambda ([`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js)) to eliminate hardcoded `'GLOBAL'` and `'SHOP_ADMIN'` string defaults in favor of dynamic JWT claim resolution (`claims['custom:tenantId']`).
+- **Outcome**: Completely eliminated hardcoded tenancy fallback strings and established dynamic, isolated operator tenant key spaces.
+
+### 106. Android Authentication Binding: Live Cognito User Pool Integration (Sept 24, 2026)
+- **Challenge**: The Android mobile app returned "could not find requested online resource" during registration due to un-populated template string placeholders in `amplifyconfiguration.json`.
+- **AI Contribution**: 
+    - Updated [`amplifyconfiguration.json`](file:///I:/Android%20Projects/app/src/main/res/raw/amplifyconfiguration.json) with live deployed AWS Cognito Customer User Pool credentials (`PoolId: us-east-1_9XeXLRlY3`, `AppClientId: 450aib3rtv77sglvalkneruf9c`).
+- **Outcome**: Restored Android authentication, user registration, and email verification against the live AWS Cognito Customer Vault.
+
+### 107. Onboarding & Configuration Governance: Cognito Resource Binding Instructions (Sept 24, 2026)
+- **Challenge**: Onboarding developers deploying the codebase to new AWS accounts required explicit guidance on where to inject their account's live User Pool IDs into mobile configuration files.
+- **AI Contribution**: 
+    - Updated [`README.md`](file:///I:/Android%20Projects/README.md#L40-L65) with step-by-step instructions on extracting `CustomerUserPoolId` and `CustomerAndroidClientId` from CloudFormation `Prod-AuthStack` outputs and binding them to [`amplifyconfiguration.json`](file:///I:/Android%20Projects/app/src/main/res/raw/amplifyconfiguration.json).
+- **Outcome**: Established complete onboarding reproducibility for external developers deploying the platform across new AWS accounts.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

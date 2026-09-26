@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * Demetrius Resumable Multipart Upload Context & Queue Manager
+ * ============================================================================
+ * Enterprise Architecture Strategy: Resumable Background Multipart Uploader.
+ * Manages chunked S3 uploads (10MB parts) with persistent localStorage state,
+ * enabling full upload resumption across browser restarts without re-uploading parts.
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import api from '../api';
@@ -39,8 +48,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!saved) return [];
 
     const parsed: UploadTask[] = JSON.parse(saved);
-    // Principal Strategy: Interruption Detection.
-    // Any task that was 'uploading' when the tab closed is now 'interrupted'.
+    // Interruption Detection: Any task that was 'uploading' when tab closed is marked 'interrupted'
     return parsed.map(t => t.status === 'uploading' ? { ...t, status: 'interrupted' } : t);
   });
 
@@ -57,13 +65,11 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const clearTasks = () => {
-    // Only clear tasks that are not currently active
     setTasks(prev => prev.filter(t => t.status === 'uploading'));
   };
 
   /**
-   * Core Strategy: The Resumable Multipart Loop.
-   * This function handles both fresh and resumed uploads by checking the completedParts array.
+   * Handles both fresh and resumed uploads by checking completedParts.
    */
   const performMultipartUpload = async (taskId: string, file: File, uploadId: string, s3Key: string, existingParts: CompletedPart[]) => {
     const totalParts = Math.ceil(file.size / CHUNK_SIZE);
@@ -75,7 +81,6 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       for (let i = 0; i < totalParts; i++) {
         const partNumber = i + 1;
 
-        // Skip parts that were already uploaded successfully
         if (completedParts.some(p => p.PartNumber === partNumber)) {
             continue;
         }
@@ -101,14 +106,12 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         completedParts.push({ ETag: eTag, PartNumber: partNumber });
 
-        // Sync progress and parts list to local state (and thus localStorage)
         updateTask(taskId, {
             progress: Math.round((completedParts.length / totalParts) * 100),
             completedParts
         });
       }
 
-      // Finalize the upload
       await api.post('upload/complete', { key: s3Key, uploadId, parts: completedParts });
       updateTask(taskId, { status: 'completed', progress: 100 });
 
@@ -121,8 +124,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const startUpload = async (file: File, metadata: any) => {
     const videoId = file.name.split('.')[0].toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
     const taskId = `${Date.now()}-${videoId}`;
-    const tenantId = 'GLOBAL';
-    const s3Key = `${tenantId}/${metadata.familyId}/${file.name}`;
+    const s3Key = `${metadata.familyId}/${file.name}`;
 
     const newTask: UploadTask = {
         id: taskId,
@@ -138,7 +140,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setTasks(prev => [...prev, newTask]);
 
     try {
-      // 1. Database Lock. Tenancy handled by JWT.
+      // 1. Database Lock
       await api.post('ingest', {
         ...metadata,
         videoId,
@@ -165,8 +167,6 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const task = tasks.find(t => t.id === taskId);
     if (!task || !task.uploadId || !task.s3Key) return;
 
-    // Lead Strategy: Binary Integrity Verification.
-    // Ensure the selected file matches the original upload attempts.
     if (file.name !== task.fileName || file.size !== task.fileSize) {
         alert("Selection Mismatch: The selected file does not match the original upload. Please select the correct file to resume.");
         return;

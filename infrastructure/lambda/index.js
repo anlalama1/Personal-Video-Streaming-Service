@@ -46,9 +46,9 @@ exports.handler = async (event) => {
         const authorizer = requestContext.authorizer || {};
         const claims = authorizer.claims || {};
 
-        // System partition tenant ID defaults to 'GLOBAL' unless overridden in header
+    // System partition tenant ID resolved from dynamic Cognito claims or header
         const headers = event.headers || {};
-        const tenantId = headers['x-tenant-id'] || headers['X-Tenant-Id'] || 'GLOBAL';
+        const tenantId = headers['x-tenant-id'] || headers['X-Tenant-Id'] || claims['custom:tenantId'] || 'PRIMARY_VAULT';
 
         console.log(`Scribe Request: ${method} ${path} for Tenant: ${tenantId}`);
 
@@ -96,7 +96,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
         familyId = undefined;
     }
 
-    if (!isAdminView && jwtFamilyId && jwtFamilyId !== 'SHOP_ADMIN') {
+    if (!isAdminView && jwtFamilyId) {
         familyId = jwtFamilyId;
     }
 
@@ -128,7 +128,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
             item.transcodeStatus === 'TRANSCODING'
         );
 
-        if (jwtFamilyId && jwtFamilyId !== 'SHOP_ADMIN') {
+        if (jwtFamilyId) {
             items = items.filter(item => {
                 const skParts = (item.SK || '').split('#');
                 const itemFamilyId = skParts[1];

@@ -9,8 +9,8 @@
  *    Customers (The Scroll / Android App) reside in completely separate Cognito User Pools.
  *    Registered customers cannot authenticate to Demetrius, and shop operators cannot
  *    authenticate to the customer catalog.
- * 2. Scoped Custom Attributes: 'custom:role' is defined for Shop Admins, while
- *    'custom:familyId' is enforced for Customer Vault Members.
+ * 2. Scoped Custom Attributes: 'custom:role' and 'custom:tenantId' are defined for Shop
+ *    Admins, while 'custom:familyId' is enforced for Customer Vault Members.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -45,8 +45,10 @@ export class AuthStack extends cdk.Stack {
       standardAttributes: {
         email: { required: true, mutable: true },
       },
+      // Custom Attributes for Shop Operator Role & Dynamic Tenant Isolation
       customAttributes: {
         'role': new cognito.StringAttribute({ mutable: true }),
+        'tenantId': new cognito.StringAttribute({ mutable: true }),
       },
       passwordPolicy: {
         minLength: 8,

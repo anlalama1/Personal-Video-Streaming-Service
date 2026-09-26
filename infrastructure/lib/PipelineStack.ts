@@ -36,7 +36,6 @@ export class PipelineStack extends cdk.Stack {
           buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
           computeType: codebuild.ComputeType.MEDIUM,
         },
-        // Senior Strategy: Use the native 'runtime-versions' for reliable Node 20 selection
         partialBuildSpec: codebuild.BuildSpec.fromObject({
           phases: {
             install: {
@@ -111,20 +110,17 @@ export class PipelineStack extends cdk.Stack {
       env: { account, region }
     });
 
-    const buildWave = pipeline.addWave('ParallelBuilds');
-    // androidBuildStep removed from here to move it to the end
-
     pipeline.addStage(prodStage);
 
     const distroWave = pipeline.addWave('Distribution');
 
-    // 1. Demetrius Partner Portal Distribution
+    // 1. Demetrius Partner Portal Distribution (Bound strictly to Admin User Pool)
     distroWave.addPost(new pipelines.CodeBuildStep('DeployDemetriusPortal', {
         input: source,
         envFromCfnOutputs: {
           VITE_API_BASE_URL: prodStage.apiUrl,
-          VITE_USER_POOL_ID: prodStage.userPoolId,
-          VITE_APP_CLIENT_ID: prodStage.webClientId,
+          VITE_USER_POOL_ID: prodStage.adminUserPoolId,
+          VITE_APP_CLIENT_ID: prodStage.adminWebClientId,
           ADMIN_BUCKET: prodStage.adminPortalBucketName,
           DISTRIBUTION_ID: prodStage.distributionId,
         },
@@ -153,13 +149,13 @@ export class PipelineStack extends cdk.Stack {
       })
     );
 
-    // 2. The Scroll (Web Viewer) Distribution
+    // 2. The Scroll Web Viewer Distribution (Bound strictly to Customer User Pool)
     distroWave.addPost(new pipelines.CodeBuildStep('DeployScrollViewer', {
         input: source,
         envFromCfnOutputs: {
           VITE_API_BASE_URL: prodStage.apiUrl,
-          VITE_USER_POOL_ID: prodStage.userPoolId,
-          VITE_APP_CLIENT_ID: prodStage.webClientId,
+          VITE_USER_POOL_ID: prodStage.customerUserPoolId,
+          VITE_APP_CLIENT_ID: prodStage.customerWebClientId,
           VIEWER_BUCKET: prodStage.viewerPortalBucketName,
           DISTRIBUTION_ID: prodStage.distributionId,
         },
@@ -185,9 +181,6 @@ export class PipelineStack extends cdk.Stack {
       })
     );
 
-    // Principal Strategy: Terminal Wave for Heavy Android Compilation.
-    // We move the BuildAndroidApp and UploadAndroidApk steps here to ensure
-    // infrastructure and web portals land first.
     const terminalWave = pipeline.addWave('AndroidRelease');
     terminalWave.addPost(androidBuildStep);
 

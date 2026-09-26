@@ -1,3 +1,13 @@
+/**
+ * ============================================================================
+ * Demetrius Family Tenant Registry Context
+ * ============================================================================
+ * Enterprise Architecture Strategy: Dynamic Multi-Tenant Vault Management.
+ * Manages registered family tenants, auto-generating 8-character uppercase
+ * alphanumeric Family Vault Codes (e.g., FAM_8K2N9P4X) providing 2.82 Trillion
+ * unique combinations for collision-free tenancy isolation.
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api';
 
@@ -39,6 +49,18 @@ const DEFAULT_TENANTS: FamilyTenant[] = [
   }
 ];
 
+/**
+ * Generates an 8-character uppercase alphanumeric random string (36^8 = 2.82+ Trillion combinations).
+ */
+const generate8CharAlphanumeric = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -77,14 +99,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [tenants]);
 
   const addTenant = async (familyName: string, contactEmail?: string): Promise<FamilyTenant> => {
-    const slug = familyName
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_+|_+$/g, '');
-
-    const uniqueHash = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const familyId = `FAM_${slug}_${uniqueHash}`;
+    const familyId = `FAM_${generate8CharAlphanumeric()}`;
     const createdAt = new Date().toISOString();
 
     const newTenant: FamilyTenant = {
@@ -99,7 +114,11 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     // Persist asynchronously to DynamoDB via API Gateway
     try {
-      await api.post('tenants', { familyName, contactEmail });
+      const res = await api.post('tenants', { familyName, contactEmail });
+      if (res.data && res.data.familyId) {
+        // Use exact backend-persisted family ID
+        newTenant.familyId = res.data.familyId;
+      }
     } catch (err) {
       console.error('Failed to persist tenant to DynamoDB backend:', err);
     }

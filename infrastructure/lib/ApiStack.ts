@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * API Gateway Infrastructure Stack (Dual Cognito Authorizers)
+ * ============================================================================
+ * Architecture Pattern: Domain-Specific REST Endpoint Authorizers.
+ *
+ * Enterprise Decision Rationale:
+ * High-privilege administrative endpoints (/ingest, /catalog/publish, /tenants)
+ * are bound strictly to the Admin Authorizer (pointing to Admin User Pool), rejecting
+ * customer JWT tokens at the cloud edge. Catalog viewing endpoints (/catalog) use a
+ * dual-pool authorizer allowing both authenticated customers and shop admins.
+ */
+
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -14,7 +27,8 @@ import { Config } from '../bin/config';
 
 interface ApiStackProps extends cdk.StackProps {
   table: dynamodb.ITable;
-  userPool: cognito.IUserPool;
+  adminUserPool: cognito.IUserPool;
+  customerUserPool: cognito.IUserPool;
   cdnDomain: string;
   mediaBucket: s3.IBucket;
   orchestratorLambda?: lambda.IFunction;
@@ -56,12 +70,12 @@ export class ApiStack extends cdk.Stack {
     // Permissions
     props.table.grantReadWriteData(scribeLambda);
     props.table.grantReadData(this.logPlayLambda);
-    props.mediaBucket.grantPut(scribeLambda); // Needed for pre-signed URLs
+    props.mediaBucket.grantPut(scribeLambda);
     if (props.orchestratorLambda) {
       props.orchestratorLambda.grantInvoke(scribeLambda);
     }
 
-    // 3. API Gateway
+    // 3. API Gateway Definition
     const api = new apigateway.RestApi(this, 'StreamingApi', {
       restApiName: 'Alexandria+ Scribe API',
       defaultCorsPreflightOptions: {
@@ -71,8 +85,6 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
-    // Keep browser clients informed when API Gateway itself rejects a request
-    // before the Lambda integration can add its normal CORS headers.
     api.addGatewayResponse('Default4xxCors', {
       type: apigateway.ResponseType.DEFAULT_4XX,
       responseHeaders: {
@@ -90,42 +102,50 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
-    const authorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'AlexandriaAuthorizer', {
-      cognitoUserPools: [props.userPool]
+    // 4. Decoupled Authorizer Definitions
+    // Admin Authorizer: Strictly for Demetrius Shop Operator endpoints
+    const adminAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'AdminAuthorizer', {
+      cognitoUserPools: [props.adminUserPool]
     });
 
+    // Dual Authorizer: Allows both Shop Admins and Family Customers for catalog browsing
+    const dualAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'DualAuthorizer', {
+      cognitoUserPools: [props.adminUserPool, props.customerUserPool]
+    });
+
+    // 5. REST Endpoint Route Binding
     const catalog = api.root.addResource('catalog');
-    catalog.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    catalog.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
     const catalogPublish = catalog.addResource('publish');
-    catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const videoResource = catalog.addResource('{videoId}');
     const familyResource = videoResource.addResource('{familyId}');
-    familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const ingest = api.root.addResource('ingest');
-    ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const tenants = api.root.addResource('tenants');
-    tenants.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
-    tenants.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    tenants.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    tenants.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const upload = api.root.addResource('upload');
 
     const start = upload.addResource('start');
-    start.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    start.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const part = upload.addResource('part');
-    part.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    part.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const complete = upload.addResource('complete');
-    complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer });
+    complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const play = api.root.addResource('play');
-    play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda)); // Keep telemetry public for now or auth later
+    play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda));
 
-    // 4. Custom Domain Routing for API Gateway
+    // 6. Custom Domain Routing for API Gateway
     if (Config.useCustomDomain && Config.domainName) {
       const apiDomain = Config.apiSubdomain || `api.${Config.domainName}`;
 

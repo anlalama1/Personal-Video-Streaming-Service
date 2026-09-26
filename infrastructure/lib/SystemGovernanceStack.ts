@@ -8,7 +8,7 @@
  * High-risk administrative utilities with destructive authority must be isolated
  * into dedicated infrastructure stacks without public API Gateway integrations.
  * This prevents accidental exposure via CORS or compromised admin web tokens while
- * enforcing explicit IAM grants across S3, DynamoDB, and Cognito.
+ * enforcing explicit IAM grants across S3, DynamoDB, and both Cognito User Pools.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -25,7 +25,8 @@ interface SystemGovernanceStackProps extends cdk.StackProps {
   thumbnailBucket: s3.IBucket;
   hlsBucket: s3.IBucket;
   metadataTable: dynamodb.ITable;
-  userPool: cognito.IUserPool;
+  adminUserPool: cognito.IUserPool;
+  customerUserPool: cognito.IUserPool;
 }
 
 export class SystemGovernanceStack extends cdk.Stack {
@@ -46,7 +47,9 @@ export class SystemGovernanceStack extends cdk.Stack {
         THUMBNAIL_BUCKET: props.thumbnailBucket.bucketName,
         DEST_BUCKET: props.hlsBucket.bucketName,
         TABLE_NAME: props.metadataTable.tableName,
-        USER_POOL_ID: props.userPool.userPoolId,
+        ADMIN_USER_POOL_ID: props.adminUserPool.userPoolId,
+        CUSTOMER_USER_POOL_ID: props.customerUserPool.userPoolId,
+        USER_POOL_ID: props.customerUserPool.userPoolId, // Fallback key
       },
     });
 
@@ -59,13 +62,16 @@ export class SystemGovernanceStack extends cdk.Stack {
     // DynamoDB Table Scan & Delete Permissions
     props.metadataTable.grantReadWriteData(this.nuclearResetLambda);
 
-    // Cognito User Pool List & Admin Delete Permissions
+    // Cognito Dual User Pool List & Admin Delete Permissions
     this.nuclearResetLambda.addToRolePolicy(new iam.PolicyStatement({
       actions: [
         'cognito-idp:ListUsers',
         'cognito-idp:AdminDeleteUser',
       ],
-      resources: [props.userPool.userPoolArn],
+      resources: [
+        props.adminUserPool.userPoolArn,
+        props.customerUserPool.userPoolArn,
+      ],
     }));
 
     new cdk.CfnOutput(this, 'NuclearResetFunctionName', {

@@ -10,10 +10,19 @@ const Ingestion = () => {
   const [familyId, setFamilyId] = useState('PUBLIC');
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Quick Tenant Creation Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newFamilyName, setNewFamilyName] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
+
+  // Automatically select the active non-public family tenant when tenants load
+  React.useEffect(() => {
+    if (tenants.length > 0 && familyId === 'PUBLIC') {
+      const activeTenant = tenants.find(t => t.familyId !== 'PUBLIC') || tenants[0];
+      if (activeTenant) {
+        setFamilyId(activeTenant.familyId);
+      }
+    }
+  }, [tenants]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

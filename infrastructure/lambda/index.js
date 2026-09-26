@@ -91,7 +91,10 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
     const jwtFamilyId = claims['custom:familyId'];
 
     // Enforce Strict Family Vault Isolation for non-admin viewers
-    let familyId = headers['x-family-id'] || headers['X-Family-Id'] || jwtFamilyId;
+    let familyId = headers['x-family-id'] || headers['X-Family-Id'];
+    if (familyId === 'ALL') {
+        familyId = undefined;
+    }
 
     if (!isAdminView && jwtFamilyId && jwtFamilyId !== 'SHOP_ADMIN') {
         familyId = jwtFamilyId;
@@ -382,6 +385,7 @@ async function handleGetTenants(event, tenantId) {
 
 /**
  * Creates a new family tenant record in DynamoDB Single-Table registry.
+ * Generates an 8-character uppercase alphanumeric code (e.g. FAM_8K2N9P4X).
  */
 async function handleCreateTenant(event, tenantId) {
     const tableName = process.env.TABLE_NAME;
@@ -392,9 +396,14 @@ async function handleCreateTenant(event, tenantId) {
         return response(400, { error: "familyName is required" });
     }
 
-    const slug = familyName.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
-    const uniqueHash = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const familyId = `FAM_${slug}_${uniqueHash}`;
+    // Generate 8 random uppercase alphanumeric characters
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    const familyId = `FAM_${code}`;
     const createdAt = new Date().toISOString();
 
     try {

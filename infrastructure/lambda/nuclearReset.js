@@ -68,8 +68,16 @@ exports.handler = async (event) => {
         // Phase 3: Purge DynamoDB Metadata Table
         auditLog.purgedDynamoDbRecords += await purgeDynamoDbTable(TABLE_NAME);
 
-        // Phase 4: Purge Cognito User Pool
-        auditLog.purgedCognitoUsers += await purgeCognitoUsers(USER_POOL_ID);
+        // Phase 4: Purge Both Cognito User Pools (Admin & Customer)
+        const adminPoolId = process.env.ADMIN_USER_POOL_ID;
+        const customerPoolId = process.env.CUSTOMER_USER_POOL_ID || USER_POOL_ID;
+
+        if (adminPoolId) {
+            auditLog.purgedCognitoUsers += await purgeCognitoUsers(adminPoolId);
+        }
+        if (customerPoolId && customerPoolId !== adminPoolId) {
+            auditLog.purgedCognitoUsers += await purgeCognitoUsers(customerPoolId);
+        }
 
         auditLog.endTime = new Date().toISOString();
         console.warn("SYSTEM FACTORY RESET COMPLETE:", JSON.stringify(auditLog));

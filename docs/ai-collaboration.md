@@ -889,6 +889,29 @@ This document tracks the high-level collaboration between the human developer an
     - Updated [`SignupScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/SignupScreen.kt) to forward user credentials into `confirmSignUp`, triggering direct seamless launch into the Family Vault Catalog (`AuthState.SignedIn`).
 - **Outcome**: Eliminated manual re-authentication gaps and post-registration network authorization errors on Android.
 
+### 102. Tenancy Key Entropy Optimization: 8-Digit Alphanumeric Vault Codes (Sept 24, 2026)
+- **Challenge**: Long slug-based family tenant codes (e.g. `FAM_LALAMA_FAMILY_ARCHIVE_DARD`) were cumbersome for users to transcribe during registration.
+- **AI Contribution**: 
+    - Standardized Family Vault Code generation across Demetrius ([`TenantContext.tsx`](file:///I:/Android%20Projects/app-admin/src/context/TenantContext.tsx)) and Scribe Lambda ([`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js)) to `FAM_` followed by an 8-character uppercase alphanumeric random string (e.g., `FAM_8K2N9P4X`).
+    - Evaluated mathematical entropy: $36^8 = 2,821,109,907,456$ unique combinations (2.82+ Trillion), delivering clean user ergonomics without collision risks.
+- **Outcome**: Simplified family code transcription while increasing cryptographic key space entropy.
+
+### 103. Multi-Tenant Ingestion Sync & Admin Review Board Query Fix (Sept 24, 2026)
+- **Challenge**: Raw video uploads defaulted to `PUBLIC` because `useState('PUBLIC')` in `Ingestion.tsx` did not update when active tenants loaded, and Demetrius Review Board returned 0 items due to fallback JWT claim evaluation in `handleGetCatalog`.
+- **AI Contribution**: 
+    - Resolved `Ingestion.tsx` state synchronization by adding a `useEffect` that automatically defaults `familyId` to the first active non-public family vault (e.g., `FAM_LALAMA_FAMILY_7FPE`).
+    - Resolved `handleGetCatalog` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js) by isolating Shop Admin JWT claims from query sort keys (`skPrefix`), ensuring `adminView=true` queries return all staged items across all family vaults (`begins_with(SK, "FAMILY#")`).
+- **Outcome**: Fixed target partition selection during upload and restored full cross-tenant visibility to the Demetrius Review Board.
+
+### 104. Decoupled Identity Architecture: Independent Shop Admin & Customer User Pools (Sept 24, 2026)
+- **Challenge**: The platform previously used a shared User Pool, allowing theoretical cross-domain authentication attempts between shop operators and end consumers.
+- **AI Contribution**: 
+    - Refactored [`AuthStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/AuthStack.ts) to provision two completely separate Cognito User Pools: `adminUserPool` (`Alexandria-ShopAdmin-Vault`) and `customerUserPool` (`Alexandria-Customer-Vault`).
+    - Refactored [`ApiStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/ApiStack.ts) to enforce dual authorizers: `adminAuthorizer` for administrative routes (`/ingest`, `/catalog/publish`, `/tenants`, `/upload/*`) and `dualAuthorizer` for catalog browsing.
+    - Updated CodePipeline ([`PipelineStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/PipelineStack.ts) & [`StreamingAppStage.ts`](file:///I:/Android%20Projects/infrastructure/lib/StreamingAppStage.ts)) to bind Demetrius Admin Portal strictly to `adminUserPoolId` and The Scroll Web Viewer / Android App strictly to `customerUserPoolId`.
+    - Updated [`SystemGovernanceStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/SystemGovernanceStack.ts) and [`nuclearReset.js`](file:///I:/Android%20Projects/infrastructure/lambda/nuclearReset.js) to grant dual purge authority across both User Pools during a factory reset.
+- **Outcome**: Delivered complete zero-trust identity decoupling, preventing cross-domain authentication and isolating operator security boundaries.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

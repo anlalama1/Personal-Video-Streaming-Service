@@ -96,10 +96,10 @@ async function handleMetadataExtract(localInput, dbKey) {
 
             const prompt = `Analyze this video keyframe thumbnail image together with the original filename context.
 Original filename: "${sourceFileName}"
-Your goal is to provide a highly specific, narrative-rich draft for a human editor to review.
-BE BOLD & SPECIFIC: Identify specific people, characters (e.g. Daisy Duck, Mickey Mouse), landmarks, or brands if they are recognizable. We prefer a specific "best guess" over a safe generic description.
-ARCHIVAL NARRATIVE: Write the description like a professional storyteller documenting a family heritage moment.
-Return a JSON object with exactly three fields: "title" (a short, catchy, specific title), "description" (a detailed, archival-grade narrative using specific names and locations), and "tags" (an array of relevant keywords). Do not include any extra text, markdown formatting, or explanations outside the JSON object.`;
+Create a concise metadata draft for a human editor to review.
+Be specific about clearly recognizable people, characters, landmarks, or brands, but do not guess when uncertain.
+The description must be no more than 3 sentences. Focus on the most important visible details and relevant context; avoid repetition, speculation, and flowery narration.
+Return a JSON object with exactly three fields: "title" (a short, specific title), "description" (a concise description of no more than 3 sentences), and "tags" (an array of relevant keywords). Do not include any extra text, markdown formatting, or explanations outside the JSON object.`;
 
             console.log("Full prompt being sent to Bedrock:");
             console.log("-----------------------------------");

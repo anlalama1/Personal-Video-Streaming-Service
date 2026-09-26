@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCcw, ClipboardCheck, Sparkles, CheckCircle, Loader2, Trash2, Building, Filter } from 'lucide-react';
 import { SYSTEM_CONFIG } from '../config';
 import { useTenants } from '../context/TenantContext';
@@ -35,9 +35,14 @@ const ReviewBoard = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [refreshProgress, setRefreshProgress] = useState(0);
+  const refreshInFlight = useRef(false);
+  const nextRefreshAt = useRef(Date.now() + 30_000);
 
-  const fetchReviewQueue = async () => {
-    setLoading(true);
+  const fetchReviewQueue = useCallback(async (showLoading = true) => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    if (showLoading) setLoading(true);
     try {
       const res = await api.get('catalog?adminView=true');
       // Filter for items explicitly in REVIEW_PENDING state or currently being prepared (UPLOADING/PROCESSING)
@@ -48,13 +53,27 @@ const ReviewBoard = () => {
     } catch (err) {
       console.error('Failed to load review board data:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
+      refreshInFlight.current = false;
+      setRefreshProgress(0);
+      nextRefreshAt.current = Date.now() + 30_000;
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchReviewQueue();
-  }, []);
+    void fetchReviewQueue();
+
+    const refreshInterval = window.setInterval(() => {
+      const remainingMs = nextRefreshAt.current - Date.now();
+      setRefreshProgress(Math.min(100, ((30_000 - Math.max(remainingMs, 0)) / 30_000) * 100));
+
+      if (remainingMs <= 0) {
+        void fetchReviewQueue(false);
+      }
+    }, 250);
+
+    return () => window.clearInterval(refreshInterval);
+  }, [fetchReviewQueue]);
 
   const selectItemForReview = (item: MediaItem) => {
     setSelectedItem(item);
@@ -150,13 +169,27 @@ const ReviewBoard = () => {
           </p>
         </div>
         <button
-          onClick={fetchReviewQueue}
+          onClick={() => void fetchReviewQueue()}
           className="flex items-center gap-2 bg-heritage-800 hover:bg-heritage-700 text-heritage-parchment px-4 py-2 rounded-lg border border-heritage-800 transition-all text-sm shadow-lg shrink-0"
         >
           <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
           <span>Refresh</span>
         </button>
       </header>
+
+      <div
+        role="progressbar"
+        aria-label="Time until review queue refresh"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(refreshProgress)}
+        className="h-1 w-full overflow-hidden rounded-full bg-heritage-800/70"
+      >
+        <div
+          className="h-full bg-heritage-gold transition-[width] duration-200"
+          style={{ width: `${refreshProgress}%` }}
+        />
+      </div>
 
       {successMsg && (
         <div className="bg-heritage-gold/10 border border-heritage-gold/50 p-4 rounded-lg flex items-center gap-3 text-heritage-gold">

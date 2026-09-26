@@ -40,7 +40,7 @@ const Navbar = () => {
       <nav className="fixed top-0 w-full z-40 bg-heritage-black/80 backdrop-blur-md border-b border-heritage-parchment/10 p-4 lg:p-6 flex items-center justify-between px-8 lg:px-12 transition-all">
         {/* Brand Lockup */}
         <Link to="/" className="flex items-center group">
-          <img src="/logo_flat.png" alt="Alexandria+ Logo" className="h-[52px] w-auto group-hover:scale-105 transition-transform translate-x-[3px] translate-y-[1px]" />
+          <img src="/logo_flat.png" alt="Alexandria+ Logo" className="h-[42px] w-auto group-hover:scale-105 transition-transform translate-x-[3px] translate-y-[1px]" />
           <h1 className="text-2xl font-black tracking-tighter text-heritage-parchment uppercase hidden sm:block -ml-[12px]">Lexandria+</h1>
         </Link>
 

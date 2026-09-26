@@ -21,11 +21,19 @@ export class DatabaseStack extends cdk.Stack {
     super(scope, id, props);
 
     // Generic Single-Table DynamoDB Table
-    this.table = new dynamodb.Table(this, 'VideoMetadataTable', {
+    const table = new dynamodb.Table(this, 'VideoMetadataTable', {
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY, // Dev spike setting; change to RETAIN for production
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST, // On-Demand capacity scaling
+    });
+    this.table = table;
+
+    table.addGlobalSecondaryIndex({
+      indexName: 'FamilyCatalogIndex',
+      partitionKey: { name: 'familyId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
   }
 }

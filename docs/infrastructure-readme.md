@@ -52,3 +52,10 @@ npx cdk deploy
 * `npx cdk synth`   emits the synthesized CloudFormation template
 * `npx cdk diff`    compare deployed stack with current state
 * `npx cdk destroy` tear down all AWS resources and avoid costs
+
+## Family catalog index
+
+The customer catalog queries the `FamilyCatalogIndex` DynamoDB index using the
+authenticated user's `custom:familyId`. New video records populate this index
+automatically during ingestion and transcode processing. If resetting the
+development data, deploy the index first; no data backfill is needed.

@@ -106,17 +106,35 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
     const skPrefix = familyId ? `FAMILY#${familyId}#VIDEO#` : "FAMILY#";
 
     // Query DynamoDB Single-Table Design using Partition Key (PK) & Sort Key (SK) range query
-    const command = new QueryCommand({
-        TableName: tableName,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-        ExpressionAttributeValues: {
-            ":pk": `TENANT#${tenantId}`,
-            ":sk": skPrefix
-        }
-    });
+    let items;
+    if (!isAdminView && jwtFamilyId) {
+        const queryFamily = async (requestedFamilyId) => {
+            const result = await docClient.send(new QueryCommand({
+                TableName: tableName,
+                IndexName: 'FamilyCatalogIndex',
+                KeyConditionExpression: "familyId = :familyId AND begins_with(SK, :sk)",
+                ExpressionAttributeValues: {
+                    ":familyId": requestedFamilyId,
+                    ":sk": `FAMILY#${requestedFamilyId}#VIDEO#`
+                }
+            }));
+            return result.Items || [];
+        };
 
-    const result = await docClient.send(command);
-    let items = result.Items || [];
+        const familyItems = await queryFamily(jwtFamilyId);
+        const publicItems = jwtFamilyId === 'PUBLIC' ? [] : await queryFamily('PUBLIC');
+        items = [...familyItems, ...publicItems];
+    } else {
+        const result = await docClient.send(new QueryCommand({
+            TableName: tableName,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": `TENANT#${tenantId}`,
+                ":sk": skPrefix
+            }
+        }));
+        items = result.Items || [];
+    }
 
     // Filter out deleted items (soft-delete governance)
     items = items.filter(item => item.transcodeStatus !== 'DELETED');
@@ -143,12 +161,15 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
         const skParts = item.SK.split('#');
         const videoId = skParts[skParts.length - 1];
         const itemFamilyId = skParts[1];
+        const itemTenantId = item.PK?.startsWith('TENANT#')
+            ? item.PK.slice('TENANT#'.length)
+            : tenantId;
 
         const encodeUrlPath = (path) => path.split('/').map(p => encodeURIComponent(p)).join('/');
 
         // Uniform Path Access for HLS master playlists vs raw MP4s
         const videoUrl = item.hlsKey
-            ? `https://${cdnDomain}/hls/${tenantId}/${itemFamilyId}/${encodeURIComponent(item.hlsKey)}/master.m3u8`
+            ? `https://${cdnDomain}/hls/${itemTenantId}/${itemFamilyId}/${encodeURIComponent(item.hlsKey)}/master.m3u8`
             : `https://${cdnDomain}/media/${encodeUrlPath(item.videoKey)}`;
 
         const thumbnailUrl = item.thumbnailKey
@@ -188,6 +209,7 @@ async function handleIngest(event, tenantId) {
         Item: {
             PK: `TENANT#${tenantId}`,
             SK: `FAMILY#${familyId}#VIDEO#${videoId}`,
+            familyId,
             title,
             genre,
             releaseYear,
@@ -294,6 +316,7 @@ async function handlePublishVideo(event, tenantId) {
         Item: {
             PK: `TENANT#${tenantId}`,
             SK: `FAMILY#${familyId}#VIDEO#${videoId}`,
+            familyId,
             title,
             genre,
             releaseYear,

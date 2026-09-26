@@ -144,7 +144,7 @@ exports.handler = async (event) => {
                     TableName: process.env.TABLE_NAME,
                     Key: dbKey,
                     ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :u OR transcodeStatus = :f",
-                    UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc, videoKey = :vk",
+                    UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc, videoKey = :vk, familyId = :fid",
                     ExpressionAttributeValues: {
                         ":i": "INGESTED",
                         ":u": "UPLOADING",
@@ -153,7 +153,8 @@ exports.handler = async (event) => {
                         ":t": Date.now(),
                         ":zero": 0,
                         ":inc": 1,
-                        ":vk": key
+                        ":vk": key,
+                        ":fid": familyId
                     }
                 }));
             } catch (err) {

@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 
 /**
@@ -27,18 +28,17 @@ fun VideoPlayer(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
-        // Bottom Layer: Native ExoPlayer Video Surface
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     this.player = player
-                    useController = false // Disable native controls to use custom Compose controls
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    useController = false
                 }
             },
             modifier = Modifier.fillMaxSize()
         )
-        
-        // Top Layer: Custom Glassmorphic Controls
+
         PlayerControls(
             state = state,
             onIntent = onIntent,

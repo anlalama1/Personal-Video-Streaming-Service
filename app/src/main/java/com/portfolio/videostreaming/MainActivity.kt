@@ -33,6 +33,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -165,6 +168,22 @@ class MainActivity : ComponentActivity() {
         val currentRoute = navBackStackEntry?.destination?.route
         val isPlayerScreen = currentRoute?.startsWith("player") == true
 
+        DisposableEffect(isPlayerScreen) {
+            val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+            windowInsetsController.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+
+            if (isPlayerScreen) {
+                windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+            } else {
+                windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+
+            onDispose {
+                windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Conditionally render global Alexandria Navbar (hidden on cinematic player)
@@ -177,7 +196,7 @@ class MainActivity : ComponentActivity() {
                     startDestination = Screen.Catalog.route,
                     modifier = Modifier
                         .weight(1f)
-                        .navigationBarsPadding() // Safe padding for Android navigation bar insets
+                        .then(if (isPlayerScreen) Modifier else Modifier.navigationBarsPadding())
                 ) {
                     composable(Screen.Catalog.route) {
                         CatalogScreen(

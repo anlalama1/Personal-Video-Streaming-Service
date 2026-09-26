@@ -235,6 +235,13 @@ The project is **done** when all of the following are true:
 - [x] **Mandatory Family Vault Registration**: Enforced mandatory Family Code validation for consumer sign-ups on Desktop Viewer (`app-viewer`) and Android Viewer.
 - [x] **Authenticated Identity & Token Inspection**: Decoded Cognito ID Token payloads (`session.tokens.idToken.payload`) to display authenticated user emails and family partition keys across web and mobile clients.
 
+### Milestone 30 — Google Registration & Phone Verification
+- [ ] **Google Account Registration**: Let family users and shop operators register with their Google accounts and use the associated email as their account identity.
+- [ ] **Phone Number Verification**: Collect and verify each registrant's phone number by sending a one-time verification code via SMS.
+- [ ] **Pool and Client Integration**: Configure Google identity federation and SMS verification consistently across the customer and shop-operator Cognito user pools and their web/mobile clients.
+- [ ] **Registration UX & Recovery**: Provide clear Google sign-in, phone verification, resend-code, and error flows in the registration experiences.
+- [ ] **End-to-End Validation**: Verify successful and failed registration flows for both family users and shop operators, including unverified phone numbers.
+
 ---
 
 ## Requirement Coverage Map

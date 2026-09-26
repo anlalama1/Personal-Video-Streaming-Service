@@ -68,7 +68,7 @@ export class AuthStack extends cdk.Stack {
       }),
       userVerification: {
         emailSubject: 'Your Demetrius Shop Operator Verification Code',
-        emailBody: 'Welcome to Demetrius Preservation Portal!\n\nYour operator verification code is: {####}\n\nEnter this code to activate your shop operator credentials.',
+        emailBody: '<html><body><p>Welcome to Demetrius Preservation Portal!</p><p>Your operator verification code is:</p><p style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">{####}</p><p>Enter this code to activate your shop operator credentials.</p></body></html>',
         emailStyle: cognito.VerificationEmailStyle.CODE,
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
@@ -116,7 +116,7 @@ export class AuthStack extends cdk.Stack {
       }),
       userVerification: {
         emailSubject: 'Your Alexandria+ Vault Verification Code',
-        emailBody: 'Welcome to Alexandria+ Family Vault!\n\nYour verification code is: {####}\n\nEnter this code to activate your family heritage vault.',
+        emailBody: '<html><body><p>Welcome to Alexandria+ Family Vault!</p><p>Your verification code is:</p><p style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">{####}</p><p>Enter this code to activate your family heritage vault.</p></body></html>',
         emailStyle: cognito.VerificationEmailStyle.CODE,
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,

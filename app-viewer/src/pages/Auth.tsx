@@ -121,7 +121,7 @@ const Auth = () => {
                             </label>
                             <input
                                 type="text"
-                                placeholder="e.g. FAM_LALAMA or FAM_HARRISON_9A21"
+                                placeholder="e.g. LALAMA or A1B2C3"
                                 className="w-full bg-heritage-black border border-heritage-800 rounded-xl px-4 py-3 text-heritage-parchment outline-none focus:ring-2 focus:ring-heritage-gold transition-all text-sm font-bold tracking-wider"
                                 value={familyId}
                                 onChange={e => setFamilyId(e.target.value)}

@@ -199,7 +199,10 @@ async function handleIngest(event, tenantId) {
         }
     }));
 
-    return response(201, { message: "Metadata record created" });
+    return response(201, {
+        message: "Metadata record created",
+        videoKey: `${tenantId}/${familyId}/${videoFileName}`
+    });
 }
 
 /**
@@ -385,7 +388,7 @@ async function handleGetTenants(event, tenantId) {
 
 /**
  * Creates a new family tenant record in DynamoDB Single-Table registry.
- * Generates an 8-character uppercase alphanumeric code (e.g. FAM_8K2N9P4X).
+ * Generates a 6-character uppercase alphanumeric code.
  */
 async function handleCreateTenant(event, tenantId) {
     const tableName = process.env.TABLE_NAME;
@@ -403,7 +406,7 @@ async function handleCreateTenant(event, tenantId) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
 
-    const familyId = `FAM_${code}`;
+    const familyId = code;
     const createdAt = new Date().toISOString();
 
     try {

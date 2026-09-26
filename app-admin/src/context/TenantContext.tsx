@@ -3,9 +3,8 @@
  * Demetrius Family Tenant Registry Context
  * ============================================================================
  * Enterprise Architecture Strategy: Dynamic Multi-Tenant Vault Management.
- * Manages registered family tenants, auto-generating 8-character uppercase
- * alphanumeric Family Vault Codes (e.g., FAM_8K2N9P4X) providing 2.82 Trillion
- * unique combinations for collision-free tenancy isolation.
+ * Manages registered family tenants, auto-generating 6-character uppercase
+ * alphanumeric Family Vault Codes.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -50,9 +49,9 @@ const DEFAULT_TENANTS: FamilyTenant[] = [
 ];
 
 /**
- * Generates an 8-character uppercase alphanumeric random string (36^8 = 2.82+ Trillion combinations).
+ * Generates a 6-character uppercase alphanumeric random string.
  */
-const generate8CharAlphanumeric = (): string => {
+const generate6CharAlphanumeric = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 6; i++) {
@@ -99,7 +98,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [tenants]);
 
   const addTenant = async (familyName: string, contactEmail?: string): Promise<FamilyTenant> => {
-    const familyId = `FAM_${generate8CharAlphanumeric()}`;
+    const familyId = generate6CharAlphanumeric();
     const createdAt = new Date().toISOString();
 
     const newTenant: FamilyTenant = {
@@ -118,6 +117,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (res.data && res.data.familyId) {
         // Use exact backend-persisted family ID
         newTenant.familyId = res.data.familyId;
+        setTenants(prev => prev.map(tenant => tenant === newTenant ? { ...newTenant } : tenant));
       }
     } catch (err) {
       console.error('Failed to persist tenant to DynamoDB backend:', err);

@@ -124,14 +124,12 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const startUpload = async (file: File, metadata: any) => {
     const videoId = file.name.split('.')[0].toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
     const taskId = `${Date.now()}-${videoId}`;
-    const s3Key = `${metadata.familyId}/${file.name}`;
 
     const newTask: UploadTask = {
         id: taskId,
         title: metadata.title,
         progress: 0,
         status: 'uploading',
-        s3Key,
         fileName: file.name,
         fileSize: file.size,
         completedParts: []
@@ -141,12 +139,17 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     try {
       // 1. Database Lock
-      await api.post('ingest', {
+      const ingestRes = await api.post('ingest', {
         ...metadata,
         videoId,
         videoFileName: file.name,
         status: 'UPLOADING'
       });
+      const s3Key = ingestRes.data?.videoKey;
+      if (typeof s3Key !== 'string' || !s3Key) {
+        throw new Error('Ingestion API did not return the canonical S3 video key.');
+      }
+      updateTask(taskId, { s3Key });
 
       // 2. S3 Handshake
       const startRes = await api.post('upload/start', { key: s3Key, contentType: file.type });

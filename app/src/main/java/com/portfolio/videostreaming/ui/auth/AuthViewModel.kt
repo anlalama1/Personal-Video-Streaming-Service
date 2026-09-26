@@ -110,6 +110,7 @@ class AuthViewModel : ViewModel() {
                 _authState.value = AuthState.NeedsVerification
             },
             { error ->
+                Log.e("AuthVM", "Cognito sign-up failed", error)
                 _authState.value = AuthState.Error(error.message ?: "Sign up failed")
             }
         )

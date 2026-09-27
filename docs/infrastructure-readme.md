@@ -74,6 +74,9 @@ source of truth for video genres. Add one item per genre with these attributes:
 | `displayOrder` | Optional number controlling list order |
 | `createdAt` | Optional ISO-8601 timestamp |
 
+Genres are returned in `displayOrder` order, with `Miscellaneous` always last
+regardless of its configured `displayOrder`.
+
 For example, a genre named `Family Events` can use `PK=GENRES_REGISTRY`,
 `SK=GENRE#family_events`, `genreId=family_events`, and `genreName=Family Events`.
 The Review Board cannot publish without at least one valid registry item, and

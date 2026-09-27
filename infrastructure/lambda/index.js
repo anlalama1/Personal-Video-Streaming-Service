@@ -515,7 +515,12 @@ async function queryGenres(tableName) {
             genreName: item.genreName.trim(),
             displayOrder: typeof item.displayOrder === 'number' && Number.isFinite(item.displayOrder) ? item.displayOrder : 99
         }))
-        .sort((a, b) => a.displayOrder - b.displayOrder || a.genreName.localeCompare(b.genreName));
+        .sort((a, b) => {
+            const aMiscellaneous = a.genreName.toLowerCase() === 'miscellaneous';
+            const bMiscellaneous = b.genreName.toLowerCase() === 'miscellaneous';
+            if (aMiscellaneous !== bMiscellaneous) return aMiscellaneous ? 1 : -1;
+            return a.displayOrder - b.displayOrder || a.genreName.localeCompare(b.genreName);
+        });
 }
 
 /**

@@ -219,6 +219,9 @@ async function getApprovedGenres() {
     return items
         .filter(item => typeof item.genreName === "string" && item.genreName.trim())
         .sort((a, b) => {
+            const aMiscellaneous = a.genreName.trim().toLowerCase() === "miscellaneous";
+            const bMiscellaneous = b.genreName.trim().toLowerCase() === "miscellaneous";
+            if (aMiscellaneous !== bMiscellaneous) return aMiscellaneous ? 1 : -1;
             const aOrder = typeof a.displayOrder === "number" && Number.isFinite(a.displayOrder) ? a.displayOrder : 99;
             const bOrder = typeof b.displayOrder === "number" && Number.isFinite(b.displayOrder) ? b.displayOrder : 99;
             const orderDifference = aOrder - bOrder;

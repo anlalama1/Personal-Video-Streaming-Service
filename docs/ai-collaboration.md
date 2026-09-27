@@ -953,6 +953,22 @@ This document tracks the high-level collaboration between the human developer an
     - Reduced `Spacer` height in [`MediaDetailsScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/MediaDetailsScreen.kt#L110-L115) from `200.dp` to `16.dp`, positioning title, genre badges, description, and Play controls comfortably below the back button.
 - **Outcome**: Improved vertical visual hierarchy and content density on mobile screens.
 
+### 111. Heritage Genre Classification & Netflix-Style Category Rows (Sept 24, 2026)
+- **Challenge**: Generic movie genres did not fit family home video preservation, and media items lacked structured category row presentation across client applications.
+- **AI Contribution**: 
+    - Constrained Bedrock Claude Vision prompts in [`index.js`](file:///I:/Android%20Projects/infrastructure/transcoder/index.js) to classify keyframe thumbnails into 8 standardized Heritage Genres (`Holidays, Birthdays and Special Occasions`, `Daily Life`, `Friends and Family`, `Milestones`, `School, Sports and Hobbies`, `Travel and Vacation`, `Reunions and Gatherings`, `Miscellaneous`).
+    - Provisioned `GET /genres` and `POST /genres` endpoints in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js) backed by DynamoDB `PK = GENRES_REGISTRY`.
+    - Integrated AI-suggested genre dropdowns into Demetrius Review Board ([`ReviewBoard.tsx`](file:///I:/Android%20Projects/app-admin/src/pages/ReviewBoard.tsx)).
+    - Transformed Desktop Web Viewer ([`Home.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/Home.tsx)) and Android App ([`CatalogScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/CatalogScreen.kt)) to group media items by Heritage Genre and render Netflix-style horizontal category rows.
+- **Outcome**: Delivered structured AI classification and high-fidelity category row streaming layouts across all client platforms.
+
+### 112. Single Source of Truth Refactoring: Shared Heritage Genres Config Module (Sept 24, 2026)
+- **Challenge**: Hardcoding Heritage Genre lists separately in Scribe Lambda (`index.js`) and Fargate Bedrock Transcoder (`transcoder/index.js`) created schema drift risk.
+- **AI Contribution**: 
+    - Created [`genres.js`](file:///I:/Android%20Projects/infrastructure/lambda/genres.js) as a centralized CommonJS configuration module defining `HERITAGE_GENRES` objects and `APPROVED_GENRE_NAMES` strings.
+    - Refactored [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js#L15-L25) and [`transcoder/index.js`](file:///I:/Android%20Projects/infrastructure/transcoder/index.js#L10-L20) to import directly from `./genres.js`, establishing a DRY single source of truth across REST API endpoints, database fallbacks, and Bedrock AI vision prompts.
+- **Outcome**: Eliminated duplicate genre declarations and guaranteed 100% schema synchronization across all backend microservices.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

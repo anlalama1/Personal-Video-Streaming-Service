@@ -117,6 +117,10 @@ export class ApiStack extends cdk.Stack {
     const catalog = api.root.addResource('catalog');
     catalog.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
+    const genres = api.root.addResource('genres');
+    genres.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    genres.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+
     const catalogPublish = catalog.addResource('publish');
     catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 

@@ -39,6 +39,11 @@ data class MediaItemDto(
 )
 
 @Serializable
+data class GenreDto(
+    val genreName: String
+)
+
+@Serializable
 data class PlayEventRequest(
     val videoId: String
 )
@@ -49,6 +54,9 @@ data class PlayEventRequest(
 interface StreamingApiService {
     @GET("catalog")
     suspend fun getCatalog(): List<MediaItemDto>
+
+    @GET("genres")
+    suspend fun getGenres(): List<GenreDto>
 
     @POST("play")
     suspend fun logPlayEvent(

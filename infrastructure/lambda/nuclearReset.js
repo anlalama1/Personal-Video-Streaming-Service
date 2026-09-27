@@ -11,7 +11,7 @@
  *
  * Purge Targets:
  * 1. S3 Buckets: Source Media, Thumbnails, HLS Output Segments.
- * 2. DynamoDB: Scans and deletes all items from Single-Table VideoMetadataTable.
+ * 2. DynamoDB: Deletes all customer data while preserving the genre registry.
  * 3. Cognito: Lists and deletes all authenticated user identities.
  */
 
@@ -85,7 +85,7 @@ exports.handler = async (event) => {
         return {
             statusCode: 200,
             body: JSON.stringify({
-                message: "System Factory Reset Complete. All customer data purged across S3, DynamoDB, and Cognito.",
+                message: "System Factory Reset Complete. Customer data purged across S3, DynamoDB, and Cognito; DynamoDB genre registry preserved.",
                 auditLog
             })
         };
@@ -151,7 +151,7 @@ async function purgeS3Bucket(bucketName) {
 }
 
 /**
- * Scans DynamoDB Single-Table and deletes all items.
+ * Scans DynamoDB Single-Table and deletes all items except genre registry entries.
  */
 async function purgeDynamoDbTable(tableName) {
     if (!tableName) return 0;
@@ -167,6 +167,11 @@ async function purgeDynamoDbTable(tableName) {
 
         const items = scanRes.Items || [];
         for (const item of items) {
+            if (item.PK === "GENRES_REGISTRY") {
+                console.log(`Preserving DynamoDB genre registry entry ${item.SK}.`);
+                continue;
+            }
+
             if (item.PK && item.SK) {
                 await docClient.send(new DeleteCommand({
                     TableName: tableName,

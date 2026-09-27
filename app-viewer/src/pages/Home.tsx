@@ -2,9 +2,10 @@
  * ============================================================================
  * Home Catalog View Page (The Scroll)
  * ============================================================================
- * Enterprise Architecture Strategy: Media Grid & Hero Section.
+ * Enterprise Architecture Strategy: Netflix-Style Heritage Category Rows.
  * Fetches authenticated catalog media items from Scribe API Gateway,
- * rendering featured hero content and responsive catalog thumbnail grids.
+ * dynamically grouping published videos into horizontal scrolling category rows
+ * by genres configured in the DynamoDB registry.
  */
 
 import { useEffect, useState } from 'react';
@@ -25,6 +26,7 @@ interface MediaItem {
 
 const Home = () => {
   const [videos, setVideos] = useState<MediaItem[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -43,9 +45,33 @@ const Home = () => {
       }
     };
     fetchCatalog();
+
+    const fetchGenres = async () => {
+      try {
+        const res = await api.get('genres');
+        if (!Array.isArray(res.data)) throw new Error('Genre registry returned an invalid response.');
+        setGenres(res.data
+          .map((genre: { genreName?: string }) => genre.genreName?.trim())
+          .filter((genre: string | undefined): genre is string => Boolean(genre)));
+      } catch (err) {
+        console.error('Failed to fetch genres:', err);
+      }
+    };
+    fetchGenres();
   }, []);
 
   const featured = videos[0];
+
+  // Only show categories present in the DynamoDB genre registry.
+  const videosByGenre = videos.reduce((acc, video) => {
+    if (genres.includes(video.genre)) {
+      if (!acc[video.genre]) acc[video.genre] = [];
+      acc[video.genre].push(video);
+    }
+    return acc;
+  }, {} as Record<string, MediaItem[]>);
+
+  const genresList = genres.filter(genre => videosByGenre[genre]?.length);
 
   return (
     <div className="pb-20">
@@ -94,53 +120,67 @@ const Home = () => {
         </section>
       )}
 
-      {/* Catalog Grid Section */}
+      {/* Netflix-Style Heritage Category Rows Section */}
       <section className="px-8 lg:px-12 mt-12 space-y-12">
-        <div>
-          <h3 className="text-2xl font-bold text-heritage-parchment mb-6 flex items-center gap-3">
-             <span className="w-1 h-8 bg-heritage-gold rounded-full" />
-             Your Digital Library
-          </h3>
+        {genresList.map(genreName => (
+          <div key={genreName} className="space-y-4">
+            <h3 className="text-xl lg:text-2xl font-black text-heritage-parchment flex items-center gap-3 tracking-tight">
+              <span className="w-1.5 h-6 bg-heritage-gold rounded-full" />
+              {genreName}
+            </h3>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {videos.map(video => (
-              <div
-                key={video.videoId}
-                onClick={() => navigate('/details', { state: { video } })}
-                className="group relative aspect-video bg-heritage-900 rounded-xl overflow-hidden cursor-pointer border border-heritage-800 hover:border-heritage-gold/50 transition-all transform hover:scale-105 shadow-2xl"
-              >
-                <img
-                  src={video.thumbnailUrl}
-                  alt={video.title}
-                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-heritage-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                  <h4 className="font-bold text-heritage-parchment text-lg leading-tight">{video.title}</h4>
-                  <div className="flex items-center justify-between mt-2">
-                     <span className="text-xs text-heritage-400 font-bold uppercase tracking-wider">{video.genre}</span>
-                     <span className="text-xs text-heritage-400/60 font-mono">{video.releaseYear}</span>
+            {/* Horizontal Scrollable Category Row */}
+            <div className="flex gap-6 overflow-x-auto pb-4 pt-2 no-scrollbar scroll-smooth">
+              {videosByGenre[genreName].map(video => (
+                <div
+                  key={video.videoId}
+                  onClick={() => navigate('/details', { state: { video } })}
+                  className="group relative flex-none w-72 lg:w-80 aspect-video bg-heritage-900 rounded-2xl overflow-hidden cursor-pointer border border-heritage-800 hover:border-heritage-gold/50 transition-all transform hover:scale-105 shadow-2xl"
+                >
+                  <img
+                    src={video.thumbnailUrl}
+                    alt={video.title}
+                    className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-heritage-black/95 via-heritage-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                    <h4 className="font-bold text-heritage-parchment text-base leading-snug line-clamp-2">{video.title}</h4>
+                    <div className="flex items-center justify-between mt-2">
+                       <span className="text-[10px] text-heritage-gold font-black uppercase tracking-wider bg-heritage-gold/10 px-2 py-0.5 rounded border border-heritage-gold/20">{video.genre}</span>
+                       <span className="text-xs text-heritage-400/80 font-mono">{video.releaseYear}</span>
+                    </div>
+                  </div>
+                  {/* Play Button Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-12 h-12 bg-heritage-gold/20 backdrop-blur-md rounded-full flex items-center justify-center border border-heritage-gold/40 transform scale-0 group-hover:scale-100 transition-transform duration-300 shadow-xl">
+                          <Play fill="white" size={24} className="text-heritage-parchment ml-1" />
+                      </div>
                   </div>
                 </div>
-                {/* Play Button Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-12 h-12 bg-heritage-gold/20 backdrop-blur-md rounded-full flex items-center justify-center border border-heritage-gold/30 transform scale-0 group-hover:scale-100 transition-transform duration-300">
-                        <Play fill="white" size={24} className="text-heritage-parchment ml-1" />
-                    </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="space-y-8">
+            {Array.from({length: 2}).map((_, idx) => (
+              <div key={idx} className="space-y-4">
+                <div className="w-48 h-6 bg-heritage-900 animate-pulse rounded-md" />
+                <div className="flex gap-6 overflow-hidden">
+                  {Array.from({length: 4}).map((_, i) => (
+                    <div key={i} className="flex-none w-72 aspect-video bg-heritage-900 animate-pulse rounded-2xl" />
+                  ))}
                 </div>
               </div>
             ))}
-
-            {loading && Array.from({length: 5}).map((_, i) => (
-              <div key={i} className="aspect-video bg-heritage-900 animate-pulse rounded-xl" />
-            ))}
           </div>
+        )}
 
-          {!loading && videos.length === 0 && (
-            <div className="py-20 text-center text-heritage-400 italic">
-               The library is currently empty. Visit Demetrius to add your first digital scroll.
-            </div>
-          )}
-        </div>
+        {!loading && videos.length === 0 && (
+          <div className="py-20 text-center text-heritage-400 italic">
+             The library is currently empty. Visit Demetrius to add your first digital scroll.
+          </div>
+        )}
       </section>
     </div>
   );

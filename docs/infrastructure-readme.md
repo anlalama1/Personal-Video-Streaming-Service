@@ -59,3 +59,23 @@ The customer catalog queries the `FamilyCatalogIndex` DynamoDB index using the
 authenticated user's `custom:familyId`. New video records populate this index
 automatically during ingestion and transcode processing. If resetting the
 development data, deploy the index first; no data backfill is needed.
+
+## Video genres
+
+The `GENRES_REGISTRY` partition in the service's DynamoDB table is the single
+source of truth for video genres. Add one item per genre with these attributes:
+
+| Attribute | Value |
+| --- | --- |
+| `PK` | `GENRES_REGISTRY` |
+| `SK` | `GENRE#<id>` |
+| `genreId` | The same stable ID used in the sort key |
+| `genreName` | The genre label shown to reviewers and used by AI classification |
+| `displayOrder` | Optional number controlling list order |
+| `createdAt` | Optional ISO-8601 timestamp |
+
+For example, a genre named `Family Events` can use `PK=GENRES_REGISTRY`,
+`SK=GENRE#family_events`, `genreId=family_events`, and `genreName=Family Events`.
+The Review Board cannot publish without at least one valid registry item, and
+metadata extraction fails rather than assigning an unregistered genre if the
+registry is empty or unavailable.

@@ -27,6 +27,9 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
     private val _videoList = MutableStateFlow<List<MediaFile>>(emptyList())
     val videoList = _videoList.asStateFlow()
 
+    private val _genres = MutableStateFlow<List<String>>(emptyList())
+    val genres = _genres.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
@@ -54,9 +57,12 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
             _errorMessage.value = null
             try {
                 // Network I/O offloaded to Dispatchers.IO thread pool
-                val dtos = withContext(Dispatchers.IO) {
-                    StreamingApi.service.getCatalog()
+                val (dtos, genreDtos) = withContext(Dispatchers.IO) {
+                    val catalog = StreamingApi.service.getCatalog()
+                    val genres = StreamingApi.service.getGenres()
+                    catalog to genres
                 }
+                _genres.value = genreDtos.map { it.genreName }.distinct()
                 
                 // Map Network DTOs to UI Domain Models (MediaFile)
                 _videoList.value = dtos.map { dto ->

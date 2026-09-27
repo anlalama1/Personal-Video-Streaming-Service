@@ -55,6 +55,10 @@ exports.handler = async (event) => {
         // Route matching logic
         if (path === '/catalog' && method === 'GET') {
             return await handleGetCatalog(event, tenantId, claims);
+        } else if (path === '/genres' && method === 'GET') {
+            return await handleGetGenres(event, tenantId);
+        } else if (path === '/genres' && method === 'POST') {
+            return await handleCreateGenre(event, tenantId);
         } else if (path === '/tenants' && method === 'GET') {
             return await handleGetTenants(event, tenantId);
         } else if (path === '/tenants' && method === 'POST') {
@@ -296,6 +300,11 @@ async function handlePublishVideo(event, tenantId) {
         return response(400, { error: "videoId, familyId, videoKey, and title are required" });
     }
 
+    const genres = await queryGenres(tableName);
+    if (!genres.some(registeredGenre => registeredGenre.genreName === genre)) {
+        return response(400, { error: "genre must match an entry in the DynamoDB genre registry" });
+    }
+
     console.log(`PUBLISH: Finalizing ${videoId} for Tenant ${tenantId}, Target Family: ${familyId}`);
 
     const sourceFamilyId = oldFamilyId || familyId;
@@ -463,6 +472,83 @@ async function handleCreateTenant(event, tenantId) {
         return response(201, { familyId, familyName, contactEmail, createdAt });
     } catch (err) {
         console.error("handleCreateTenant Error:", err);
+        return response(500, { error: err.message });
+    }
+}
+
+/**
+ * Fetches dynamic Heritage Genres from DynamoDB Single-Table registry.
+ */
+async function handleGetGenres(event, tenantId) {
+    const tableName = process.env.TABLE_NAME;
+
+    try {
+        return response(200, await queryGenres(tableName));
+    } catch (err) {
+        console.error("handleGetGenres Error:", err);
+        return response(500, { error: err.message });
+    }
+}
+
+async function queryGenres(tableName) {
+    const items = [];
+    let lastEvaluatedKey;
+
+    do {
+        const result = await docClient.send(new QueryCommand({
+            TableName: tableName,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": "GENRES_REGISTRY",
+                ":sk": "GENRE#"
+            },
+            ...(lastEvaluatedKey ? { ExclusiveStartKey: lastEvaluatedKey } : {})
+        }));
+        items.push(...(result.Items || []));
+        lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return items
+        .filter(item => typeof item.genreName === 'string' && item.genreName.trim())
+        .map(item => ({
+            genreId: item.genreId,
+            genreName: item.genreName.trim(),
+            displayOrder: typeof item.displayOrder === 'number' && Number.isFinite(item.displayOrder) ? item.displayOrder : 99
+        }))
+        .sort((a, b) => a.displayOrder - b.displayOrder || a.genreName.localeCompare(b.genreName));
+}
+
+/**
+ * Dynamically registers a new Heritage Genre in DynamoDB Single-Table registry.
+ */
+async function handleCreateGenre(event, tenantId) {
+    const tableName = process.env.TABLE_NAME;
+    const body = JSON.parse(event.body || "{}");
+    const { genreName, displayOrder } = body;
+
+    if (!genreName) {
+        return response(400, { error: "genreName is required" });
+    }
+
+    const genreId = genreName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+    const createdAt = new Date().toISOString();
+
+    try {
+        await docClient.send(new PutCommand({
+            TableName: tableName,
+            Item: {
+                PK: "GENRES_REGISTRY",
+                SK: `GENRE#${genreId}`,
+                genreId,
+                genreName,
+                displayOrder: displayOrder || 50,
+                createdAt
+            }
+        }));
+
+        return response(201, { genreId, genreName, displayOrder: displayOrder || 50, createdAt });
+    } catch (err) {
+        console.error("handleCreateGenre Error:", err);
         return response(500, { error: err.message });
     }
 }

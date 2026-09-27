@@ -1,6 +1,6 @@
 const { S3Client, GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, QueryCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { BedrockRuntimeClient, InvokeModelCommand } = require("@aws-sdk/client-bedrock-runtime");
 const { spawnSync } = require("child_process");
 const fs = require("fs");
@@ -85,21 +85,33 @@ async function handleMetadataExtract(localInput, dbKey) {
         spawnSync('ffmpeg', ['-i', localInput, '-vframes', '1', '-q:v', '2', thumbnailPath], { stdio: 'inherit' });
     }
 
-    let aiMetadata = { title: "Untitled Video", description: "No description generated.", tags: [] };
-    const thumbnailS3Key = `${TENANT_ID}/${FAMILY_ID}/${VIDEO_ID}_hls/thumbnail.jpg`;
+    let aiMetadata = { title: "Untitled Video", genre: "", description: "No description generated.", tags: [] };
     if (fs.existsSync(thumbnailPath)) {
+        const approvedGenres = await getApprovedGenres();
+        if (approvedGenres.length === 0) {
+            throw new Error("No genres are configured in the DynamoDB genre registry.");
+        }
+
+        aiMetadata.genre = approvedGenres[0];
+
         try {
-            console.log("Invoking AWS Bedrock for multimodal description...");
+            console.log("Invoking AWS Bedrock for multimodal description and genre classification...");
             const imageBuffer = fs.readFileSync(thumbnailPath);
             const base64Image = imageBuffer.toString("base64");
             const sourceFileName = path.basename(INPUT_KEY || localInput);
+
+            const genrePromptList = approvedGenres.map(g => `- ${g}`).join('\n');
 
             const prompt = `Analyze this video keyframe thumbnail image together with the original filename context.
 Original filename: "${sourceFileName}"
 Create a concise metadata draft for a human editor to review.
 Be specific about clearly recognizable people, characters, landmarks, or brands, but do not guess when uncertain.
 The description must be no more than 3 sentences. Focus on the most important visible details and relevant context; avoid repetition, speculation, and flowery narration.
-Return a JSON object with exactly three fields: "title" (a short, specific title), "description" (a concise description of no more than 3 sentences), and "tags" (an array of relevant keywords). Do not include any extra text, markdown formatting, or explanations outside the JSON object.`;
+
+Select EXACTLY ONE genre from the following approved Heritage Genre list that best describes the event depicted in the video:
+${genrePromptList}
+
+Return a JSON object with exactly four fields: "title" (a short, specific title), "genre" (one exact string from the approved Heritage Genre list above), "description" (a concise description of no more than 3 sentences), and "tags" (an array of relevant keywords). Do not include any extra text, markdown formatting, or explanations outside the JSON object.`;
 
             console.log("Full prompt being sent to Bedrock:");
             console.log("-----------------------------------");
@@ -147,6 +159,11 @@ Return a JSON object with exactly three fields: "title" (a short, specific title
             } else {
                 aiMetadata = JSON.parse(textResponse);
             }
+
+            // Fallback check if AI genre is not in approved list
+            if (!approvedGenres.includes(aiMetadata.genre)) {
+                aiMetadata.genre = approvedGenres[0];
+            }
         } catch (bedrockErr) {
             console.error("Bedrock metadata call failed, using fallback attributes:", bedrockErr);
         }
@@ -164,11 +181,13 @@ Return a JSON object with exactly three fields: "title" (a short, specific title
         await db.send(new UpdateCommand({
             TableName: TABLE_NAME,
             Key: dbKey,
-            UpdateExpression: "SET thumbnailKey = :tk, transcodeStatus = :s, aiTitle = :at, aiDescription = :ad, aiTags = :atg, lastUpdated = :t",
+            UpdateExpression: "SET thumbnailKey = :tk, transcodeStatus = :s, aiTitle = :at, aiGenre = :ag, genre = :g, aiDescription = :ad, aiTags = :atg, lastUpdated = :t",
             ExpressionAttributeValues: {
                 ":tk": thumbnailS3Key,
                 ":s": "REVIEW_PENDING",
                 ":at": aiMetadata.title || "Untitled Video",
+                ":ag": aiMetadata.genre,
+                ":g": aiMetadata.genre,
                 ":ad": aiMetadata.description || "No description generated.",
                 ":atg": aiMetadata.tags || [],
                 ":t": Date.now()
@@ -177,6 +196,35 @@ Return a JSON object with exactly three fields: "title" (a short, specific title
     } else {
         console.warn("FFmpeg failed to produce a thumbnail. Skipping upload phase.");
     }
+}
+
+async function getApprovedGenres() {
+    const items = [];
+    let lastEvaluatedKey;
+
+    do {
+        const result = await db.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": "GENRES_REGISTRY",
+                ":sk": "GENRE#"
+            },
+            ...(lastEvaluatedKey ? { ExclusiveStartKey: lastEvaluatedKey } : {})
+        }));
+        items.push(...(result.Items || []));
+        lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return items
+        .filter(item => typeof item.genreName === "string" && item.genreName.trim())
+        .sort((a, b) => {
+            const aOrder = typeof a.displayOrder === "number" && Number.isFinite(a.displayOrder) ? a.displayOrder : 99;
+            const bOrder = typeof b.displayOrder === "number" && Number.isFinite(b.displayOrder) ? b.displayOrder : 99;
+            const orderDifference = aOrder - bOrder;
+            return orderDifference || a.genreName.localeCompare(b.genreName);
+        })
+        .map(item => item.genreName.trim());
 }
 
 async function handleHlsTranscode(localInput, dbKey) {

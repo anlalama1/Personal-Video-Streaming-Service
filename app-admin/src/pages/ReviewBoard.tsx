@@ -8,6 +8,7 @@ interface MediaItem {
   videoId: string;
   title: string;
   genre: string;
+  aiGenre?: string;
   releaseYear: string;
   transcodeStatus: string;
   thumbnailUrl: string;
@@ -21,13 +22,16 @@ interface MediaItem {
 const ReviewBoard = () => {
   const { tenants } = useTenants();
   const [items, setItems] = useState<MediaItem[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
+  const [genresLoading, setGenresLoading] = useState(true);
+  const [genreError, setGenreError] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [familyFilter, setFamilyFilter] = useState('ALL');
 
   const [formData, setFormData] = useState({
     title: '',
-    genre: 'Unknown',
+    genre: '',
     releaseYear: new Date().getFullYear().toString(),
     familyId: 'PUBLIC',
     description: '',
@@ -39,13 +43,37 @@ const ReviewBoard = () => {
   const refreshInFlight = useRef(false);
   const nextRefreshAt = useRef(Date.now() + 30_000);
 
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const res = await api.get('genres');
+        if (!Array.isArray(res.data)) throw new Error('Genre registry returned an invalid response.');
+        const registeredGenres = res.data
+          .map((genre: { genreName?: string }) => genre.genreName?.trim())
+          .filter((genre: string | undefined): genre is string => Boolean(genre));
+        setGenres(registeredGenres);
+        setGenreError('');
+      } catch (err) {
+        console.error('Failed to load genres from DynamoDB:', err);
+        setGenreError('Could not load genres from the DynamoDB registry. Publishing is disabled until the registry is available.');
+      } finally {
+        setGenresLoading(false);
+      }
+    };
+    fetchGenres();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedItem || genres.length === 0) return;
+    setFormData(prev => genres.includes(prev.genre) ? prev : { ...prev, genre: genres[0] });
+  }, [genres, selectedItem]);
+
   const fetchReviewQueue = useCallback(async (showLoading = true) => {
     if (refreshInFlight.current) return;
     refreshInFlight.current = true;
     if (showLoading) setLoading(true);
     try {
       const res = await api.get('catalog?adminView=true');
-      // Filter for items explicitly in REVIEW_PENDING state or currently being prepared (UPLOADING/PROCESSING)
       const reviewItems = res.data.filter((item: MediaItem) =>
         ['REVIEW_PENDING', 'UPLOADING', 'PROCESSING'].includes(item.transcodeStatus)
       );
@@ -61,34 +89,36 @@ const ReviewBoard = () => {
   }, []);
 
   useEffect(() => {
-    void fetchReviewQueue();
+    fetchReviewQueue(true);
 
-    const refreshInterval = window.setInterval(() => {
-      const remainingMs = nextRefreshAt.current - Date.now();
-      setRefreshProgress(Math.min(100, ((30_000 - Math.max(remainingMs, 0)) / 30_000) * 100));
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, nextRefreshAt.current - now);
+      const elapsed = 30_000 - remaining;
+      setRefreshProgress(Math.min(100, Math.round((elapsed / 30_000) * 100)));
 
-      if (remainingMs <= 0) {
-        void fetchReviewQueue(false);
+      if (remaining <= 0) {
+        fetchReviewQueue(false);
       }
-    }, 250);
+    }, 1000);
 
-    return () => window.clearInterval(refreshInterval);
+    return () => clearInterval(timer);
   }, [fetchReviewQueue]);
 
   const selectItemForReview = (item: MediaItem) => {
     setSelectedItem(item);
     setSuccessMsg('');
 
-    // Parse tags safely if array or comma-separated string
     let formattedTags = '';
     if (item.aiTags) {
       formattedTags = Array.isArray(item.aiTags) ? item.aiTags.join(', ') : String(item.aiTags);
     }
 
-    // Pre-fill form fields with AI generated defaults
+    const selectedGenre = item.aiGenre || item.genre || '';
+
     setFormData({
       title: item.aiTitle || item.title || '',
-      genre: item.genre && item.genre !== 'Unknown' ? item.genre : 'Family Archive',
+      genre: genres.includes(selectedGenre) ? selectedGenre : genres[0] || '',
       releaseYear: item.releaseYear && item.releaseYear !== '0' ? item.releaseYear : new Date().getFullYear().toString(),
       familyId: item.familyId || 'PUBLIC',
       description: item.aiDescription || '',
@@ -99,11 +129,16 @@ const ReviewBoard = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'genre' && genres.includes(value)) setGenreError('');
   };
 
   const handlePublishSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItem) return;
+    if (!genres.includes(formData.genre)) {
+      setGenreError('Select a genre from the DynamoDB registry before publishing.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -114,7 +149,7 @@ const ReviewBoard = () => {
 
       await api.post('catalog/publish', {
         videoId: selectedItem.videoId,
-        familyId: formData.familyId, // Allow reassigning family tenant partition
+        familyId: formData.familyId,
         oldFamilyId: selectedItem.familyId,
         videoKey: selectedItem.videoKey,
         title: formData.title,
@@ -124,9 +159,9 @@ const ReviewBoard = () => {
         tags: tagsArray
       });
 
-      setSuccessMsg(`"${formData.title}" officially assigned to ${formData.familyId} and queued for full HLS transcoding!`);
+      setSuccessMsg(`"${formData.title}" officially assigned to ${formData.familyId} under genre "${formData.genre}" and queued for full HLS transcoding!`);
       setSelectedItem(null);
-      await fetchReviewQueue();
+      await fetchReviewQueue(true);
     } catch (err) {
       console.error('Publish confirmation failed:', err);
     } finally {
@@ -144,7 +179,7 @@ const ReviewBoard = () => {
 
       setSuccessMsg(`"${selectedItem.title}" rejected and staged for deletion.`);
       setSelectedItem(null);
-      await fetchReviewQueue();
+      await fetchReviewQueue(true);
     } catch (err) {
       console.error('Rejection failed:', err);
     } finally {
@@ -168,34 +203,36 @@ const ReviewBoard = () => {
             <Sparkles size={12} className="text-heritage-gold animate-pulse" /> Staged properties are automatically drafted by Amazon Bedrock using the <span className="font-bold underline text-heritage-gold font-mono">{SYSTEM_CONFIG.BEDROCK_MODEL_ID}</span> foundation model.
           </p>
         </div>
-        <button
-          onClick={() => void fetchReviewQueue()}
-          className="relative flex items-center gap-2 overflow-hidden bg-heritage-800 hover:bg-heritage-700 text-heritage-parchment px-4 py-2 rounded-lg border border-heritage-800 transition-all text-sm shadow-lg shrink-0"
-        >
-          <span className="relative z-10 flex items-center gap-2">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="hidden sm:flex flex-col items-end text-[10px] text-heritage-400 font-mono">
+            <span>Auto-refresh in {Math.max(0, Math.ceil((100 - refreshProgress) * 0.3))}s</span>
+            <div className="w-24 h-1.5 bg-heritage-800 rounded-full overflow-hidden mt-1">
+              <div
+                className="h-full bg-heritage-gold transition-all duration-1000 ease-linear"
+                style={{ width: `${refreshProgress}%` }}
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => fetchReviewQueue(true)}
+            className="flex items-center gap-2 bg-heritage-800 hover:bg-heritage-700 text-heritage-parchment px-4 py-2 rounded-lg border border-heritage-800 transition-all text-sm shadow-lg"
+          >
             <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
-          </span>
-          <span
-            role="progressbar"
-            aria-label="Time until review queue refresh"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(refreshProgress)}
-            className="absolute bottom-0 left-0 h-1 w-full bg-heritage-800"
-          >
-            <span
-              className="block h-full bg-heritage-gold transition-[width] duration-200"
-              style={{ width: `${refreshProgress}%` }}
-            />
-          </span>
-        </button>
+          </button>
+        </div>
       </header>
 
       {successMsg && (
         <div className="bg-heritage-gold/10 border border-heritage-gold/50 p-4 rounded-lg flex items-center gap-3 text-heritage-gold">
           <CheckCircle className="text-heritage-gold animate-bounce" size={20} />
           <span className="text-sm font-black uppercase tracking-wider">{successMsg}</span>
+        </div>
+      )}
+
+      {genreError && (
+        <div role="alert" className="bg-heritage-sunset/10 border border-heritage-sunset/40 p-4 rounded-lg text-heritage-sunset text-sm">
+          {genreError}
         </div>
       )}
 
@@ -337,14 +374,30 @@ const ReviewBoard = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-heritage-400">Catalog Genre</label>
-                  <input
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-heritage-400 flex items-center gap-1.5">
+                    Catalog Genre <span className="text-[10px] text-heritage-gold font-normal flex items-center gap-0.5"><Sparkles size={10}/> AI Selected</span>
+                  </label>
+                  <select
                     required
                     name="genre"
                     value={formData.genre}
                     onChange={handleInputChange}
-                    className="w-full bg-heritage-black border border-heritage-800 rounded-lg px-4 py-2.5 text-heritage-parchment outline-none font-bold"
-                  />
+                    className="w-full bg-heritage-black border border-heritage-800 rounded-lg px-4 py-2.5 text-heritage-parchment outline-none font-bold cursor-pointer"
+                  >
+                    {genres.length === 0 && (
+                      <option value="" disabled>
+                        {genresLoading ? 'Loading genres...' : 'No genres configured'}
+                      </option>
+                    )}
+                    {genres.map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                  {!genresLoading && !genreError && genres.length === 0 && (
+                    <p className="text-xs text-heritage-sunset">
+                      Add one or more GENRE# records to the DynamoDB genre registry to enable publishing.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-heritage-400">Historical / Release Year</label>
@@ -394,7 +447,7 @@ const ReviewBoard = () => {
 
                 <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || genresLoading || genres.length === 0 || !genres.includes(formData.genre)}
                     className="flex-1 bg-gradient-to-r from-heritage-gold to-heritage-sunset hover:opacity-90 disabled:from-heritage-800 disabled:to-heritage-800 disabled:cursor-not-allowed text-heritage-black font-black py-4 rounded-xl transition-all shadow-xl tracking-[0.2em] uppercase text-sm"
                 >
                     {submitting ? 'Activating Clusters...' : 'Approve & Trigger HLS'}

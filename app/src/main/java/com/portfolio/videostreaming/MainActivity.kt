@@ -188,7 +188,16 @@ class MainActivity : ComponentActivity() {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Conditionally render global Alexandria Navbar (hidden on cinematic player)
                 if (!isPlayerScreen) {
-                    AlexandriaNavbar(onSignOut = { authViewModel.signOut() })
+                    AlexandriaNavbar(
+                        authViewModel = authViewModel,
+                        onNavigateHome = {
+                            if (currentRoute != Screen.Catalog.route) {
+                                navController.navigate(Screen.Catalog.route) {
+                                    popUpTo(Screen.Catalog.route) { inclusive = true }
+                                }
+                            }
+                        }
+                    )
                 }
 
                 NavHost(

@@ -242,6 +242,19 @@ The project is **done** when all of the following are true:
 - [ ] **Registration UX & Recovery**: Provide clear Google sign-in, phone verification, resend-code, and error flows in the registration experiences.
 - [ ] **End-to-End Validation**: Verify successful and failed registration flows for both family users and shop operators, including unverified phone numbers.
 
+### Milestone 31 — AWS Cost per GB of Storage Metric
+- [ ] **Storage Cost Baseline**: Identify AWS storage and delivery costs attributable to each customer, including source media, transcoded renditions, thumbnails, and relevant request costs.
+- [ ] **Per-Customer Cost Metric**: Calculate and expose operational cost per stored GB by customer and overall, with a clearly defined measurement period and cost assumptions.
+- [ ] **Automated Reporting**: Build a repeatable report or dashboard to track cost per GB as customer count and storage usage grow.
+- [ ] **Validation**: Compare the metric against AWS billing data and representative customer storage totals to verify accuracy.
+
+### Milestone 32 — Daily New Video Notifications
+- [ ] **Tenant-Scoped Digest**: Notify users in each family tenant about newly uploaded videos, sending no more than one digest per tenant per day.
+- [ ] **Recipient Resolution**: Identify all registered users with the matching `custom:familyId` and deliver notifications only to members of that tenant.
+- [ ] **Digest Scheduling & Deduplication**: Aggregate new uploads into a daily message and prevent duplicate notifications across retries or repeated processing.
+- [ ] **Delivery Preferences & Content**: Define the notification channel, opt-out behavior, and concise message with links to newly available videos.
+- [ ] **End-to-End Validation**: Verify tenant isolation, daily batching, retry behavior, and empty-day behavior.
+
 ---
 
 ## Requirement Coverage Map

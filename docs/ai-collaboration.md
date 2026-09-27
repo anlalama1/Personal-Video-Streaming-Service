@@ -932,6 +932,27 @@ This document tracks the high-level collaboration between the human developer an
     - Updated [`README.md`](file:///I:/Android%20Projects/README.md#L40-L65) with step-by-step instructions on extracting `CustomerUserPoolId` and `CustomerAndroidClientId` from CloudFormation `Prod-AuthStack` outputs and binding them to [`amplifyconfiguration.json`](file:///I:/Android%20Projects/app/src/main/res/raw/amplifyconfiguration.json).
 - **Outcome**: Established complete onboarding reproducibility for external developers deploying the platform across new AWS accounts.
 
+### 108. Desktop Hero Thumbnail Alignment & Onboarding Guide Consolidation (Sept 24, 2026)
+- **Challenge**: The large featured video thumbnail on The Scroll desktop viewer (`Home.tsx`) was being cut off at the top by the fixed header banner, and account-dependent config parameters lacked a single consolidated developer checklist.
+- **AI Contribution**: 
+    - Updated [`Home.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/Home.tsx#L50-L65) layout structure to position hero backdrop containers cleanly below the header banner (`top-20 lg:top-24`) with `object-top` alignment to prevent image cropping.
+    - Created [`docs/onboarding-configuration-guide.md`](file:///I:/Android%20Projects/docs/onboarding-configuration-guide.md) consolidating all 4 account-dependent configuration files into a step-by-step developer onboarding guide.
+- **Outcome**: Fixed hero video thumbnail layout alignment and established a centralized configuration guide for multi-account deployments.
+
+### 109. Android Navigation & Account Details Context Dialog (Sept 24, 2026)
+- **Challenge**: The Home button on the Android top banner was un-clickable, and clicking the profile avatar immediately signed out the user without showing account context.
+- **AI Contribution**: 
+    - Connected the Home button and Logo lockup in [`AlexandriaNavbar.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/components/AlexandriaNavbar.kt) to `navController.navigate(Screen.Catalog.route)`, enabling instant catalog navigation from any screen.
+    - Transformed the profile avatar click handler into an interactive **Account Details Modal** displaying authenticated email, Family Vault Code (`custom:familyId`) with 1-click clipboard copy, and explicit Sign Out confirmation.
+    - Exposed `familyId` StateFlow in [`AuthViewModel.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/AuthViewModel.kt) extracted from Cognito User Pool attributes.
+- **Outcome**: Delivered desktop-equivalent account context ergonomics and seamless banner navigation on Android.
+
+### 110. Android Media Details Spacing & Typography Alignment (Sept 24, 2026)
+- **Challenge**: An excessive 200dp vertical spacer between the back arrow navigation row and the metadata section created awkward whitespace on the Media Details screen.
+- **AI Contribution**: 
+    - Reduced `Spacer` height in [`MediaDetailsScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/MediaDetailsScreen.kt#L110-L115) from `200.dp` to `16.dp`, positioning title, genre badges, description, and Play controls comfortably below the back button.
+- **Outcome**: Improved vertical visual hierarchy and content density on mobile screens.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

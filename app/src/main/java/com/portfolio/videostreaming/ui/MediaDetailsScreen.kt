@@ -117,7 +117,7 @@ fun MediaDetailsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(200.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Metadata & Action Section
             Column(

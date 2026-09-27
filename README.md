@@ -62,7 +62,7 @@ npx cdk deploy StreamingPipelineStack
 - **Git Push**: Push these configuration updates to GitHub. CodePipeline will automatically build the final production APK bound to your live backend and Cognito User Pool.
 
 ### 5. Centralized Configuration Reference (SDE Onboarding)
-For users onboarding to this codebase, all global behavior parameters are centralized across four configuration files:
+For users onboarding to this codebase, see the detailed [**Onboarding & Configuration Guide**](./docs/onboarding-configuration-guide.md). All global behavior parameters are centralized across four configuration files:
 *   [**`infrastructure/bin/config.ts`**](./infrastructure/bin/config.ts): Handles target AWS deployment targets (`account`, `region`), GitHub source webhooks, custom domain flags (`alexandria-plus.com`), and project resource prefixes. **Must be updated prior to running CDK deployments.**
 *   [**`app-admin/src/config.ts`**](./app-admin/src/config.ts): Configures the active Generative AI foundational model (`BEDROCK_MODEL_ID`) utilized by the **Demetrius Metadata Review Board** for auto-populating summaries.
 *   [**`core/data/build.gradle.kts`**](./core/data/build.gradle.kts): The dynamically generated `BASE_URL` connecting the Android consumer client to your live serverless backend API.

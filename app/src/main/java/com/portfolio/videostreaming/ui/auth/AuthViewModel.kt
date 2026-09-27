@@ -37,6 +37,9 @@ class AuthViewModel : ViewModel() {
     private val _userEmail = MutableStateFlow<String?>(null)
     val userEmail = _userEmail.asStateFlow()
 
+    private val _familyId = MutableStateFlow<String?>(null)
+    val familyId = _familyId.asStateFlow()
+
     init {
         checkSession()
     }
@@ -62,13 +65,15 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Fetches authenticated user email from Cognito User Pool attributes.
+     * Fetches authenticated user email and family vault partition code from Cognito User Pool attributes.
      */
     private fun fetchUserAttributes() {
         Amplify.Auth.fetchUserAttributes(
             { attributes ->
                 val email = attributes.find { it.key == AuthUserAttributeKey.email() }?.value
+                val famId = attributes.find { it.key.keyString == "custom:familyId" }?.value
                 _userEmail.value = email
+                _familyId.value = famId
             },
             { error -> Log.e("AuthVM", "Failed to fetch attributes", error) }
         )
@@ -142,6 +147,7 @@ class AuthViewModel : ViewModel() {
         Amplify.Auth.signOut {
             _authState.value = AuthState.SignedOut
             _userEmail.value = null
+            _familyId.value = null
         }
     }
 }

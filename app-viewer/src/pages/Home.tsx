@@ -51,25 +51,26 @@ const Home = () => {
     <div className="pb-20">
       {/* Featured Selection Hero Section */}
       {featured && (
-        <section className="relative h-[80vh] w-full overflow-hidden pt-20 lg:pt-0">
-          <div className="absolute inset-0 z-0">
+        <section className="relative min-h-[85vh] w-full overflow-hidden pt-24 lg:pt-28">
+          {/* Hero Thumbnail Backdrop positioned cleanly under floating header banner */}
+          <div className="absolute inset-0 top-20 lg:top-24 z-0">
              <img
                src={featured.thumbnailUrl}
                alt={featured.title}
-               className="w-full h-full object-cover scale-105 blur-[2px] opacity-40"
+               className="w-full h-full object-cover object-top scale-105 blur-[2px] opacity-40"
              />
              <div className="absolute inset-0 bg-gradient-to-t from-heritage-black via-heritage-black/40 to-transparent" />
              <div className="absolute inset-0 bg-gradient-to-r from-heritage-black via-transparent to-transparent" />
           </div>
 
-          <div className="relative z-10 h-full flex flex-col justify-center px-12 max-w-4xl space-y-6">
+          <div className="relative z-10 h-full flex flex-col justify-center px-8 lg:px-12 max-w-4xl space-y-6 pt-8">
             <span className="inline-block bg-heritage-gold/20 text-heritage-gold text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest border border-heritage-gold/30 w-fit">
                Featured Selection
             </span>
-            <h2 className="text-6xl lg:text-8xl font-black text-heritage-parchment leading-none tracking-tight drop-shadow-2xl">
+            <h2 className="text-5xl lg:text-7xl xl:text-8xl font-black text-heritage-parchment leading-none tracking-tight drop-shadow-2xl">
               {featured.title}
             </h2>
-            <p className="text-xl text-heritage-400 max-w-2xl font-medium leading-relaxed">
+            <p className="text-lg lg:text-xl text-heritage-400 max-w-2xl font-medium leading-relaxed">
               Experience the digital resurrection of family heritage. A professionally preserved digital scroll, now streaming in high fidelity across your entire ecosystem.
             </p>
 
@@ -94,7 +95,7 @@ const Home = () => {
       )}
 
       {/* Catalog Grid Section */}
-      <section className="px-12 mt-12 space-y-12">
+      <section className="px-8 lg:px-12 mt-12 space-y-12">
         <div>
           <h3 className="text-2xl font-bold text-heritage-parchment mb-6 flex items-center gap-3">
              <span className="w-1 h-8 bg-heritage-gold rounded-full" />

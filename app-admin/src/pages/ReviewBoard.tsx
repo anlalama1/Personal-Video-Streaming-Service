@@ -170,26 +170,27 @@ const ReviewBoard = () => {
         </div>
         <button
           onClick={() => void fetchReviewQueue()}
-          className="flex items-center gap-2 bg-heritage-800 hover:bg-heritage-700 text-heritage-parchment px-4 py-2 rounded-lg border border-heritage-800 transition-all text-sm shadow-lg shrink-0"
+          className="relative flex items-center gap-2 overflow-hidden bg-heritage-800 hover:bg-heritage-700 text-heritage-parchment px-4 py-2 rounded-lg border border-heritage-800 transition-all text-sm shadow-lg shrink-0"
         >
-          <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
-          <span>Refresh</span>
+          <span className="relative z-10 flex items-center gap-2">
+            <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </span>
+          <span
+            role="progressbar"
+            aria-label="Time until review queue refresh"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(refreshProgress)}
+            className="absolute bottom-0 left-0 h-1 w-full bg-heritage-800"
+          >
+            <span
+              className="block h-full bg-heritage-gold transition-[width] duration-200"
+              style={{ width: `${refreshProgress}%` }}
+            />
+          </span>
         </button>
       </header>
-
-      <div
-        role="progressbar"
-        aria-label="Time until review queue refresh"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(refreshProgress)}
-        className="h-1 w-full overflow-hidden rounded-full bg-heritage-800/70"
-      >
-        <div
-          className="h-full bg-heritage-gold transition-[width] duration-200"
-          style={{ width: `${refreshProgress}%` }}
-        />
-      </div>
 
       {successMsg && (
         <div className="bg-heritage-gold/10 border border-heritage-gold/50 p-4 rounded-lg flex items-center gap-3 text-heritage-gold">

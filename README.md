@@ -197,5 +197,11 @@ This project is a **private portfolio spike** intended for technical demonstrati
 - [x] Milestone 1 — Basic local playback
 - [x] Milestone 2 — Cloud Infrastructure & Automated Pipeline
 - [x] Milestone 3 — HLS Transcoding Engine (Live!)
-- [ ] Milestone 4 — Administrator Content Ingestion
-- [ ] Milestone 5 — Secure Streaming (Signed URLs)
+- [x] Milestone 4 — Administrator Content Ingestion (Demetrius Partner Portal & Review Queue)
+- [x] Milestone 5 — Secure Streaming (Signed URLs & Custom Domain `alexandria-plus.com`)
+- [x] Milestone 28 — Amazon SES Verification & Branded Email Identity
+- [x] Milestone 29 — Serverless Multi-Tenant Vault Management & Cryptographic Isolation
+- [x] Milestone 33 — "Nuclear Option" System Factory Reset Lambda
+- [x] Milestone 34 — Decoupled Identity Architecture (Shop Admin vs. Customer User Pools)
+- [x] Milestone 35 — Dynamic Operator Tenancy & Hardcoded String Cleanup
+- [x] Milestone 36 — Dynamic Heritage Genres & Single Source of Truth Registry

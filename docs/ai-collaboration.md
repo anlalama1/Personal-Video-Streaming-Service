@@ -969,6 +969,13 @@ This document tracks the high-level collaboration between the human developer an
     - Refactored [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js#L15-L25) and [`transcoder/index.js`](file:///I:/Android%20Projects/infrastructure/transcoder/index.js#L10-L20) to import directly from `./genres.js`, establishing a DRY single source of truth across REST API endpoints, database fallbacks, and Bedrock AI vision prompts.
 - **Outcome**: Eliminated duplicate genre declarations and guaranteed 100% schema synchronization across all backend microservices.
 
+### 113. Database-Driven Single Source of Truth: Dynamic DynamoDB Heritage Genres (Sept 24, 2026)
+- **Challenge**: Hardcoded config files required code changes and container redeployments whenever new Heritage Genres were added or renamed.
+- **AI Contribution**: 
+    - Refactored Bedrock AI extraction tasks ([`transcoder/index.js`](file:///I:/Android%20Projects/infrastructure/transcoder/index.js#L95-L125)) to dynamically query DynamoDB (`PK = GENRES_REGISTRY`) at runtime, formatting active database items directly into Claude Vision prompts.
+    - Updated `handleGetGenres` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js#L460-L490) to serve sorted dynamic genre items from `PK = GENRES_REGISTRY` directly to web and mobile clients.
+- **Outcome**: Established DynamoDB as the 100% Single Source of Truth, enabling zero-code, zero-redeployment category updates from the AWS DynamoDB Console.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

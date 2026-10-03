@@ -44,6 +44,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.portfolio.videostreaming.ui.CatalogScreen
 import com.portfolio.videostreaming.ui.FamilyReviewPane
+import com.portfolio.videostreaming.ui.IngestViewModel
 import com.portfolio.videostreaming.ui.LocalVideoPicker
 import com.portfolio.videostreaming.ui.MediaBrowserViewModel
 import com.portfolio.videostreaming.ui.MediaDetailsScreen
@@ -157,6 +158,7 @@ class MainActivity : ComponentActivity() {
     private fun MainAppContent(authViewModel: AuthViewModel) {
         val screenTimeViewModel: ScreenTimeViewModel = viewModel()
         val mediaBrowserViewModel: MediaBrowserViewModel = viewModel()
+        val ingestViewModel: IngestViewModel = viewModel()
         val navController = rememberNavController()
 
         val sessionSeconds by screenTimeViewModel.sessionSeconds.collectAsState()
@@ -218,7 +220,8 @@ class MainActivity : ComponentActivity() {
                         LocalVideoPicker(
                             onUploadSuccess = {
                                 navController.navigate(Screen.FamilyReview.route)
-                            }
+                            },
+                            ingestViewModel = ingestViewModel
                         )
                     }
                     composable(Screen.FamilyReview.route) {

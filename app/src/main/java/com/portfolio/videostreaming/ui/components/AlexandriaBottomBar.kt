@@ -55,7 +55,7 @@ fun AlexandriaBottomBar(
     )
 
     NavigationBar(
-        modifier = modifier.height(72.dp),
+        modifier = modifier.height(96.dp),
         containerColor = HeritageBlack,
         tonalElevation = 8.dp
     ) {

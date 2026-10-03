@@ -36,7 +36,11 @@ data class MediaItemDto(
     val videoUrl: String,
     val description: String? = null,
     val tags: List<String>? = null,
-    val transcodeStatus: String = ""
+    val transcodeStatus: String = "",
+    val aiTitle: String? = null,
+    val aiGenre: String? = null,
+    val familyId: String = "",
+    val videoKey: String = ""
 )
 
 @Serializable
@@ -107,6 +111,25 @@ data class CompleteUploadResponse(
     val message: String
 )
 
+@Serializable
+data class PublishVideoRequest(
+    val videoId: String,
+    val familyId: String,
+    val oldFamilyId: String,
+    val videoKey: String,
+    val title: String,
+    val genre: String,
+    val releaseYear: String,
+    val description: String,
+    val tags: List<String>
+)
+
+@Serializable
+data class PublishVideoResponse(
+    val success: Boolean,
+    val message: String
+)
+
 /**
  * Retrofit Interface definition for Scribe API endpoints.
  */
@@ -131,6 +154,9 @@ interface StreamingApiService {
 
     @POST("upload/complete")
     suspend fun completeUpload(@Body request: CompleteUploadRequest): CompleteUploadResponse
+
+    @POST("catalog/publish")
+    suspend fun publishVideo(@Body request: PublishVideoRequest): PublishVideoResponse
 
     @POST("play")
     suspend fun logPlayEvent(

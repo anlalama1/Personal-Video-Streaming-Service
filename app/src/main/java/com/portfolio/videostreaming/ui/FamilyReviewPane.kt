@@ -27,6 +27,7 @@ import com.portfolio.videostreaming.ui.theme.Parchment
 import com.portfolio.videostreaming.ui.theme.Stone400
 import com.portfolio.videostreaming.ui.theme.Stone900
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * ============================================================================
@@ -46,8 +47,10 @@ fun FamilyReviewPane(
 ) {
     val context = LocalContext.current
     val reviewQueue by viewModel.reviewQueue.collectAsState()
+    val registeredGenres by viewModel.genres.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(viewModel) {
         while (true) {
@@ -123,8 +126,14 @@ fun FamilyReviewPane(
                                     .clip(RoundedCornerShape(16.dp))
                                     .then(if (isReadyForReview) Modifier.clickable {
                                         selectedVideo = video
-                                        title = video.title
-                                        genre = if (heritageGenres.contains(video.genre)) video.genre else heritageGenres[0]
+                                        title = video.aiTitle.ifBlank { video.title }
+                                        val suggestedGenre = video.aiGenre.ifBlank { video.genre }
+                                        genre = when {
+                                            registeredGenres.contains(suggestedGenre) -> suggestedGenre
+                                            registeredGenres.isNotEmpty() -> registeredGenres.first()
+                                            heritageGenres.contains(suggestedGenre) -> suggestedGenre
+                                            else -> heritageGenres.first()
+                                        }
                                         description = video.description
                                     } else Modifier),
                                 colors = CardDefaults.cardColors(
@@ -146,7 +155,7 @@ fun FamilyReviewPane(
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            text = video.title,
+                                            text = video.aiTitle.ifBlank { video.title },
                                             color = Parchment,
                                             fontSize = 15.sp,
                                             fontWeight = FontWeight.Bold
@@ -212,11 +221,37 @@ fun FamilyReviewPane(
 
                         Button(
                             onClick = {
-                                isPublishing = true
-                                Toast.makeText(context, "Published \"$title\" to Family Vault!", Toast.LENGTH_SHORT).show()
-                                isPublishing = false
-                                selectedVideo = null
-                                onPublishedSuccess()
+                                val videoToPublish = selectedVideo ?: return@Button
+                                coroutineScope.launch {
+                                    isPublishing = true
+                                    try {
+                                        val response = viewModel.publishReview(
+                                            video = videoToPublish,
+                                            title = title.trim(),
+                                            genre = genre,
+                                            releaseYear = videoToPublish.releaseYear.toString(),
+                                            description = description.trim()
+                                        )
+                                        if (!response.success) {
+                                            throw IllegalStateException(response.message)
+                                        }
+                                        Toast.makeText(
+                                            context,
+                                            "Published \"$title\" to Family Vault!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        selectedVideo = null
+                                        onPublishedSuccess()
+                                    } catch (exception: Exception) {
+                                        Toast.makeText(
+                                            context,
+                                            "Publish failed: ${exception.localizedMessage ?: "Please try again."}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    } finally {
+                                        isPublishing = false
+                                    }
+                                }
                             },
                             enabled = !isPublishing,
                             colors = ButtonDefaults.buttonColors(containerColor = Amber500),

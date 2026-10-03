@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.portfolio.videostreaming.core.data.model.MediaFile
+import com.portfolio.videostreaming.core.data.network.PublishVideoRequest
 import com.portfolio.videostreaming.core.data.network.StreamingApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,7 +79,11 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                         videoUrl = dto.videoUrl,
                         description = dto.description ?: "",
                         tags = dto.tags ?: emptyList(),
-                        transcodeStatus = dto.transcodeStatus
+                        transcodeStatus = dto.transcodeStatus,
+                        aiTitle = dto.aiTitle.orEmpty(),
+                        aiGenre = dto.aiGenre.orEmpty(),
+                        familyId = dto.familyId,
+                        videoKey = dto.videoKey
                     )
                 }
             } catch (e: Exception) {
@@ -99,18 +104,22 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                     StreamingApi.service.getReviewQueue()
                 }
                 _reviewQueue.value = dtos.map { dto ->
-                        MediaFile(
-                            id = dto.videoId,
-                            title = dto.title,
-                            genre = dto.genre,
-                            releaseYear = dto.releaseYear.toIntOrNull() ?: 0,
-                            thumbnailUrl = dto.thumbnailUrl,
-                            videoUrl = dto.videoUrl,
-                            description = dto.description ?: "",
-                            tags = dto.tags ?: emptyList(),
-                            transcodeStatus = dto.transcodeStatus
-                        )
-                    }
+                    MediaFile(
+                        id = dto.videoId,
+                        title = dto.title,
+                        genre = dto.genre,
+                        releaseYear = dto.releaseYear.toIntOrNull() ?: 0,
+                        thumbnailUrl = dto.thumbnailUrl,
+                        videoUrl = dto.videoUrl,
+                        description = dto.description ?: "",
+                        tags = dto.tags ?: emptyList(),
+                        transcodeStatus = dto.transcodeStatus,
+                        aiTitle = dto.aiTitle.orEmpty(),
+                        aiGenre = dto.aiGenre.orEmpty(),
+                        familyId = dto.familyId,
+                        videoKey = dto.videoKey
+                    )
+                }
             } catch (e: Exception) {
                 Log.e("MediaBrowserVM", "Error loading family review queue", e)
                 _errorMessage.value = "Connection Error: ${e.localizedMessage ?: "Unknown error"}"
@@ -118,5 +127,28 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                 _isLoading.value = false
             }
         }
+
+    }
+
+    suspend fun publishReview(
+        video: MediaFile,
+        title: String,
+        genre: String,
+        releaseYear: String,
+        description: String
+    ) = withContext(Dispatchers.IO) {
+        StreamingApi.service.publishVideo(
+            PublishVideoRequest(
+                videoId = video.id,
+                familyId = video.familyId,
+                oldFamilyId = video.familyId,
+                videoKey = video.videoKey,
+                title = title,
+                genre = genre,
+                releaseYear = releaseYear,
+                description = description,
+                tags = video.tags
+            )
+        )
     }
 }

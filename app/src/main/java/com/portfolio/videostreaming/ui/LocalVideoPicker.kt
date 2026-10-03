@@ -161,7 +161,7 @@ fun LocalVideoPicker(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     Text(
                         text = "Pick Local Memories",
                         color = Parchment,
@@ -182,16 +182,23 @@ fun LocalVideoPicker(
                             ingestViewModel.uploadSelectedVideos(context, selectedUris)
                         },
                         enabled = uploadState !is UploadState.Uploading,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Amber500)
                     ) {
                         if (uploadState is UploadState.Uploading) {
                             val state = uploadState as UploadState.Uploading
-                            Text("Uploading ${state.currentFile}/${state.totalFiles} (${state.progressPercent}%)", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                            Text(
+                                "Uploading ${state.currentFile}/${state.totalFiles} (${state.progressPercent}%)",
+                                color = HeritageBlack,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 9.sp,
+                                maxLines = 1
+                            )
                         } else {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Upload, contentDescription = null, tint = HeritageBlack, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("UPLOAD", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                Icon(Icons.Default.Upload, contentDescription = null, tint = HeritageBlack, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("UPLOAD", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 10.sp, maxLines = 1)
                             }
                         }
                     }
@@ -270,6 +277,7 @@ fun LocalVideoPicker(
                                         }
                                     },
                                     update = { it.player = previewPlayer },
+                                    onRelease = { it.player = null },
                                     modifier = Modifier.fillMaxSize()
                                 )
                             } else {

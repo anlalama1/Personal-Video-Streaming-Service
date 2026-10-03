@@ -146,6 +146,9 @@ export class ApiStack extends cdk.Stack {
     const complete = upload.addResource('complete');
     complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
+    const fail = upload.addResource('fail');
+    fail.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+
     const play = api.root.addResource('play');
     play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda));
 

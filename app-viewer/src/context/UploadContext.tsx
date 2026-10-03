@@ -12,6 +12,7 @@ import axios from 'axios';
 import api from '../api';
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
+const API_TIMEOUT_MS = 30_000;
 
 interface CompletedPart {
   ETag: string;
@@ -23,6 +24,8 @@ interface UploadTask {
   title: string;
   progress: number;
   status: 'uploading' | 'completed' | 'failed' | 'interrupted';
+  videoId?: string;
+  familyId?: string;
   uploadId?: string;
   s3Key?: string;
   fileName?: string;
@@ -71,11 +74,39 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   /**
    * Handles both fresh and resumed uploads by checking completedParts.
    */
-  const performMultipartUpload = async (taskId: string, file: File, uploadId: string, s3Key: string, existingParts: CompletedPart[]) => {
+  const markUploadFailed = async (
+    taskId: string,
+    videoId: string,
+    familyId: string,
+    s3Key?: string,
+    uploadId?: string
+  ) => {
+    updateTask(taskId, { status: 'failed' });
+    try {
+      await api.post(
+        'upload/fail',
+        { videoId, familyId, key: s3Key, uploadId },
+        { timeout: API_TIMEOUT_MS }
+      );
+    } catch (err) {
+      console.error('Failed to update the server after an upload failure:', err);
+    }
+  };
+
+  const performMultipartUpload = async (
+    taskId: string,
+    file: File,
+    uploadId: string,
+    s3Key: string,
+    familyId: string,
+    videoId: string,
+    existingParts: CompletedPart[]
+  ) => {
     const totalParts = Math.ceil(file.size / CHUNK_SIZE);
     const completedParts = [...existingParts];
 
     try {
+      if (totalParts === 0) throw new Error('Cannot upload an empty video file.');
       updateTask(taskId, { status: 'uploading' });
 
       for (let i = 0; i < totalParts; i++) {
@@ -89,15 +120,14 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const blob = file.slice(start, end);
 
-        const urlRes = await api.post('upload/part', {
-            key: s3Key,
-            uploadId,
-            partNumber,
-            totalParts
-        });
+        const urlRes = await api.post(
+          'upload/part',
+          { key: s3Key, uploadId, partNumber, totalParts },
+          { timeout: API_TIMEOUT_MS }
+        );
         const { uploadUrl } = urlRes.data;
 
-        const partRes = await axios.put(uploadUrl, blob);
+        const partRes = await axios.put(uploadUrl, blob, { timeout: 120_000 });
         const eTag = partRes.headers.etag || partRes.headers.ETag;
 
         if (!eTag) {
@@ -112,17 +142,22 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       }
 
-      await api.post('upload/complete', { key: s3Key, uploadId, parts: completedParts });
+      await api.post(
+        'upload/complete',
+        { key: s3Key, uploadId, parts: completedParts },
+        { timeout: API_TIMEOUT_MS }
+      );
       updateTask(taskId, { status: 'completed', progress: 100 });
 
     } catch (err) {
       console.error('Multipart upload loop failed:', err);
-      updateTask(taskId, { status: 'failed' });
+      await markUploadFailed(taskId, videoId, familyId, s3Key, uploadId);
     }
   };
 
   const startUpload = async (file: File, metadata: any) => {
     const videoId = file.name.split('.')[0].toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
+    const familyId = metadata.familyId;
     const taskId = `${Date.now()}-${videoId}`;
 
     const newTask: UploadTask = {
@@ -130,40 +165,59 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         title: metadata.title,
         progress: 0,
         status: 'uploading',
+        videoId,
+        familyId,
         fileName: file.name,
         fileSize: file.size,
         completedParts: []
     };
 
     setTasks(prev => [...prev, newTask]);
+    let s3Key: string | undefined;
+    let uploadId: string | undefined;
 
     try {
       // 1. Database Lock via Scribe Lambda
-      const ingestRes = await api.post('ingest', {
-        ...metadata,
-        videoId,
-        videoFileName: file.name,
-        status: 'UPLOADING'
-      });
+      const ingestRes = await api.post(
+        'ingest',
+        {
+          ...metadata,
+          videoId,
+          videoFileName: file.name,
+          status: 'UPLOADING'
+        },
+        { timeout: API_TIMEOUT_MS }
+      );
 
-      const s3Key = ingestRes.data?.videoKey;
+      s3Key = ingestRes.data?.videoKey;
       if (typeof s3Key !== 'string' || !s3Key) {
         throw new Error('Ingestion API did not return the canonical S3 video key.');
       }
       updateTask(taskId, { s3Key });
 
       // 2. S3 Handshake
-      const startRes = await api.post('upload/start', { key: s3Key, contentType: file.type });
-      const { uploadId } = startRes.data;
+      const startRes = await api.post(
+        'upload/start',
+        { key: s3Key, contentType: file.type },
+        { timeout: API_TIMEOUT_MS }
+      );
+      uploadId = startRes.data?.uploadId;
+      if (typeof uploadId !== 'string' || !uploadId) {
+        throw new Error('Upload API did not return a multipart upload ID.');
+      }
 
       updateTask(taskId, { uploadId });
 
       // 3. Enter Loop
-      await performMultipartUpload(taskId, file, uploadId, s3Key, []);
+      await performMultipartUpload(taskId, file, uploadId, s3Key, familyId, videoId, []);
 
     } catch (err) {
       console.error('Initial upload start failed:', err);
-      updateTask(taskId, { status: 'failed' });
+      if (familyId) {
+        await markUploadFailed(taskId, videoId, familyId, s3Key, uploadId);
+      } else {
+        updateTask(taskId, { status: 'failed' });
+      }
     }
   };
 
@@ -176,7 +230,17 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
     }
 
-    await performMultipartUpload(taskId, file, task.uploadId, task.s3Key, task.completedParts);
+    const videoId = task.videoId || file.name.split('.')[0].toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
+    const familyId = task.familyId || task.s3Key.split('/')[0];
+    await performMultipartUpload(
+      taskId,
+      file,
+      task.uploadId,
+      task.s3Key,
+      familyId,
+      videoId,
+      task.completedParts
+    );
   };
 
   return (

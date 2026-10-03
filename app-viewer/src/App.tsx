@@ -14,6 +14,7 @@ import MediaDetails from './pages/MediaDetails';
 import ConsumerUpload from './pages/ConsumerUpload';
 import Auth from './pages/Auth';
 import Navbar from './components/AppNavbar';
+import UploadDrawer from './components/UploadDrawer';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { UploadProvider } from './context/UploadContext';
 
@@ -54,6 +55,7 @@ const AppContent = () => {
         <Route path="/details" element={<MediaDetails />} />
         <Route path="/player" element={<PlayerPage />} />
       </Routes>
+      <UploadDrawer />
     </div>
   );
 }

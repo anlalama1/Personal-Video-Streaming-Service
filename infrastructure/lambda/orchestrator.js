@@ -145,12 +145,13 @@ exports.handler = async (event) => {
                 await ddb.send(new UpdateCommand({
                     TableName: process.env.TABLE_NAME,
                     Key: dbKey,
-                    ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :u OR transcodeStatus = :f",
+                    ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :u OR transcodeStatus = :f OR transcodeStatus = :uf",
                     UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc, videoKey = :vk, familyId = :fid",
                     ExpressionAttributeValues: {
                         ":i": "INGESTED",
                         ":u": "UPLOADING",
                         ":f": "FAILED",
+                        ":uf": "UPLOAD_FAILED",
                         ":s": "PROCESSING",
                         ":t": Date.now(),
                         ":zero": 0,

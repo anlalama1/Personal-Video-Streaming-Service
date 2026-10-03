@@ -13,7 +13,7 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
-const { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 // Initialize AWS SDK v3 Clients outside the handler for TCP connection reuse across warm Lambda invocations.
@@ -71,6 +71,8 @@ exports.handler = async (event) => {
             return await handleGetPartUrl(event, tenantId);
         } else if (path === '/upload/complete' && method === 'POST') {
             return await handleCompleteMultipart(event, tenantId);
+        } else if (path === '/upload/fail' && method === 'POST') {
+            return await handleFailMultipart(event, tenantId);
         } else if (path === '/catalog/publish' && method === 'POST') {
             return await handlePublishVideo(event, tenantId);
         } else if (path === '/catalog/{videoId}/{familyId}' && method === 'DELETE') {
@@ -294,6 +296,61 @@ async function handleCompleteMultipart(event, tenantId) {
     }));
 
     return response(200, { message: "Upload complete" });
+}
+
+/**
+ * Marks an unsuccessful upload as failed and aborts any unfinished S3 multipart upload.
+ */
+async function handleFailMultipart(event, tenantId) {
+    const { videoId, familyId, key, uploadId } = JSON.parse(event.body || "{}");
+    const claims = ((event.requestContext || {}).authorizer || {}).claims || {};
+    const jwtFamilyId = claims['custom:familyId'];
+    const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
+
+    if (!videoId || !familyId) {
+        return response(400, { error: "videoId and familyId are required" });
+    }
+    if (!isShopAdmin && !jwtFamilyId) {
+        return response(403, { error: "A family vault claim is required" });
+    }
+
+    const targetFamilyId = isShopAdmin ? familyId : jwtFamilyId;
+    if (key && !key.startsWith(`${targetFamilyId}/`)) {
+        return response(400, { error: "Upload key does not belong to the target family vault" });
+    }
+
+    try {
+        await docClient.send(new UpdateCommand({
+            TableName: process.env.TABLE_NAME,
+            Key: {
+                PK: `TENANT#${tenantId}`,
+                SK: `FAMILY#${targetFamilyId}#VIDEO#${videoId}`
+            },
+            ConditionExpression: "transcodeStatus = :uploading",
+            UpdateExpression: "SET transcodeStatus = :failed, lastUpdated = :now",
+            ExpressionAttributeValues: {
+                ":uploading": "UPLOADING",
+                ":failed": "UPLOAD_FAILED",
+                ":now": Date.now()
+            }
+        }));
+    } catch (err) {
+        if (err.name !== "ConditionalCheckFailedException") throw err;
+    }
+
+    if (key && uploadId) {
+        try {
+            await s3Client.send(new AbortMultipartUploadCommand({
+                Bucket: process.env.MEDIA_BUCKET,
+                Key: key,
+                UploadId: uploadId
+            }));
+        } catch (err) {
+            console.warn("Could not abort the failed multipart upload:", err.message);
+        }
+    }
+
+    return response(200, { message: "Upload failure recorded" });
 }
 
 /**

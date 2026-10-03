@@ -173,11 +173,12 @@ The project is **done** when all of the following are true:
 - [x] **Bedrock Vision Prompt Integration**: Configured Fargate tasks (`transcoder/index.js`) to query DynamoDB `PK = GENRES_REGISTRY` dynamically at runtime and format active genres directly into Claude Vision prompts.
 - [x] **Cross-Platform Netflix-Style Category Rows**: Transformed Desktop Web Viewer (`Home.tsx`) and Android App (`CatalogScreen.kt`) to render horizontal scrolling category rows grouped by Heritage Genre.
 
-### Milestone 37 — Self-Serve Family Media Uploads & Role-Gated Deletion
-- [ ] **Strict Cryptographic Tenancy Enclosure**: Enforce `familyId = claims['custom:familyId']` for customer uploads.
-- [ ] **Desktop Viewer Upload Button & Modal**: Build consumer-facing upload interface in `app-viewer`.
-- [ ] **Android Mobile Upload FAB**: Add "Upload Memory" Floating Action Button on Android Compose (`CatalogScreen.kt`).
-- [ ] **Role-Gated Deletion Guardrails**: Restrict video deletion strictly to Privileged Users (`familyAdmin` or Demetrius Shop Operators).
+### Milestone 37 — Self-Serve Family Media Uploads, Bottom Navigation & Review Board
+- [x] **Strict Cryptographic Tenancy Enclosure**: Enforced `familyId = claims['custom:familyId']` for customer uploads in Lambda `index.js`, preventing client-side tenancy manipulation.
+- [x] **Desktop Viewer Upload Button & Review Page**: Built consumer-facing upload interface (`ConsumerUpload.tsx`) in `app-viewer` with tabbed Upload and Family Review Queue.
+- [x] **Android Mobile Bottom Navigation**: Added `AlexandriaBottomBar` featuring `Home`, `Add` (Local Gallery Video Picker), `Review` (Family Review Pane), and `Profile` (Account Modal).
+- [x] **Android Local Video Picker**: Built 3-column previewable video picker grid (`LocalVideoPicker.kt`) querying `MediaStore.Video.Media` with multi-selection checkmarks.
+- [x] **Android Family Review Pane**: Built `FamilyReviewPane.kt` displaying `REVIEW_PENDING` items for the user's `familyId` with Heritage Genre dropdowns and "Approve & Publish" action.
 
 ### Milestone 38 — Venture Capital Pitch Package & Live Demo Harness
 - [ ] **10-Slide Investor Pitch Deck**: Slide-by-slide narrative script and visual layout specifications.

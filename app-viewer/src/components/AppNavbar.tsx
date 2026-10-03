@@ -45,10 +45,11 @@ const Navbar = () => {
         </Link>
 
         {/* Global Links & Account Avatar */}
-        <div className="flex items-center gap-8 text-sm font-black uppercase tracking-widest text-heritage-400">
+        <div className="flex items-center gap-6 lg:gap-8 text-sm font-black uppercase tracking-widest text-heritage-400">
             <Link to="/" className="cursor-pointer hover:text-heritage-parchment transition-colors">Home</Link>
-            <span className="cursor-pointer hover:text-heritage-parchment transition-colors opacity-50 cursor-not-allowed">Movies</span>
-            <span className="cursor-pointer hover:text-heritage-parchment transition-colors opacity-50 cursor-not-allowed">Music</span>
+            <Link to="/upload" className="cursor-pointer text-heritage-gold hover:text-heritage-gold/80 transition-colors flex items-center gap-1.5">
+              <span>Upload</span>
+            </Link>
 
             {/* Account Button Trigger */}
             <button

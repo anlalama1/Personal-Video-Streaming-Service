@@ -122,14 +122,14 @@ export class ApiStack extends cdk.Stack {
     genres.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const catalogPublish = catalog.addResource('publish');
-    catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
     const videoResource = catalog.addResource('{videoId}');
     const familyResource = videoResource.addResource('{familyId}');
     familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
 
     const ingest = api.root.addResource('ingest');
-    ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
     const tenants = api.root.addResource('tenants');
     tenants.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
@@ -138,13 +138,13 @@ export class ApiStack extends cdk.Stack {
     const upload = api.root.addResource('upload');
 
     const start = upload.addResource('start');
-    start.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    start.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
     const part = upload.addResource('part');
-    part.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    part.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
     const complete = upload.addResource('complete');
-    complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
     const play = api.root.addResource('play');
     play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda));

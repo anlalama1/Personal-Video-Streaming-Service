@@ -11,6 +11,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import PlayerPage from './pages/PlayerPage';
 import MediaDetails from './pages/MediaDetails';
+import ConsumerUpload from './pages/ConsumerUpload';
 import Auth from './pages/Auth';
 import Navbar from './components/AppNavbar';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -46,6 +47,7 @@ const AppContent = () => {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/upload" element={<ConsumerUpload />} />
         <Route path="/details" element={<MediaDetails />} />
         <Route path="/player" element={<PlayerPage />} />
       </Routes>

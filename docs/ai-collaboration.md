@@ -976,6 +976,16 @@ This document tracks the high-level collaboration between the human developer an
     - Updated `handleGetGenres` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js#L460-L490) to serve sorted dynamic genre items from `PK = GENRES_REGISTRY` directly to web and mobile clients.
 - **Outcome**: Established DynamoDB as the 100% Single Source of Truth, enabling zero-code, zero-redeployment category updates from the AWS DynamoDB Console.
 
+### 114. Milestone 37: Self-Serve Family Media Uploads, Android Bottom Bar & Review Board (Sept 24, 2026)
+- **Challenge**: Family members lacked self-serve upload capabilities, an Android bottom navigation bar, a local video picker, and a dedicated family review board.
+- **AI Contribution**: 
+    - Bound `/upload/start`, `/upload/part`, `/upload/complete`, `/ingest`, and `/catalog/publish` to `dualAuthorizer` in [`ApiStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/ApiStack.ts#L120-L150) and enforced `familyId = claims['custom:familyId']` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js#L210-L230).
+    - Built [`ConsumerUpload.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/ConsumerUpload.tsx) in `app-viewer` featuring tabbed Upload and Family Review Queue with Heritage Genre dropdowns.
+    - Designed [`AlexandriaBottomBar.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/components/AlexandriaNavbar.kt) (`Home`, `Add`, `Review`, `Profile`) and integrated it into [`MainActivity.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/MainActivity.kt).
+    - Built FamilyAlbum-style [`LocalVideoPicker.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/LocalVideoPicker.kt) querying Android `MediaStore.Video.Media` with multi-selection checkmarks for batch family uploads.
+    - Built [`FamilyReviewPane.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/FamilyReviewPane.kt) allowing family members to finalize AI metadata drafts and publish videos to their vault.
+- **Outcome**: Delivered complete cross-platform self-serve family media ingestion, native Android bottom navigation, and family review board capabilities.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

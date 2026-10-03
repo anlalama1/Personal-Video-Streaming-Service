@@ -212,16 +212,24 @@ async function handleIngest(event, tenantId) {
     const body = JSON.parse(event.body || "{}");
     const { videoId, title, genre, releaseYear, familyId, videoFileName, status = "INGESTED" } = body;
 
+    const authorizer = (event.requestContext || {}).authorizer || {};
+    const claims = authorizer.claims || {};
+    const jwtFamilyId = claims['custom:familyId'];
+    const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
+
+    // Enforce cryptographic tenancy containment for customer accounts
+    const targetFamilyId = (!isShopAdmin && jwtFamilyId) ? jwtFamilyId : (familyId || 'PUBLIC');
+
     await docClient.send(new PutCommand({
         TableName: process.env.TABLE_NAME,
         Item: {
             PK: `TENANT#${tenantId}`,
-            SK: `FAMILY#${familyId}#VIDEO#${videoId}`,
-            familyId,
+            SK: `FAMILY#${targetFamilyId}#VIDEO#${videoId}`,
+            familyId: targetFamilyId,
             title,
-            genre,
-            releaseYear,
-            videoKey: `${tenantId}/${familyId}/${videoFileName}`,
+            genre: genre || "Miscellaneous",
+            releaseYear: releaseYear || new Date().getFullYear().toString(),
+            videoKey: `${targetFamilyId}/${videoFileName}`,
             thumbnailKey: "",
             transcodeStatus: status,
             lastUpdated: Date.now(),
@@ -231,7 +239,7 @@ async function handleIngest(event, tenantId) {
 
     return response(201, {
         message: "Metadata record created",
-        videoKey: `${tenantId}/${familyId}/${videoFileName}`
+        videoKey: `${targetFamilyId}/${videoFileName}`
     });
 }
 

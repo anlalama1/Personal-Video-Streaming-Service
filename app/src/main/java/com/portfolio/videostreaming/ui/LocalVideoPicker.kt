@@ -21,19 +21,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
 import com.portfolio.videostreaming.ui.theme.Stone400
 import com.portfolio.videostreaming.ui.theme.Stone900
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 data class LocalVideoMedia(
@@ -54,13 +54,24 @@ data class LocalVideoMedia(
 @Composable
 fun LocalVideoPicker(
     onUploadSuccess: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    ingestViewModel: IngestViewModel = viewModel()
 ) {
     val context = LocalContext.current
     var localVideos by remember { mutableStateOf<List<LocalVideoMedia>>(emptyList()) }
     var selectedVideoIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
-    var isUploading by remember { mutableStateOf(false) }
+
+    val uploadState by ingestViewModel.uploadState.collectAsState()
+
+    LaunchedEffect(uploadState) {
+        if (uploadState is UploadState.Success) {
+            Toast.makeText(context, "All selected memories uploaded successfully!", Toast.LENGTH_LONG).show()
+            ingestViewModel.resetState()
+            selectedVideoIds = emptySet()
+            onUploadSuccess()
+        }
+    }
 
     // Query Android MediaStore ContentResolver for local MP4 videos
     LaunchedEffect(Unit) {
@@ -124,19 +135,21 @@ fun LocalVideoPicker(
                 if (selectedVideoIds.isNotEmpty()) {
                     Button(
                         onClick = {
-                            isUploading = true
-                            Toast.makeText(context, "Initiating upload for ${selectedVideoIds.size} memories...", Toast.LENGTH_LONG).show()
-                            selectedVideoIds = emptySet()
-                            isUploading = false
-                            onUploadSuccess()
+                            val selectedUris = localVideos.filter { selectedVideoIds.contains(it.id) }.map { it.uri }
+                            ingestViewModel.uploadSelectedVideos(context, selectedUris)
                         },
-                        enabled = !isUploading,
+                        enabled = uploadState !is UploadState.Uploading,
                         colors = ButtonDefaults.buttonColors(containerColor = Amber500)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Upload, contentDescription = null, tint = HeritageBlack, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("UPLOAD", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                        if (uploadState is UploadState.Uploading) {
+                            val state = uploadState as UploadState.Uploading
+                            Text("Uploading ${state.currentFile}/${state.totalFiles} (${state.progressPercent}%)", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Upload, contentDescription = null, tint = HeritageBlack, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("UPLOAD", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                            }
                         }
                     }
                 }
@@ -185,7 +198,6 @@ fun LocalVideoPicker(
                                 contentScale = ContentScale.Crop
                             )
 
-                            // Duration Badge
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
@@ -201,7 +213,6 @@ fun LocalVideoPicker(
                                 )
                             }
 
-                            // Selection Checkmark Overlay
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
@@ -227,5 +238,5 @@ fun LocalVideoPicker(
 private fun formatDuration(durationMs: Long): String {
     val minutes = TimeUnit.MILLISECONDS.toMinutes(durationMs)
     val seconds = TimeUnit.MILLISECONDS.toSeconds(durationMs) % 60
-    return String.format("%d:%02d", minutes, seconds)
+    return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
 }

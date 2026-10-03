@@ -986,6 +986,20 @@ This document tracks the high-level collaboration between the human developer an
     - Built [`FamilyReviewPane.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/FamilyReviewPane.kt) allowing family members to finalize AI metadata drafts and publish videos to their vault.
 - **Outcome**: Delivered complete cross-platform self-serve family media ingestion, native Android bottom navigation, and family review board capabilities.
 
+### 115. Orchestrator Event Intake & DynamoDB Partition Key Alignment (Oct 3, 2026)
+- **Challenge**: Consumer uploads via `app-viewer` wrote S3 keys formatted as `<familyId>/<filename.mp4>` (`G5HYDK/filename.mp4`). `orchestrator.js` parsed 2-part keys as `tenantId = G5HYDK` and `familyId = PUBLIC`, causing DynamoDB conditional lock mismatches (`PK = TENANT#PRIMARY_VAULT` vs `TENANT#G5HYDK`) and leaving items stuck in `UPLOADING` status.
+- **AI Contribution**: 
+    - Refactored 2-part S3 key parsing in [`orchestrator.js`](file:///I:/Android%20Projects/infrastructure/lambda/orchestrator.js#L100-L120) to map `familyId = parts[0]` (`G5HYDK`) and `tenantId = 'PRIMARY_VAULT'`.
+- **Outcome**: Restored automatic S3 EventBridge -> SQS -> Orchestrator Fargate task launching for consumer self-serve uploads.
+
+### 116. Mobile Batch Ingestion & Web App Context Isolation (Oct 3, 2026)
+- **Challenge**: The Android app's local video picker required a background chunked uploader to execute S3 multipart uploads, and CodeBuild `DeployScrollViewer` failed due to missing context providers.
+- **AI Contribution**: 
+    - Built [`IngestViewModel.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/IngestViewModel.kt) on Android to stream selected local video URIs in 10MB parts directly to S3 pre-signed URLs.
+    - Connected [`LocalVideoPicker.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/LocalVideoPicker.kt) to `IngestViewModel`, enabling multi-selection batch uploads with real-time UI progress feedback.
+    - Provisioned [`UploadContext.tsx`](file:///I:/Android%20Projects/app-viewer/src/context/UploadContext.tsx) for `app-viewer` and wrapped `<UploadProvider>` in [`App.tsx`](file:///I:/Android%20Projects/app-viewer/src/App.tsx), resolving CodeBuild TS2307 compilation errors.
+- **Outcome**: Delivered native mobile batch S3 uploads and clean web pipeline deployment builds.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

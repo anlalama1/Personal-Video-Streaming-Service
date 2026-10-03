@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
  * ============================================================================
  * Enterprise Architecture Strategy: Data Transfer Objects.
  * Separating Network DTOs from UI Domain Models prevents external API schema changes
- * (e.g. field renames or nullability shifts) from cascading into Compose UI layers.
+ * from cascading into Compose UI layers.
  */
 @Serializable
 data class MediaItemDto(
@@ -48,6 +48,64 @@ data class PlayEventRequest(
     val videoId: String
 )
 
+@Serializable
+data class IngestRequest(
+    val title: String,
+    val genre: String,
+    val releaseYear: String,
+    val familyId: String? = null,
+    val videoFileName: String,
+    val status: String = "UPLOADING"
+)
+
+@Serializable
+data class IngestResponse(
+    val message: String,
+    val videoKey: String
+)
+
+@Serializable
+data class StartUploadRequest(
+    val key: String,
+    val contentType: String
+)
+
+@Serializable
+data class StartUploadResponse(
+    val uploadId: String
+)
+
+@Serializable
+data class PartUrlRequest(
+    val key: String,
+    val uploadId: String,
+    val partNumber: Int,
+    val totalParts: Int
+)
+
+@Serializable
+data class PartUrlResponse(
+    val uploadUrl: String
+)
+
+@Serializable
+data class CompletedPartDto(
+    val ETag: String,
+    val PartNumber: Int
+)
+
+@Serializable
+data class CompleteUploadRequest(
+    val key: String,
+    val uploadId: String,
+    val parts: List<CompletedPartDto>
+)
+
+@Serializable
+data class CompleteUploadResponse(
+    val message: String
+)
+
 /**
  * Retrofit Interface definition for Scribe API endpoints.
  */
@@ -57,6 +115,18 @@ interface StreamingApiService {
 
     @GET("genres")
     suspend fun getGenres(): List<GenreDto>
+
+    @POST("ingest")
+    suspend fun ingestMedia(@Body request: IngestRequest): IngestResponse
+
+    @POST("upload/start")
+    suspend fun startUpload(@Body request: StartUploadRequest): StartUploadResponse
+
+    @POST("upload/part")
+    suspend fun getPartUrl(@Body request: PartUrlRequest): PartUrlResponse
+
+    @POST("upload/complete")
+    suspend fun completeUpload(@Body request: CompleteUploadRequest): CompleteUploadResponse
 
     @POST("play")
     suspend fun logPlayEvent(
@@ -76,7 +146,6 @@ interface StreamingApiService {
 object StreamingApi {
     private const val BASE_URL = BuildConfig.BASE_URL
 
-    // Explicit Kotlinx Serialization JSON configuration
     private val json = Json { 
         ignoreUnknownKeys = true // Resilient parsing: ignores unexpected backend JSON fields
         coerceInputValues = true // Coerces nulls to defaults where possible
@@ -95,7 +164,6 @@ object StreamingApi {
             var cognitoSession: AWSCognitoAuthSession? = null
             val latch = CountDownLatch(1)
 
-            // Asynchronously fetch session from AWS Amplify Auth Plugin
             Amplify.Auth.fetchAuthSession(
                 { session ->
                     cognitoSession = session as? AWSCognitoAuthSession
@@ -107,13 +175,13 @@ object StreamingApi {
                 }
             )
 
-            // Block OkHttp network thread up to 5 seconds waiting for Amplify Auth callback
             latch.await(5, TimeUnit.SECONDS)
 
-            // Extract JWT ID Token and inject Bearer header
             val idToken = cognitoSession?.userPoolTokensResult?.value?.idToken
             if (idToken != null) {
                 requestBuilder.addHeader("Authorization", "Bearer $idToken")
+            } else {
+                Log.w("StreamingApi", "No ID Token found in Cognito session. Auth header omitted.")
             }
         } catch (e: Exception) {
             Log.e("StreamingApi", "Failed to attach Auth Token", e)
@@ -122,12 +190,10 @@ object StreamingApi {
         chain.proceed(requestBuilder.build())
     }
 
-    // OkHttp Client configured with automated Auth Interceptor
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(authInterceptor)
         .build()
 
-    // Retrofit Instance lazy initialization
     private val retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)
         .client(okHttpClient)

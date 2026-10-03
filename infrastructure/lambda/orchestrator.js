@@ -113,9 +113,9 @@ exports.handler = async (event) => {
 
             if (!bucket || !key) continue;
 
-            // Parse S3 Key structure: <tenantId>/<familyId>/<filename.mp4>
+            // Parse S3 Key structure: <tenantId>/<familyId>/<filename.mp4> or <familyId>/<filename.mp4>
             const parts = key.split('/');
-            let tenantId = 'GLOBAL';
+            let tenantId = 'PRIMARY_VAULT';
             let familyId = 'PUBLIC';
             let fileName = "";
 
@@ -124,7 +124,9 @@ exports.handler = async (event) => {
                 familyId = parts[1];
                 fileName = parts[2];
             } else if (parts.length === 2) {
-                tenantId = parts[0];
+                // Key format is <familyId>/<filename.mp4>
+                tenantId = 'PRIMARY_VAULT';
+                familyId = parts[0];
                 fileName = parts[1];
             } else {
                 fileName = key;

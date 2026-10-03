@@ -1,5 +1,6 @@
 package com.portfolio.videostreaming.ui.components
 
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
@@ -54,7 +55,7 @@ fun AlexandriaBottomBar(
     )
 
     NavigationBar(
-        modifier = modifier,
+        modifier = modifier.height(64.dp),
         containerColor = HeritageBlack,
         tonalElevation = 8.dp
     ) {

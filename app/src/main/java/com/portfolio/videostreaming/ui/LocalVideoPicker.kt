@@ -1,12 +1,17 @@
 package com.portfolio.videostreaming.ui
 
 import android.content.ContentUris
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
+import android.os.CancellationSignal
 import android.provider.MediaStore
+import android.util.Log
+import android.util.Size
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -15,24 +20,38 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
 import com.portfolio.videostreaming.ui.theme.Stone400
 import com.portfolio.videostreaming.ui.theme.Stone900
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -61,8 +80,32 @@ fun LocalVideoPicker(
     var localVideos by remember { mutableStateOf<List<LocalVideoMedia>>(emptyList()) }
     var selectedVideoIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
+    var previewVideo by remember { mutableStateOf<LocalVideoMedia?>(null) }
+    val previewPlayer = remember(context) {
+        ExoPlayer.Builder(context).build().apply {
+            repeatMode = Player.REPEAT_MODE_ONE
+        }
+    }
+    val currentPreviewVideoId by rememberUpdatedState(previewVideo?.id)
+    val currentSelectedVideoIds by rememberUpdatedState(selectedVideoIds)
 
     val uploadState by ingestViewModel.uploadState.collectAsState()
+
+    LaunchedEffect(previewVideo?.uri) {
+        val uri = previewVideo?.uri
+        if (uri == null) {
+            previewPlayer.pause()
+            previewPlayer.clearMediaItems()
+        } else {
+            previewPlayer.setMediaItem(MediaItem.fromUri(uri))
+            previewPlayer.prepare()
+            previewPlayer.playWhenReady = true
+        }
+    }
+
+    DisposableEffect(previewPlayer) {
+        onDispose { previewPlayer.release() }
+    }
 
     LaunchedEffect(uploadState) {
         if (uploadState is UploadState.Success) {
@@ -126,7 +169,7 @@ fun LocalVideoPicker(
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "${selectedVideoIds.size} of ${localVideos.size} videos selected",
+                        text = "${selectedVideoIds.size} of ${localVideos.size} videos selected (hold to preview)",
                         color = Stone400,
                         fontSize = 12.sp
                     )
@@ -183,20 +226,63 @@ fun LocalVideoPicker(
                                     color = if (isSelected) Amber500 else Stone900,
                                     shape = RoundedCornerShape(12.dp)
                                 )
-                                .clickable {
-                                    selectedVideoIds = if (isSelected) {
-                                        selectedVideoIds - video.id
-                                    } else {
-                                        selectedVideoIds + video.id
+                                .semantics {
+                                    role = Role.Checkbox
+                                    onClick(label = "Select ${video.name}") {
+                                        selectedVideoIds = if (selectedVideoIds.contains(video.id)) {
+                                            selectedVideoIds - video.id
+                                        } else {
+                                            selectedVideoIds + video.id
+                                        }
+                                        true
                                     }
                                 }
+                                .pointerInput(video.id) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            selectedVideoIds = if (currentSelectedVideoIds.contains(video.id)) {
+                                                currentSelectedVideoIds - video.id
+                                            } else {
+                                                currentSelectedVideoIds + video.id
+                                            }
+                                        },
+                                        onLongPress = { previewVideo = video },
+                                        onPress = {
+                                            try {
+                                                tryAwaitRelease()
+                                            } finally {
+                                                if (currentPreviewVideoId == video.id) {
+                                                    previewPlayer.pause()
+                                                    previewVideo = null
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
                         ) {
-                            AsyncImage(
-                                model = video.uri,
-                                contentDescription = video.name,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                            if (previewVideo?.id == video.id) {
+                                AndroidView(
+                                    factory = { viewContext ->
+                                        PlayerView(viewContext).apply {
+                                            player = previewPlayer
+                                            useController = false
+                                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                        }
+                                    },
+                                    update = { it.player = previewPlayer },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                LocalVideoThumbnail(video)
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Hold to preview ${video.name}",
+                                    tint = Parchment,
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .size(36.dp)
+                                )
+                            }
 
                             Box(
                                 modifier = Modifier
@@ -231,6 +317,63 @@ fun LocalVideoPicker(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LocalVideoThumbnail(video: LocalVideoMedia) {
+    val context = LocalContext.current
+    val bitmap by produceState<Bitmap?>(initialValue = null, key1 = video.uri) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    context.contentResolver.loadThumbnail(
+                        video.uri,
+                        Size(512, 512),
+                        CancellationSignal()
+                    )
+                } else {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    try {
+                        context.contentResolver.openFileDescriptor(video.uri, "r")?.use { descriptor ->
+                            retriever.setDataSource(descriptor.fileDescriptor)
+                            retriever.getFrameAtTime(
+                                0,
+                                android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                            )
+                        }
+                    } finally {
+                        retriever.release()
+                    }
+                }
+            } catch (exception: Exception) {
+                Log.w("LocalVideoPicker", "Unable to load a video thumbnail", exception)
+                null
+            }
+        }
+    }
+
+    if (bitmap != null) {
+        androidx.compose.foundation.Image(
+            bitmap = bitmap!!.asImageBitmap(),
+            contentDescription = "Thumbnail for ${video.name}",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Stone900),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Video thumbnail unavailable for ${video.name}",
+                tint = Stone400,
+                modifier = Modifier.size(36.dp)
+            )
         }
     }
 }

@@ -3,8 +3,8 @@
  * Desktop Viewer Application Shell & React Router Engine
  * ============================================================================
  * Enterprise Architecture Strategy: Authenticated Layout Router.
- * Encapsulates global AuthProvider context, managing full-page authentication
- * gates and top-level navigation routes for 'The Scroll' Desktop Viewer.
+ * Encapsulates global AuthProvider & UploadProvider contexts, managing full-page
+ * authentication gates and top-level navigation routes for 'The Scroll' Desktop Viewer.
  */
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
@@ -15,13 +15,16 @@ import ConsumerUpload from './pages/ConsumerUpload';
 import Auth from './pages/Auth';
 import Navbar from './components/AppNavbar';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { UploadProvider } from './context/UploadContext';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <UploadProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </UploadProvider>
     </AuthProvider>
   );
 }

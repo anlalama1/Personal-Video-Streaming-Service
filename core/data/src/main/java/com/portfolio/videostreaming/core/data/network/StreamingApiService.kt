@@ -35,7 +35,8 @@ data class MediaItemDto(
     val thumbnailUrl: String,
     val videoUrl: String,
     val description: String? = null,
-    val tags: List<String>? = null
+    val tags: List<String>? = null,
+    val transcodeStatus: String = ""
 )
 
 @Serializable
@@ -112,6 +113,9 @@ data class CompleteUploadResponse(
 interface StreamingApiService {
     @GET("catalog")
     suspend fun getCatalog(): List<MediaItemDto>
+
+    @GET("catalog?reviewQueue=true")
+    suspend fun getReviewQueue(): List<MediaItemDto>
 
     @GET("genres")
     suspend fun getGenres(): List<GenreDto>

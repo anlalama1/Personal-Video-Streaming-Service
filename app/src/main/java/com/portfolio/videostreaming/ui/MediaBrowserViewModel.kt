@@ -27,6 +27,9 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
     private val _videoList = MutableStateFlow<List<MediaFile>>(emptyList())
     val videoList = _videoList.asStateFlow()
 
+    private val _reviewQueue = MutableStateFlow<List<MediaFile>>(emptyList())
+    val reviewQueue = _reviewQueue.asStateFlow()
+
     private val _genres = MutableStateFlow<List<String>>(emptyList())
     val genres = _genres.asStateFlow()
 
@@ -74,11 +77,42 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                         thumbnailUrl = dto.thumbnailUrl,
                         videoUrl = dto.videoUrl,
                         description = dto.description ?: "",
-                        tags = dto.tags ?: emptyList()
+                        tags = dto.tags ?: emptyList(),
+                        transcodeStatus = dto.transcodeStatus
                     )
                 }
             } catch (e: Exception) {
                 Log.e("MediaBrowserVM", "Error loading catalog", e)
+                _errorMessage.value = "Connection Error: ${e.localizedMessage ?: "Unknown error"}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadReviewQueue() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            try {
+                val dtos = withContext(Dispatchers.IO) {
+                    StreamingApi.service.getReviewQueue()
+                }
+                _reviewQueue.value = dtos.map { dto ->
+                        MediaFile(
+                            id = dto.videoId,
+                            title = dto.title,
+                            genre = dto.genre,
+                            releaseYear = dto.releaseYear.toIntOrNull() ?: 0,
+                            thumbnailUrl = dto.thumbnailUrl,
+                            videoUrl = dto.videoUrl,
+                            description = dto.description ?: "",
+                            tags = dto.tags ?: emptyList(),
+                            transcodeStatus = dto.transcodeStatus
+                        )
+                    }
+            } catch (e: Exception) {
+                Log.e("MediaBrowserVM", "Error loading family review queue", e)
                 _errorMessage.value = "Connection Error: ${e.localizedMessage ?: "Unknown error"}"
             } finally {
                 _isLoading.value = false

@@ -13,5 +13,6 @@ data class MediaFile(
     val thumbnailUrl: String,
     val videoUrl: String,
     val description: String = "",
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val transcodeStatus: String = ""
 )

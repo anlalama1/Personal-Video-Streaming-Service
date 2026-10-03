@@ -26,6 +26,7 @@ import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
 import com.portfolio.videostreaming.ui.theme.Stone400
 import com.portfolio.videostreaming.ui.theme.Stone900
+import kotlinx.coroutines.delay
 
 /**
  * ============================================================================
@@ -44,12 +45,15 @@ fun FamilyReviewPane(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val videoList by viewModel.videoList.collectAsState()
+    val reviewQueue by viewModel.reviewQueue.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
-    // Filter items pending review
-    val pendingReviewItems = videoList.filter {
-        it.description.isEmpty() || it.genre == "Unknown" || it.genre == "Miscellaneous"
+    LaunchedEffect(viewModel) {
+        while (true) {
+            viewModel.loadReviewQueue()
+            delay(30_000)
+        }
     }
 
     var selectedVideo by remember { mutableStateOf<MediaFile?>(null) }
@@ -89,8 +93,16 @@ fun FamilyReviewPane(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Amber500)
                 }
+            } else if (errorMessage != null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = errorMessage ?: "Unable to load review queue.",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 14.sp
+                    )
+                }
             } else if (selectedVideo == null) {
-                if (pendingReviewItems.isEmpty()) {
+                if (reviewQueue.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = "No memories pending review in your vault.",
@@ -103,18 +115,21 @@ fun FamilyReviewPane(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(pendingReviewItems) { video ->
+                        items(reviewQueue, key = { it.id }) { video ->
+                            val isReadyForReview = video.transcodeStatus == "REVIEW_PENDING"
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(16.dp))
-                                    .clickable {
+                                    .then(if (isReadyForReview) Modifier.clickable {
                                         selectedVideo = video
                                         title = video.title
                                         genre = if (heritageGenres.contains(video.genre)) video.genre else heritageGenres[0]
                                         description = video.description
-                                    },
-                                colors = CardDefaults.cardColors(containerColor = Stone900.copy(alpha = 0.9f))
+                                    } else Modifier),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Stone900.copy(alpha = if (isReadyForReview) 0.9f else 0.55f)
+                                )
                             ) {
                                 Row(
                                     modifier = Modifier.padding(12.dp),
@@ -137,8 +152,12 @@ fun FamilyReviewPane(
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                            text = "Tap to finalize AI metadata",
-                                            color = Amber500,
+                                            text = if (isReadyForReview) {
+                                                "Tap to finalize AI metadata"
+                                            } else {
+                                                "Processing — review available when ready"
+                                            },
+                                            color = if (isReadyForReview) Amber500 else Stone400,
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium
                                         )

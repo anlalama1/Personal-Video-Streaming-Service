@@ -94,7 +94,13 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
     const headers = event.headers || {};
     const queryParams = event.queryStringParameters || {};
     const isAdminView = queryParams.adminView === 'true';
+    const isReviewQueue = queryParams.reviewQueue === 'true';
     const jwtFamilyId = claims['custom:familyId'];
+    const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
+
+    if (isReviewQueue && !isShopAdmin && !jwtFamilyId) {
+        return response(403, { error: "A family vault claim is required to view the review queue" });
+    }
 
     // Enforce Strict Family Vault Isolation for non-admin viewers
     let familyId = headers['x-family-id'] || headers['X-Family-Id'];
@@ -113,7 +119,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
 
     // Query DynamoDB Single-Table Design using Partition Key (PK) & Sort Key (SK) range query
     let items;
-    if (!isAdminView && jwtFamilyId) {
+    if ((!isAdminView || isReviewQueue) && jwtFamilyId) {
         const queryFamily = async (requestedFamilyId) => {
             const result = await docClient.send(new QueryCommand({
                 TableName: tableName,
@@ -127,9 +133,10 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
             return result.Items || [];
         };
 
-        const familyItems = await queryFamily(jwtFamilyId);
-        const publicItems = jwtFamilyId === 'PUBLIC' ? [] : await queryFamily('PUBLIC');
-        items = [...familyItems, ...publicItems];
+        items = await queryFamily(jwtFamilyId);
+        if (!isReviewQueue && jwtFamilyId !== 'PUBLIC') {
+            items = [...items, ...await queryFamily('PUBLIC')];
+        }
     } else {
         const result = await docClient.send(new QueryCommand({
             TableName: tableName,
@@ -145,8 +152,14 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
     // Filter out deleted items (soft-delete governance)
     items = items.filter(item => item.transcodeStatus !== 'DELETED');
 
+    if (isReviewQueue) {
+        items = items.filter(item =>
+            ['REVIEW_PENDING', 'UPLOADING', 'PROCESSING'].includes(item.transcodeStatus)
+        );
+    }
+
     // For consumer apps, filter items to only show COMPLETED or TRANSCODING assets belonging to their family
-    if (!isAdminView) {
+    if (!isAdminView && !isReviewQueue) {
         items = items.filter(item =>
             item.transcodeStatus === 'COMPLETED' ||
             item.transcodeStatus === 'TRANSCODING'

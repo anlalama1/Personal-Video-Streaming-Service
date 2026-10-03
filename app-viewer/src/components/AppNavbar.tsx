@@ -41,7 +41,7 @@ const Navbar = () => {
         {/* Brand Lockup */}
         <Link to="/" className="flex items-center group">
           <img src="/logo_flat.png" alt="Alexandria+ Logo" className="h-[42px] w-auto group-hover:scale-105 transition-transform translate-x-[3px] translate-y-[1px]" />
-          <h1 className="text-2xl font-black tracking-tighter text-heritage-parchment uppercase hidden sm:block -ml-[12px]">Lexandria+</h1>
+          <h1 className="text-2xl font-black tracking-tighter text-heritage-parchment uppercase hidden sm:block -ml-[4px]">Lexandria+</h1>
         </Link>
 
         {/* Global Links & Account Avatar */}

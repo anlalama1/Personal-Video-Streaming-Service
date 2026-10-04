@@ -97,7 +97,7 @@ exports.handler = async (event) => {
         return { success: true, taskArn: data.tasks[0].taskArn };
     }
 
-    // Case 2: S3 Object-Created Event via SQS Queue (Triggers Lightweight AI Metadata Extraction)
+    // Case 2: S3 Object-Created Event via SQS Queue (AI metadata or manual thumbnail processing)
     if (event.Records) {
         for (const record of event.Records) {
             const body = JSON.parse(record.body);
@@ -140,54 +140,99 @@ exports.handler = async (event) => {
                 SK: `FAMILY#${familyId}#VIDEO#${videoId}`
             };
 
-            // Check if item was ingested in Manual Mode (No-AI)
+            let containerMode = "METADATA_EXTRACT";
+            let cpu = "256";
+            let memory = "512";
+
+            // Manual uploads remain UPLOADING while a thumbnail-only task runs.
             try {
                 const itemRes = await ddb.send(new GetCommand({
                     TableName: process.env.TABLE_NAME,
                     Key: dbKey
                 }));
                 const existingItem = itemRes.Item;
-                if (existingItem && (existingItem.transcodeStatus === "REVIEW_PENDING" || existingItem.useAi === false)) {
-                    console.log(`MANUAL MODE: Item ${videoId} is in Manual Mode (No-AI). Skipping Bedrock Fargate Task.`);
+                if (existingItem?.transcodeStatus === "REVIEW_PENDING") {
+                    console.log(`Item ${videoId} is already ready for review.`);
                     continue;
+                }
+
+                if (existingItem?.useAi === false) {
+                    if (existingItem.thumbnailStatus === "PROCESSING") {
+                        console.log(`Thumbnail generation for ${videoId} is already in progress.`);
+                        continue;
+                    }
+                    if (!["UPLOADING", "FAILED"].includes(existingItem.transcodeStatus)) {
+                        console.log(`Manual item ${videoId} is not ready for thumbnail processing.`);
+                        continue;
+                    }
+                    try {
+                        await ddb.send(new UpdateCommand({
+                            TableName: process.env.TABLE_NAME,
+                            Key: dbKey,
+                            ConditionExpression: "useAi = :false AND transcodeStatus = :currentStatus",
+                            UpdateExpression: "SET transcodeStatus = :uploading, thumbnailStatus = :processing, lastUpdated = :t, videoKey = :vk, familyId = :fid ADD retryCount :inc",
+                            ExpressionAttributeValues: {
+                                ":false": false,
+                                ":currentStatus": existingItem.transcodeStatus,
+                                ":uploading": "UPLOADING",
+                                ":processing": "PROCESSING",
+                                ":t": Date.now(),
+                                ":vk": key,
+                                ":fid": familyId,
+                                ":inc": 1
+                            }
+                        }));
+                    } catch (err) {
+                        if (err.name === "ConditionalCheckFailedException") {
+                            console.warn(`Thumbnail task lock failed for ${videoId}. Another task may be running.`);
+                            continue;
+                        }
+                        throw err;
+                    }
+                    containerMode = "THUMBNAIL_ONLY";
+                    console.log(`MANUAL MODE: Starting thumbnail-only task for ${videoId}.`);
                 }
             } catch (getErr) {
-                console.warn("Could not check item manual mode status:", getErr.message);
+                if (getErr.name === "ConditionalCheckFailedException") continue;
+                console.error("Could not prepare upload processing:", getErr);
+                throw getErr;
             }
 
-            // Lock record state using DynamoDB Conditional Write to prevent concurrent processing
-            try {
-                await ddb.send(new UpdateCommand({
-                    TableName: process.env.TABLE_NAME,
-                    Key: dbKey,
-                    ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :u OR transcodeStatus = :f OR transcodeStatus = :uf",
-                    UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc, videoKey = :vk, familyId = :fid",
-                    ExpressionAttributeValues: {
-                        ":i": "INGESTED",
-                        ":u": "UPLOADING",
-                        ":f": "FAILED",
-                        ":uf": "UPLOAD_FAILED",
-                        ":s": "PROCESSING",
-                        ":t": Date.now(),
-                        ":zero": 0,
-                        ":inc": 1,
-                        ":vk": key,
-                        ":fid": familyId
+            if (containerMode === "METADATA_EXTRACT") {
+                try {
+                    await ddb.send(new UpdateCommand({
+                        TableName: process.env.TABLE_NAME,
+                        Key: dbKey,
+                        ConditionExpression: "attribute_not_exists(transcodeStatus) OR transcodeStatus = :i OR transcodeStatus = :u OR transcodeStatus = :f OR transcodeStatus = :uf",
+                        UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, retryCount = if_not_exists(retryCount, :zero) + :inc, videoKey = :vk, familyId = :fid",
+                        ExpressionAttributeValues: {
+                            ":i": "INGESTED",
+                            ":u": "UPLOADING",
+                            ":f": "FAILED",
+                            ":uf": "UPLOAD_FAILED",
+                            ":s": "PROCESSING",
+                            ":t": Date.now(),
+                            ":zero": 0,
+                            ":inc": 1,
+                            ":vk": key,
+                            ":fid": familyId
+                        }
+                    }));
+                } catch (err) {
+                    if (err.name === "ConditionalCheckFailedException") {
+                        console.warn(`Lock failed for ${videoId}. Task likely in progress.`);
+                        continue;
                     }
-                }));
-            } catch (err) {
-                if (err.name === "ConditionalCheckFailedException") {
-                    console.warn(`Lock failed for ${videoId}. Task likely in progress.`);
-                    continue;
+                    throw err;
                 }
-                throw err;
             }
 
-            // Launch Lightweight Fargate Task for Bedrock AI Vision Analysis & Thumbnail Extraction (0.25 vCPU / 512MB RAM)
+            // Launch lightweight Fargate task for AI metadata extraction or manual thumbnail generation.
             const params = {
                 cluster: process.env.CLUSTER_NAME,
                 taskDefinition: process.env.TASK_DEFINITION,
                 launchType: "FARGATE",
+                count: 1,
                 networkConfiguration: {
                     awsvpcConfiguration: {
                         subnets: JSON.parse(process.env.SUBNETS),
@@ -196,8 +241,8 @@ exports.handler = async (event) => {
                     },
                 },
                 overrides: {
-                    cpu: "256",
-                    memory: "512",
+                    cpu,
+                    memory,
                     containerOverrides: [
                         {
                             name: process.env.CONTAINER_NAME,
@@ -206,7 +251,7 @@ exports.handler = async (event) => {
                                 { name: "TENANT_ID", value: tenantId },
                                 { name: "FAMILY_ID", value: familyId },
                                 { name: "VIDEO_ID", value: videoId },
-                                { name: "CONTAINER_MODE", value: "METADATA_EXTRACT" }
+                                { name: "CONTAINER_MODE", value: containerMode }
                             ],
                         },
                     ],
@@ -216,15 +261,31 @@ exports.handler = async (event) => {
             try {
                 console.log("Starting Lightweight Metadata Fargate Task...");
                 const data = await ecsClient.send(new RunTaskCommand(params));
+                if (!data.tasks?.length) {
+                    throw new Error(`ECS did not start the task: ${JSON.stringify(data.failures || [])}`);
+                }
                 console.log("Metadata Fargate Task started successfully:", data.tasks[0].taskArn);
             } catch (err) {
                 console.error("Error starting Metadata Fargate Task:", err);
-                await ddb.send(new UpdateCommand({
-                    TableName: process.env.TABLE_NAME,
-                    Key: dbKey,
-                    UpdateExpression: "SET transcodeStatus = :f, lastUpdated = :t",
-                    ExpressionAttributeValues: { ":f": "FAILED", ":t": Date.now() }
-                }));
+                if (containerMode === "THUMBNAIL_ONLY") {
+                    await ddb.send(new UpdateCommand({
+                        TableName: process.env.TABLE_NAME,
+                        Key: dbKey,
+                        UpdateExpression: "SET transcodeStatus = :f, thumbnailStatus = :failed, lastUpdated = :t",
+                        ExpressionAttributeValues: {
+                            ":f": "FAILED",
+                            ":failed": "FAILED",
+                            ":t": Date.now()
+                        }
+                    }));
+                } else {
+                    await ddb.send(new UpdateCommand({
+                        TableName: process.env.TABLE_NAME,
+                        Key: dbKey,
+                        UpdateExpression: "SET transcodeStatus = :f, lastUpdated = :t",
+                        ExpressionAttributeValues: { ":f": "FAILED", ":t": Date.now() }
+                    }));
+                }
                 throw err;
             }
         }

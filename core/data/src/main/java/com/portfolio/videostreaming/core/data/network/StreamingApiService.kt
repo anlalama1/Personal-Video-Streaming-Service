@@ -73,6 +73,7 @@ data class IngestRequest(
     val releaseYear: String,
     val familyId: String? = null,
     val videoFileName: String,
+    val videoId: String? = null,
     val useAi: Boolean = false,
     val status: String? = null
 )

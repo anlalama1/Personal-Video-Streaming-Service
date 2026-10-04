@@ -47,6 +47,8 @@ async function run() {
 
         if (CONTAINER_MODE === "METADATA_EXTRACT") {
             await handleMetadataExtract(localInput, dbKey);
+        } else if (CONTAINER_MODE === "THUMBNAIL_ONLY") {
+            await handleThumbnailOnly(localInput, dbKey);
         } else {
             await handleHlsTranscode(localInput, dbKey);
         }
@@ -55,12 +57,28 @@ async function run() {
     } catch (err) {
         console.error("Fargate Worker task failed:", err);
         try {
-            await db.send(new UpdateCommand({
-                TableName: TABLE_NAME,
-                Key: dbKey,
-                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t",
-                ExpressionAttributeValues: { ":s": "FAILED", ":t": Date.now() }
-            }));
+            if (CONTAINER_MODE === "THUMBNAIL_ONLY") {
+                await db.send(new UpdateCommand({
+                    TableName: TABLE_NAME,
+                    Key: dbKey,
+                    ConditionExpression: "useAi = :false AND transcodeStatus = :uploading",
+                    UpdateExpression: "SET transcodeStatus = :failed, thumbnailStatus = :thumbnailFailed, lastUpdated = :t",
+                    ExpressionAttributeValues: {
+                        ":false": false,
+                        ":uploading": "UPLOADING",
+                        ":failed": "FAILED",
+                        ":thumbnailFailed": "FAILED",
+                        ":t": Date.now()
+                    }
+                }));
+            } else {
+                await db.send(new UpdateCommand({
+                    TableName: TABLE_NAME,
+                    Key: dbKey,
+                    UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t",
+                    ExpressionAttributeValues: { ":s": "FAILED", ":t": Date.now() }
+                }));
+            }
         } catch (dbErr) {
             console.error("Failed to update status to FAILED in DynamoDB:", dbErr);
         }
@@ -194,8 +212,61 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
             }
         }));
     } else {
-        console.warn("FFmpeg failed to produce a thumbnail. Skipping upload phase.");
+        throw new Error("FFmpeg failed to produce a thumbnail.");
     }
+}
+
+async function handleThumbnailOnly(localInput, dbKey) {
+    const thumbnailPath = "/tmp/thumbnail.jpg";
+    const durationResult = spawnSync(
+        "ffprobe",
+        ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", localInput],
+        { encoding: "utf8" }
+    );
+    const durationSeconds = Number.parseFloat(durationResult.stdout);
+    if (durationResult.status !== 0 || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+        throw new Error("Unable to determine video duration for thumbnail extraction.");
+    }
+
+    let hash = 0;
+    for (const character of VIDEO_ID) {
+        hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+    }
+    const timestamp = durationSeconds * (0.1 + (hash / 0xffffffff) * 0.8);
+    const extraction = spawnSync("ffmpeg", [
+        "-ss", timestamp.toFixed(3),
+        "-i", localInput,
+        "-frames:v", "1",
+        "-q:v", "2",
+        "-y", thumbnailPath
+    ], { stdio: "inherit" });
+    if (extraction.status !== 0 || !fs.existsSync(thumbnailPath) || fs.statSync(thumbnailPath).size === 0) {
+        throw new Error("FFmpeg failed to extract a thumbnail frame.");
+    }
+
+    const thumbnailS3Key = `${TENANT_ID}/${FAMILY_ID}/${VIDEO_ID}/thumbnail.jpg`;
+    await s3.send(new PutObjectCommand({
+        Bucket: THUMBNAIL_BUCKET,
+        Key: thumbnailS3Key,
+        Body: fs.readFileSync(thumbnailPath),
+        ContentType: "image/jpeg"
+    }));
+
+    await db.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: dbKey,
+        ConditionExpression: "useAi = :false AND transcodeStatus = :uploading",
+        UpdateExpression: "SET thumbnailKey = :tk, thumbnailStatus = :complete, transcodeStatus = :reviewPending, lastUpdated = :t",
+        ExpressionAttributeValues: {
+            ":false": false,
+            ":uploading": "UPLOADING",
+            ":tk": thumbnailS3Key,
+            ":complete": "COMPLETE",
+            ":reviewPending": "REVIEW_PENDING",
+            ":t": Date.now()
+        }
+    }));
+    console.log(`Thumbnail saved; manual upload ${VIDEO_ID} is ready for review.`);
 }
 
 async function getApprovedGenres() {

@@ -81,7 +81,9 @@ class S3UploadWorker(
                 releaseYear = year,
                 familyId = inputData.getString(KEY_FAMILY_ID),
                 videoFileName = fileName,
-                useAi = inputData.getBoolean(KEY_USE_AI, false)
+                videoId = fileName.removeSuffix(".mp4"),
+                useAi = inputData.getBoolean(KEY_USE_AI, false),
+                status = "UPLOADING"
             )
         )
         val s3Key = ingestResponse.videoKey

@@ -156,7 +156,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const startUpload = async (file: File, metadata: any) => {
-    const videoId = file.name.split('.')[0].toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
+    const videoId = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
     const familyId = metadata.familyId;
     const taskId = `${Date.now()}-${videoId}`;
 
@@ -230,7 +230,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
     }
 
-    const videoId = task.videoId || file.name.split('.')[0].toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
+    const videoId = task.videoId || file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
     const familyId = task.familyId || task.s3Key.split('/')[0];
     await performMultipartUpload(
       taskId,

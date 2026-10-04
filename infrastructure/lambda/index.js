@@ -297,7 +297,7 @@ async function handleGetPartUrl(event, tenantId) {
  * Finalizes an S3 Multipart Upload and normalizes ETag quotes.
  */
 async function handleCompleteMultipart(event, tenantId) {
-    const { key, uploadId, parts, videoId: requestedVideoId } = JSON.parse(event.body);
+    const { key, uploadId, parts } = JSON.parse(event.body);
 
     const normalizedParts = parts.map(part => ({
         ETag: part.ETag.startsWith('"') ? part.ETag : `"${part.ETag}"`,
@@ -312,37 +312,6 @@ async function handleCompleteMultipart(event, tenantId) {
         UploadId: uploadId,
         MultipartUpload: { Parts: normalizedParts }
     }));
-
-    const keyParts = key.split('/');
-    const familyId = keyParts.length >= 3 ? keyParts[1] : keyParts[0];
-    const fileName = keyParts[keyParts.length - 1];
-    const videoId = requestedVideoId || fileName
-        .replace(/\.[^.]+$/, '')
-        .toLowerCase()
-        .replace(/\s+/g, '_')
-        .replace(/[^\w]/g, '');
-
-    try {
-        await docClient.send(new UpdateCommand({
-            TableName: process.env.TABLE_NAME,
-            Key: {
-                PK: `TENANT#${tenantId}`,
-                SK: `FAMILY#${familyId}#VIDEO#${videoId}`
-            },
-            ConditionExpression: "useAi = :false AND transcodeStatus = :uploading",
-            UpdateExpression: "SET transcodeStatus = :reviewPending, lastUpdated = :now",
-            ExpressionAttributeValues: {
-                ":false": false,
-                ":uploading": "UPLOADING",
-                ":reviewPending": "REVIEW_PENDING",
-                ":now": Date.now()
-            }
-        }));
-        console.log(`Manual upload ${videoId} is ready for review.`);
-    } catch (err) {
-        if (err.name !== "ConditionalCheckFailedException") throw err;
-        console.log(`No manual-mode status transition required for ${videoId}.`);
-    }
 
     return response(200, { message: "Upload complete" });
 }

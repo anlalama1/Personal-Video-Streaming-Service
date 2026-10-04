@@ -4,19 +4,31 @@
  * ============================================================================
  * Enterprise Architecture Strategy: Responsive Header & Identity Display.
  * Serves as global layout navigation header featuring "Logo-as-a-Letter" lockup,
- * route hiding during video playback, and an interactive Account Details Modal
- * displaying authenticated email and Family Vault Partition Code.
+ * route hiding during video playback, interactive Account Details Modal, and
+ * AI Privacy & Zero-Training Guarantee Disclosures.
  */
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, LogOut, Key, Mail, ShieldCheck, X, Copy } from 'lucide-react';
+import { User, LogOut, Key, Mail, ShieldCheck, X, Copy, Sparkles, HelpCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const location = useLocation();
   const { userProfile, signOut } = useAuth();
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showAiDisclosure, setShowAiDisclosure] = useState(false);
+
+  // Default setting: Manual Mode (No-AI) is false
+  const [enableAi, setEnableAi] = useState<boolean>(() => {
+    return localStorage.getItem('alexandria_enable_ai') === 'true';
+  });
+
+  const handleToggleAi = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.checked;
+    setEnableAi(newValue);
+    localStorage.setItem('alexandria_enable_ai', String(newValue));
+  };
 
   // Hide navbar in the player for full-screen cinematic immersion
   if (location.pathname === '/player') return null;
@@ -114,6 +126,33 @@ const Navbar = () => {
                   </div>
                 </div>
               )}
+
+              {/* AI Privacy & Ingestion Mode Control Toggle */}
+              <div className="pt-3 border-t border-heritage-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles size={12} className="text-heritage-gold shrink-0" />
+                  <span className="text-[10px] font-sans font-black uppercase tracking-wider text-heritage-400">
+                    AI Auto-Titles & Summaries
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiDisclosure(true)}
+                    className="text-heritage-gold hover:text-heritage-parchment transition-colors p-0.5"
+                    title="How AI Privacy Works"
+                  >
+                    <HelpCircle size={14} />
+                  </button>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableAi}
+                    onChange={handleToggleAi}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-heritage-black border border-heritage-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-heritage-parchment after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-heritage-gold"></div>
+                </label>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -134,6 +173,60 @@ const Navbar = () => {
                 Sign Out
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* AWS Zero AI Training Guarantee Disclosure Modal */}
+      {showAiDisclosure && (
+        <div className="fixed inset-0 z-50 bg-heritage-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-heritage-900 border border-heritage-gold/30 rounded-3xl p-8 max-w-lg w-full shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95">
+            <button
+              onClick={() => setShowAiDisclosure(false)}
+              className="absolute top-6 right-6 text-heritage-400 hover:text-heritage-parchment transition-colors p-1"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-heritage-gold/10 border border-heritage-gold/30 rounded-xl text-heritage-gold">
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-heritage-parchment uppercase tracking-tight">AI Privacy & Safety Guarantee</h3>
+                <span className="text-[10px] font-black uppercase tracking-widest text-heritage-gold">100% Zero Model Training Guarantee</span>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs leading-relaxed text-heritage-400 font-medium">
+              <div className="bg-heritage-black/60 border border-heritage-800 p-4 rounded-2xl space-y-2">
+                <p className="font-bold text-heritage-parchment text-sm">🔒 AWS Zero-Training Guarantee</p>
+                <p>
+                  Amazon Web Services (AWS Bedrock) <strong>100% guarantees</strong> that your personal family photos, videos, and keyframe thumbnails are <strong>never used to train public AI models</strong>. Your family memories remain 100% private to your vault.
+                </p>
+              </div>
+
+              <div className="bg-heritage-black/60 border border-heritage-800 p-4 rounded-2xl space-y-2">
+                <p className="font-bold text-heritage-gold text-sm">✨ What AI Mode Does (When Enabled)</p>
+                <p>
+                  When enabled, a single video keyframe thumbnail is analyzed by <strong>Amazon Bedrock Claude Vision</strong> to automatically draft a suggested title, a 3-sentence event summary, tags, and a Heritage Genre for your review.
+                </p>
+              </div>
+
+              <div className="bg-heritage-black/60 border border-heritage-800 p-4 rounded-2xl space-y-2">
+                <p className="font-bold text-heritage-parchment text-sm">🛡️ Manual Privacy Mode (Default - When Disabled)</p>
+                <p>
+                  When disabled, your media is uploaded with <strong>100% manual privacy</strong>. No images leave your vault or enter AI models, saving cloud compute and making your video immediately ready for manual review.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowAiDisclosure(false)}
+              className="w-full bg-gradient-to-r from-heritage-gold to-heritage-sunset text-heritage-black font-black py-3.5 rounded-xl uppercase tracking-widest text-xs shadow-xl"
+            >
+              Understood & Close
+            </button>
           </div>
         </div>
       )}

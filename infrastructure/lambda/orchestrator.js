@@ -13,7 +13,7 @@
 
 const { ECSClient, RunTaskCommand } = require("@aws-sdk/client-ecs");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const path = require("path");
 
 // SDK v3 client initialization outside handler for TCP connection pooling
@@ -139,6 +139,21 @@ exports.handler = async (event) => {
                 PK: `TENANT#${tenantId}`,
                 SK: `FAMILY#${familyId}#VIDEO#${videoId}`
             };
+
+            // Check if item was ingested in Manual Mode (No-AI)
+            try {
+                const itemRes = await ddb.send(new GetCommand({
+                    TableName: process.env.TABLE_NAME,
+                    Key: dbKey
+                }));
+                const existingItem = itemRes.Item;
+                if (existingItem && (existingItem.transcodeStatus === "REVIEW_PENDING" || existingItem.useAi === false)) {
+                    console.log(`MANUAL MODE: Item ${videoId} is in Manual Mode (No-AI). Skipping Bedrock Fargate Task.`);
+                    continue;
+                }
+            } catch (getErr) {
+                console.warn("Could not check item manual mode status:", getErr.message);
+            }
 
             // Lock record state using DynamoDB Conditional Write to prevent concurrent processing
             try {

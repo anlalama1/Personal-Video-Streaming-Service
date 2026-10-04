@@ -225,7 +225,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
  */
 async function handleIngest(event, tenantId) {
     const body = JSON.parse(event.body || "{}");
-    const { videoId, title, genre, releaseYear, familyId, videoFileName, status = "INGESTED" } = body;
+    const { videoId, title, genre, releaseYear, familyId, videoFileName, useAi = false, status } = body;
 
     const authorizer = (event.requestContext || {}).authorizer || {};
     const claims = authorizer.claims || {};
@@ -235,18 +235,23 @@ async function handleIngest(event, tenantId) {
     // Enforce cryptographic tenancy containment for customer accounts
     const targetFamilyId = (!isShopAdmin && jwtFamilyId) ? jwtFamilyId : (familyId || 'PUBLIC');
 
+    // Default status: If useAi is false (default Manual Mode), set status directly to REVIEW_PENDING.
+    // If useAi is true, set status to UPLOADING so Fargate Bedrock task runs upon S3 upload completion.
+    const initialStatus = status || (useAi ? "UPLOADING" : "REVIEW_PENDING");
+
     await docClient.send(new PutCommand({
         TableName: process.env.TABLE_NAME,
         Item: {
             PK: `TENANT#${tenantId}`,
             SK: `FAMILY#${targetFamilyId}#VIDEO#${videoId}`,
             familyId: targetFamilyId,
-            title,
+            title: title || videoFileName.split('.')[0],
             genre: genre || "Miscellaneous",
             releaseYear: releaseYear || new Date().getFullYear().toString(),
             videoKey: `${targetFamilyId}/${videoFileName}`,
             thumbnailKey: "",
-            transcodeStatus: status,
+            transcodeStatus: initialStatus,
+            useAi: useAi === true,
             lastUpdated: Date.now(),
             retryCount: 0
         }

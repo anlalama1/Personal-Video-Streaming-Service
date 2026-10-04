@@ -44,6 +44,19 @@ data class MediaItemDto(
 )
 
 @Serializable
+data class PublishVideoRequest(
+    val videoId: String,
+    val familyId: String,
+    val oldFamilyId: String? = null,
+    val videoKey: String,
+    val title: String,
+    val genre: String,
+    val releaseYear: String,
+    val description: String? = null,
+    val tags: List<String>? = null
+)
+
+@Serializable
 data class GenreDto(
     val genreName: String
 )
@@ -60,7 +73,8 @@ data class IngestRequest(
     val releaseYear: String,
     val familyId: String? = null,
     val videoFileName: String,
-    val status: String = "UPLOADING"
+    val useAi: Boolean = false,
+    val status: String? = null
 )
 
 @Serializable
@@ -111,25 +125,6 @@ data class CompleteUploadResponse(
     val message: String
 )
 
-@Serializable
-data class PublishVideoRequest(
-    val videoId: String,
-    val familyId: String,
-    val oldFamilyId: String,
-    val videoKey: String,
-    val title: String,
-    val genre: String,
-    val releaseYear: String,
-    val description: String,
-    val tags: List<String>
-)
-
-@Serializable
-data class PublishVideoResponse(
-    val success: Boolean,
-    val message: String
-)
-
 /**
  * Retrofit Interface definition for Scribe API endpoints.
  */
@@ -137,8 +132,11 @@ interface StreamingApiService {
     @GET("catalog")
     suspend fun getCatalog(): List<MediaItemDto>
 
-    @GET("catalog?reviewQueue=true")
+    @GET("catalog?adminView=true")
     suspend fun getReviewQueue(): List<MediaItemDto>
+
+    @POST("catalog/publish")
+    suspend fun publishVideo(@Body request: PublishVideoRequest)
 
     @GET("genres")
     suspend fun getGenres(): List<GenreDto>
@@ -154,9 +152,6 @@ interface StreamingApiService {
 
     @POST("upload/complete")
     suspend fun completeUpload(@Body request: CompleteUploadRequest): CompleteUploadResponse
-
-    @POST("catalog/publish")
-    suspend fun publishVideo(@Body request: PublishVideoRequest): PublishVideoResponse
 
     @POST("play")
     suspend fun logPlayEvent(
@@ -177,8 +172,8 @@ object StreamingApi {
     private const val BASE_URL = BuildConfig.BASE_URL
 
     private val json = Json { 
-        ignoreUnknownKeys = true // Resilient parsing: ignores unexpected backend JSON fields
-        coerceInputValues = true // Coerces nulls to defaults where possible
+        ignoreUnknownKeys = true
+        coerceInputValues = true
         isLenient = true 
     }
 

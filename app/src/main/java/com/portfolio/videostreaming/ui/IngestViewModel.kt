@@ -48,7 +48,7 @@ class IngestViewModel : ViewModel() {
         private const val CHUNK_SIZE = 10 * 1024 * 1024 // 10MB parts
     }
 
-    fun uploadSelectedVideos(context: Context, videoUris: List<Uri>, familyId: String? = null) {
+    fun uploadSelectedVideos(context: Context, videoUris: List<Uri>, familyId: String? = null, useAi: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
             _uploadState.value = UploadState.Uploading(1, videoUris.size, 0)
 
@@ -67,7 +67,7 @@ class IngestViewModel : ViewModel() {
                             releaseYear = Calendar.getInstance().get(Calendar.YEAR).toString(),
                             familyId = familyId,
                             videoFileName = fileName,
-                            status = "UPLOADING"
+                            useAi = useAi
                         )
                     )
 

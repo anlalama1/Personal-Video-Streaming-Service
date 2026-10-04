@@ -2,7 +2,6 @@ package com.portfolio.videostreaming.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -225,16 +223,13 @@ fun FamilyReviewPane(
                                 coroutineScope.launch {
                                     isPublishing = true
                                     try {
-                                        val response = viewModel.publishReview(
+                                        viewModel.publishReview(
                                             video = videoToPublish,
                                             title = title.trim(),
                                             genre = genre,
                                             releaseYear = videoToPublish.releaseYear.toString(),
                                             description = description.trim()
                                         )
-                                        if (!response.success) {
-                                            throw IllegalStateException(response.message)
-                                        }
                                         Toast.makeText(
                                             context,
                                             "Published \"$title\" to Family Vault!",

@@ -8,6 +8,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,9 +36,8 @@ import com.portfolio.videostreaming.ui.theme.Stone400
  * Global Heritage Header Navbar & Account Details Context Dialog
  * ============================================================================
  * Enterprise Architecture Strategy: Cross-Platform UI Ergonomics Parity.
- * Renders the top brand header navigation lockup with Home catalog navigation
- * and an interactive Account Details Modal displaying authenticated email,
- * Family Vault Code with 1-click clipboard copy, and explicit Sign Out confirmation.
+ * Renders the top brand header navigation lockup with Home catalog navigation,
+ * interactive Account Details Modal, AI Privacy Toggle, and AWS Zero-Training Guarantee.
  */
 @Composable
 fun AlexandriaNavbar(
@@ -46,7 +47,10 @@ fun AlexandriaNavbar(
 ) {
     val userEmail by authViewModel.userEmail.collectAsState()
     val familyId by authViewModel.familyId.collectAsState()
+
     var showAccountDialog by remember { mutableStateOf(false) }
+    var enableAi by remember { mutableStateOf(false) } // Default Manual Mode (false)
+    var showAiDisclosureDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -141,7 +145,7 @@ fun AlexandriaNavbar(
         }
     }
 
-    // Account Details Context Modal (Parity with Desktop Viewer)
+    // Account Details Context Modal
     if (showAccountDialog) {
         AlertDialog(
             onDismissRequest = { showAccountDialog = false },
@@ -245,6 +249,47 @@ fun AlexandriaNavbar(
                             }
                         }
                     }
+
+                    // AI Privacy & Ingestion Mode Control Row
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "AI TITLES & SUMMARIES",
+                                    color = Stone400,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                                IconButton(
+                                    onClick = { showAiDisclosureDialog = true },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Help,
+                                        contentDescription = "AI Privacy Info",
+                                        tint = Amber500,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            Switch(
+                                checked = enableAi,
+                                onCheckedChange = { enableAi = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = HeritageBlack,
+                                    checkedTrackColor = Amber500,
+                                    uncheckedThumbColor = Stone400,
+                                    uncheckedTrackColor = HeritageBlack
+                                )
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -271,6 +316,56 @@ fun AlexandriaNavbar(
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
+                }
+            }
+        )
+    }
+
+    // AWS Zero AI Training Guarantee Disclosure Dialog
+    if (showAiDisclosureDialog) {
+        AlertDialog(
+            onDismissRequest = { showAiDisclosureDialog = false },
+            containerColor = HeritageBlack,
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text(
+                    text = "AI Privacy & Safety Guarantee",
+                    color = Parchment,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "🔒 AWS Zero-Training Guarantee\nAmazon Web Services (AWS Bedrock) 100% guarantees that your personal family photos, videos, and keyframe thumbnails are NEVER used to train public AI models. Your memories remain 100% private to your vault.",
+                        color = Parchment.copy(alpha = 0.9f),
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp
+                    )
+                    Text(
+                        text = "✨ What AI Mode Does (When Enabled)\nWhen enabled, a single video thumbnail frame is briefly analyzed by Amazon Bedrock Claude Vision to automatically draft a suggested title, summary, tags, and Heritage Genre for your review.",
+                        color = Amber500,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp
+                    )
+                    Text(
+                        text = "🛡️ Manual Privacy Mode (Default - When Disabled)\nWhen disabled, your media is uploaded with 100% manual privacy. No images leave your vault or enter AI models, saving cloud compute and making your video immediately ready for manual review.",
+                        color = Stone400,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showAiDisclosureDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = Amber500)
+                ) {
+                    Text("UNDERSTOOD", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 12.sp)
                 }
             }
         )

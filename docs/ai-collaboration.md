@@ -1000,6 +1000,12 @@ This document tracks the high-level collaboration between the human developer an
     - Provisioned [`UploadContext.tsx`](file:///I:/Android%20Projects/app-viewer/src/context/UploadContext.tsx) for `app-viewer` and wrapped `<UploadProvider>` in [`App.tsx`](file:///I:/Android%20Projects/app-viewer/src/App.tsx), resolving CodeBuild TS2307 compilation errors.
 - **Outcome**: Delivered native mobile batch S3 uploads and clean web pipeline deployment builds.
 
+### 117. Catalog UI Refinement: Clean Category Card Typography (Oct 3, 2026)
+- **Challenge**: Redundant genre subtitle text on video cards inside genre-grouped category rows created visual clutter in `CatalogScreen.kt`.
+- **AI Contribution**: 
+    - Streamlined `CategoryVideoCard` in [`CatalogScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/CatalogScreen.kt#L180-L210) to display the video title and release year, removing redundant genre labels since category section headers already establish the genre context.
+- **Outcome**: Delivered cleaner, less cluttered card typography across Netflix-style category rows on Android.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

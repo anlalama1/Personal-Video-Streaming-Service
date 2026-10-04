@@ -111,11 +111,14 @@ const ConsumerUpload = () => {
     e.preventDefault();
     if (!file || !userProfile.familyId) return;
 
+    const useAi = localStorage.getItem('alexandria_enable_ai') === 'true';
+
     const metadata = {
       title: file.name.split('.')[0],
       genre: 'Miscellaneous',
       releaseYear: new Date().getFullYear().toString(),
-      familyId: userProfile.familyId
+      familyId: userProfile.familyId,
+      useAi
     };
 
     startUpload(file, metadata);

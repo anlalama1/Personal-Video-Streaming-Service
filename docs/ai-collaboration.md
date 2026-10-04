@@ -1023,6 +1023,13 @@ This document tracks the high-level collaboration between the human developer an
     - Configured instant card selection redirection to the Title Preview / Details Page.
 - **Outcome**: Delivered zero-cost, high-performance, live ranked video search across Web and Android client platforms.
 
+### 120. Review Board Layout Refinement: Action Button Visibility & Vertical Scroll (Oct 3, 2026)
+- **Challenge**: The `REJECT`, `CANCEL`, and `PUBLISH` buttons on the mobile `FamilyReviewPane.kt` were squished into thin lines on compact viewports and stayed disabled due to strict genre matching conditions.
+- **AI Contribution**: 
+    - Added `Modifier.verticalScroll(rememberScrollState())` to the form container in [`FamilyReviewPane.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/FamilyReviewPane.kt#L185-L260) to eliminate layout squishing.
+    - Updated button styling with explicit heights (`50.dp`), high-contrast borders, and refined `enabled = !isPublishing && title.isNotBlank()`, restoring full button visibility and clickability.
+- **Outcome**: Delivered prominent, high-contrast, fully scrollable action buttons on the Android Family Review Board.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

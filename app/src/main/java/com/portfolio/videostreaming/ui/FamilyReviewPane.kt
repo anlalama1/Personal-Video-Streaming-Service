@@ -1,12 +1,15 @@
 package com.portfolio.videostreaming.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -14,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -118,11 +122,11 @@ fun FamilyReviewPane(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            if (isLoading) {
+            if (isLoading && reviewQueue.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Amber500)
                 }
-            } else if (errorMessage != null) {
+            } else if (errorMessage != null && reviewQueue.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = errorMessage ?: "Unable to load review queue.",
@@ -211,18 +215,19 @@ fun FamilyReviewPane(
                     }
                 }
             } else {
-                // Review Form for Selected Memory
+                // Review Form for Selected Memory (Scrollable so buttons are never clipped)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Stone900, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
                         text = "Edit Memory Details",
                         color = Amber500,
-                        fontSize = 16.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Black
                     )
 
@@ -231,17 +236,27 @@ fun FamilyReviewPane(
                         onValueChange = { title = it },
                         label = { Text("Memory Title") },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Amber500,
+                            unfocusedBorderColor = Stone400,
+                            focusedLabelColor = Amber500,
+                            unfocusedLabelColor = Stone400,
+                            focusedTextColor = Parchment,
+                            unfocusedTextColor = Parchment
+                        )
                     )
 
                     Box {
                         OutlinedButton(
                             onClick = { isGenreMenuExpanded = true },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            border = BorderStroke(1.dp, Stone400)
                         ) {
                             Text(
                                 text = "Genre: $genre",
                                 color = Parchment,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
                             )
                             Text("▼", color = Amber500)
@@ -266,44 +281,64 @@ fun FamilyReviewPane(
                         value = description,
                         onValueChange = { description = it },
                         label = { Text("Description (Optional)") },
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
+                        modifier = Modifier.fillMaxWidth().height(110.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Amber500,
+                            unfocusedBorderColor = Stone400,
+                            focusedLabelColor = Amber500,
+                            unfocusedLabelColor = Stone400,
+                            focusedTextColor = Parchment,
+                            unfocusedTextColor = Parchment
+                        )
                     )
 
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Highly Visible Action Button Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // REJECT BUTTON
                         OutlinedButton(
                             onClick = { showRejectConfirmation = true },
                             enabled = !isPublishing,
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            modifier = Modifier.weight(1f).height(50.dp),
+                            border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.7f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.Red.copy(alpha = 0.1f)
+                            ),
+                            shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(
                                 "REJECT",
-                                color = MaterialTheme.colorScheme.error,
+                                color = Color.Red,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
+                                fontWeight = FontWeight.Black
                             )
                         }
 
+                        // CANCEL BUTTON
                         OutlinedButton(
                             onClick = { selectedVideo = null },
                             enabled = !isPublishing,
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            modifier = Modifier.weight(1f).height(50.dp),
+                            border = BorderStroke(1.dp, Parchment.copy(alpha = 0.4f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = HeritageBlack.copy(alpha = 0.5f)
+                            ),
+                            shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(
-                                "Cancel",
+                                "CANCEL",
                                 color = Parchment,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
+                                fontWeight = FontWeight.Bold
                             )
                         }
 
+                        // PUBLISH BUTTON
                         Button(
                             onClick = {
                                 val videoToPublish = selectedVideo ?: return@Button
@@ -335,18 +370,30 @@ fun FamilyReviewPane(
                                     }
                                 }
                             },
-                            enabled = !isPublishing && registeredGenres.contains(genre),
-                            colors = ButtonDefaults.buttonColors(containerColor = Amber500),
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            enabled = !isPublishing && title.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Amber500,
+                                contentColor = HeritageBlack,
+                                disabledContainerColor = Stone400.copy(alpha = 0.3f),
+                                disabledContentColor = Parchment.copy(alpha = 0.4f)
+                            ),
+                            modifier = Modifier.weight(1f).height(50.dp),
+                            shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text(
-                                "PUBLISH",
-                                color = HeritageBlack,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 12.sp,
-                                maxLines = 1
-                            )
+                            if (isPublishing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = HeritageBlack,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(
+                                    "PUBLISH",
+                                    color = HeritageBlack,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 12.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -354,8 +401,10 @@ fun FamilyReviewPane(
                 if (showRejectConfirmation) {
                     AlertDialog(
                         onDismissRequest = { showRejectConfirmation = false },
-                        title = { Text("Reject this memory?") },
-                        text = { Text("This permanently removes the review entry from your family vault.") },
+                        containerColor = HeritageBlack,
+                        shape = RoundedCornerShape(20.dp),
+                        title = { Text("Reject this memory?", color = Parchment, fontWeight = FontWeight.Black) },
+                        text = { Text("This permanently removes the review entry from your family vault.", color = Stone400) },
                         confirmButton = {
                             TextButton(
                                 enabled = !isPublishing,
@@ -381,12 +430,12 @@ fun FamilyReviewPane(
                                     }
                                 }
                             ) {
-                                Text("REJECT", color = MaterialTheme.colorScheme.error)
+                                Text("REJECT", color = Color.Red, fontWeight = FontWeight.Black)
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { showRejectConfirmation = false }) {
-                                Text("Cancel")
+                                Text("CANCEL", color = Stone400, fontWeight = FontWeight.Bold)
                             }
                         }
                     )

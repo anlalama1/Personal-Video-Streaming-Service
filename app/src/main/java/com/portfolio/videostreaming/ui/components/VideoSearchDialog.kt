@@ -117,7 +117,7 @@ fun VideoSearchDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search titles or descriptions (min 3 letters)...", color = Stone400) },
+                    placeholder = { Text("Search titles or descriptions...", color = Stone400) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
@@ -139,12 +139,6 @@ fun VideoSearchDialog(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Type at least 3 letters to view live ranked matches (Prefix > Title > Description).",
-                    color = Stone400,
-                    fontSize = 11.sp
-                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 

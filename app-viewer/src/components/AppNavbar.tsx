@@ -182,7 +182,7 @@ const Navbar = () => {
                 <input
                   type="text"
                   autoFocus
-                  placeholder="Search titles or descriptions (min 3 letters)..."
+                  placeholder="Search titles or descriptions..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full bg-heritage-black border border-heritage-gold/40 rounded-2xl px-5 py-4 text-heritage-parchment text-lg font-bold outline-none focus:ring-2 focus:ring-heritage-gold pr-12 shadow-inner"
@@ -196,9 +196,6 @@ const Navbar = () => {
                   </button>
                 )}
               </div>
-              <p className="text-[10px] text-heritage-400 italic px-1">
-                Type at least 3 letters to view live ranked matches (Prefix Match &gt; Title Substring &gt; Description).
-              </p>
             </div>
 
             {/* Live Search Results Area */}

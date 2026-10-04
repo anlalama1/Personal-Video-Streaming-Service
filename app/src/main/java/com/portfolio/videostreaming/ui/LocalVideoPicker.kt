@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +51,7 @@ import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
 import com.portfolio.videostreaming.ui.theme.Stone400
 import com.portfolio.videostreaming.ui.theme.Stone900
+import androidx.work.WorkInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -89,7 +91,16 @@ fun LocalVideoPicker(
     val currentPreviewVideoId by rememberUpdatedState(previewVideo?.id)
     val currentSelectedVideoIds by rememberUpdatedState(selectedVideoIds)
 
-    val uploadState by ingestViewModel.uploadState.collectAsState()
+    val uploadWorkInfosLiveData = remember(context) {
+        ingestViewModel.getUploadWorkInfos(context)
+    }
+    val uploadWorkInfos by uploadWorkInfosLiveData.observeAsState(emptyList())
+    val activeUpload = uploadWorkInfos.firstOrNull {
+        it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING ||
+            it.state == WorkInfo.State.BLOCKED
+    }
+    val uploadProgress = activeUpload?.progress
+    var submittedWorkId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(previewVideo?.uri) {
         val uri = previewVideo?.uri
@@ -107,12 +118,22 @@ fun LocalVideoPicker(
         onDispose { previewPlayer.release() }
     }
 
-    LaunchedEffect(uploadState) {
-        if (uploadState is UploadState.Success) {
-            Toast.makeText(context, "All selected memories uploaded successfully!", Toast.LENGTH_LONG).show()
-            ingestViewModel.resetState()
-            selectedVideoIds = emptySet()
-            onUploadSuccess()
+    LaunchedEffect(uploadWorkInfos, submittedWorkId) {
+        val submittedWork = uploadWorkInfos.firstOrNull { it.id.toString() == submittedWorkId }
+        when (submittedWork?.state) {
+            WorkInfo.State.SUCCEEDED -> {
+                Toast.makeText(context, "All selected memories uploaded successfully!", Toast.LENGTH_LONG).show()
+                submittedWorkId = null
+                selectedVideoIds = emptySet()
+                onUploadSuccess()
+            }
+            WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> {
+                val message = submittedWork.outputData.getString(S3UploadWorker.KEY_ERROR)
+                    ?: "Background upload failed."
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                submittedWorkId = null
+            }
+            else -> Unit
         }
     }
 
@@ -179,16 +200,19 @@ fun LocalVideoPicker(
                     Button(
                         onClick = {
                             val selectedUris = localVideos.filter { selectedVideoIds.contains(it.id) }.map { it.uri }
-                            ingestViewModel.uploadSelectedVideos(context, selectedUris)
+                            submittedWorkId = ingestViewModel.uploadSelectedVideos(context, selectedUris).toString()
+                            Toast.makeText(context, "Uploading in background...", Toast.LENGTH_SHORT).show()
                         },
-                        enabled = uploadState !is UploadState.Uploading,
+                        enabled = activeUpload == null,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Amber500)
                     ) {
-                        if (uploadState is UploadState.Uploading) {
-                            val state = uploadState as UploadState.Uploading
+                        if (activeUpload != null) {
+                            val currentFile = uploadProgress?.getInt(S3UploadWorker.KEY_CURRENT_FILE, 1) ?: 1
+                            val totalFiles = uploadProgress?.getInt(S3UploadWorker.KEY_TOTAL_FILES, 1) ?: 1
+                            val progress = uploadProgress?.getInt(S3UploadWorker.KEY_PROGRESS, 0) ?: 0
                             Text(
-                                "Uploading ${state.currentFile}/${state.totalFiles} (${state.progressPercent}%)",
+                                "UPLOADING $currentFile/$totalFiles ($progress%)",
                                 color = HeritageBlack,
                                 fontWeight = FontWeight.Black,
                                 fontSize = 9.sp,
@@ -203,6 +227,24 @@ fun LocalVideoPicker(
                         }
                     }
                 }
+            }
+
+            if (activeUpload != null) {
+                Text(
+                    text = "Uploading in background...",
+                    color = Parchment,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            if (activeUpload != null) {
+                val progress = uploadProgress?.getInt(S3UploadWorker.KEY_PROGRESS, 0) ?: 0
+                LinearProgressIndicator(
+                    progress = { progress / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Amber500
+                )
             }
 
             if (isLoading) {

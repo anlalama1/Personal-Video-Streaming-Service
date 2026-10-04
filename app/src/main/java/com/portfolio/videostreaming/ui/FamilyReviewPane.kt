@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +28,7 @@ import com.portfolio.videostreaming.ui.theme.Stone400
 import com.portfolio.videostreaming.ui.theme.Stone900
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * ============================================================================
@@ -53,7 +56,7 @@ fun FamilyReviewPane(
     LaunchedEffect(viewModel) {
         while (true) {
             viewModel.loadReviewQueue()
-            delay(30_000)
+            delay(30.seconds)
         }
     }
 
@@ -78,13 +81,36 @@ fun FamilyReviewPane(
 
     Box(modifier = modifier.fillMaxSize().background(HeritageBlack).padding(16.dp)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Text(
-                text = "Family Review Queue",
-                color = Parchment,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Family Review Queue",
+                    color = Parchment,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black
+                )
+                IconButton(
+                    onClick = { viewModel.loadReviewQueue() },
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Amber500,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh review queue",
+                            tint = Amber500
+                        )
+                    }
+                }
+            }
             Text(
                 text = "Review and finalize metadata for your family memories.",
                 color = Stone400,
@@ -253,7 +279,7 @@ fun FamilyReviewPane(
                             enabled = !isPublishing,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("REJECT", color = MaterialTheme.colorScheme.error)
+                            Text("REJECT", color = MaterialTheme.colorScheme.error, fontSize = 10.sp)
                         }
 
                         OutlinedButton(
@@ -261,7 +287,7 @@ fun FamilyReviewPane(
                             enabled = !isPublishing,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Cancel", color = Stone400)
+                            Text("Cancel", color = Stone400, fontSize = 10.sp)
                         }
 
                         Button(
@@ -299,7 +325,7 @@ fun FamilyReviewPane(
                             colors = ButtonDefaults.buttonColors(containerColor = Amber500),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("PUBLISH", color = HeritageBlack, fontWeight = FontWeight.Black)
+                            Text("PUBLISH", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 10.sp)
                         }
                     }
                 }

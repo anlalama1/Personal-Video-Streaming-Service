@@ -40,9 +40,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.annotation.OptIn
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -73,6 +76,7 @@ data class LocalVideoMedia(
  * previewable grid with multi-selection checkmarks for batch family vault uploads.
  */
 @Composable
+@OptIn(markerClass = [UnstableApi::class])
 fun LocalVideoPicker(
     onUploadSuccess: () -> Unit,
     modifier: Modifier = Modifier,
@@ -88,7 +92,6 @@ fun LocalVideoPicker(
             repeatMode = Player.REPEAT_MODE_ONE
         }
     }
-    val currentPreviewVideoId by rememberUpdatedState(previewVideo?.id)
     val currentSelectedVideoIds by rememberUpdatedState(selectedVideoIds)
 
     val uploadWorkInfosLiveData = remember(context) {
@@ -295,44 +298,19 @@ fun LocalVideoPicker(
                                                 currentSelectedVideoIds + video.id
                                             }
                                         },
-                                        onLongPress = { previewVideo = video },
-                                        onPress = {
-                                            try {
-                                                tryAwaitRelease()
-                                            } finally {
-                                                if (currentPreviewVideoId == video.id) {
-                                                    previewPlayer.pause()
-                                                    previewVideo = null
-                                                }
-                                            }
-                                        }
+                                        onLongPress = { previewVideo = video }
                                     )
                                 }
                         ) {
-                            if (previewVideo?.id == video.id) {
-                                AndroidView(
-                                    factory = { viewContext ->
-                                        PlayerView(viewContext).apply {
-                                            player = previewPlayer
-                                            useController = false
-                                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                        }
-                                    },
-                                    update = { it.player = previewPlayer },
-                                    onRelease = { it.player = null },
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                LocalVideoThumbnail(video)
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Hold to preview ${video.name}",
-                                    tint = Parchment,
-                                    modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .size(36.dp)
-                                )
-                            }
+                            LocalVideoThumbnail(video)
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Hold to preview ${video.name}",
+                                tint = Parchment,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(36.dp)
+                            )
 
                             Box(
                                 modifier = Modifier
@@ -364,8 +342,55 @@ fun LocalVideoPicker(
                                 }
                             }
                         }
+
                     }
                 }
+            }
+        }
+    }
+
+    previewVideo?.let { video ->
+        Dialog(onDismissRequest = { previewVideo = null }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(HeritageBlack)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = video.name,
+                        color = Parchment,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { previewVideo = null }) {
+                        Text("CLOSE", color = Amber500, fontSize = 10.sp)
+                    }
+                }
+                AndroidView(
+                    factory = { viewContext ->
+                        PlayerView(viewContext).apply {
+                            player = previewPlayer
+                            useController = true
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        }
+                    },
+                    update = { playerView ->
+                        if (playerView.player !== previewPlayer) playerView.player = previewPlayer
+                    },
+                    onRelease = { it.player = null },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                )
             }
         }
     }

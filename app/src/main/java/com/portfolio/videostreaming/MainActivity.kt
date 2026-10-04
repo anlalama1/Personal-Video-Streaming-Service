@@ -165,6 +165,7 @@ class MainActivity : ComponentActivity() {
         val mediaBrowserViewModel: MediaBrowserViewModel = viewModel()
         val ingestViewModel: IngestViewModel = viewModel()
         val navController = rememberNavController()
+        var showProfileDialog by remember { mutableStateOf(false) }
 
         val sessionSeconds by screenTimeViewModel.sessionSeconds.collectAsState()
         val dailySeconds by screenTimeViewModel.dailySeconds.collectAsState()
@@ -195,13 +196,8 @@ class MainActivity : ComponentActivity() {
                 if (!isPlayerScreen) {
                     AlexandriaNavbar(
                         authViewModel = authViewModel,
-                        onNavigateHome = {
-                            if (currentRoute != Screen.Catalog.route) {
-                                navController.navigate(Screen.Catalog.route) {
-                                    popUpTo(Screen.Catalog.route) { inclusive = true }
-                                }
-                            }
-                        }
+                        showAccountDialog = showProfileDialog,
+                        onAccountDialogDismiss = { showProfileDialog = false }
                     )
                 }
 
@@ -307,7 +303,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 is BottomNavItem.Profile -> {
-                                    // Profile opens account modal
+                                    showProfileDialog = true
                                 }
                             }
                         }

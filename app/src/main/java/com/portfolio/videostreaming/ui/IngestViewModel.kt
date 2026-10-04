@@ -19,7 +19,8 @@ class IngestViewModel : ViewModel() {
         context: Context,
         videoUris: List<Uri>,
         familyId: String? = null,
-        useAi: Boolean = false
+        useAi: Boolean = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getBoolean(PREFERENCE_ENABLE_AI, false)
     ): UUID {
         val inputData = Data.Builder()
             .putStringArray(S3UploadWorker.KEY_VIDEO_URIS, videoUris.map(Uri::toString).toTypedArray())
@@ -37,5 +38,10 @@ class IngestViewModel : ViewModel() {
             request
         )
         return request.id
+    }
+
+    private companion object {
+        const val PREFERENCES_NAME = "alexandria_settings"
+        const val PREFERENCE_ENABLE_AI = "enable_ai"
     }
 }

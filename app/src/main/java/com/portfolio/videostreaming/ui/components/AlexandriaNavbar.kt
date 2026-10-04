@@ -1,15 +1,15 @@
 package com.portfolio.videostreaming.ui.components
 
+import android.content.ClipData
 import android.widget.Toast
+import androidx.core.content.edit
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,10 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.nativeClipboardManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,18 +42,23 @@ import com.portfolio.videostreaming.ui.theme.Stone400
 @Composable
 fun AlexandriaNavbar(
     authViewModel: AuthViewModel,
-    onNavigateHome: () -> Unit,
+    showAccountDialog: Boolean,
+    onAccountDialogDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val userEmail by authViewModel.userEmail.collectAsState()
     val familyId by authViewModel.familyId.collectAsState()
 
-    var showAccountDialog by remember { mutableStateOf(false) }
-    var enableAi by remember { mutableStateOf(false) } // Default Manual Mode (false)
     var showAiDisclosureDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    var enableAi by remember(context) {
+        mutableStateOf(
+            context.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+                .getBoolean(PREFERENCE_ENABLE_AI, false)
+        )
+    }
 
     val initial = if (!userEmail.isNullOrBlank()) {
         userEmail!!.first().uppercaseChar().toString()
@@ -75,12 +80,10 @@ fun AlexandriaNavbar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Logo Glyph and Integrated Wordmark Lockup (Clickable -> Home)
+                // Logo Glyph and Integrated Wordmark Lockup
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onNavigateHome() }
+                    modifier = Modifier.weight(1f)
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.logo_flat),
@@ -100,39 +103,6 @@ fun AlexandriaNavbar(
                     )
                 }
 
-                // Desktop-style Navigation Items & Account Avatar
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    // Home Button Action
-                    Text(
-                        text = "HOME",
-                        color = Parchment,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.clickable { onNavigateHome() }
-                    )
-                    
-                    // User Profile Avatar (Clickable -> Opens Account Details Modal)
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Amber500)
-                            .border(1.dp, Amber500.copy(alpha = 0.5f), CircleShape)
-                            .clickable { showAccountDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = initial,
-                            color = HeritageBlack,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
             }
             
             // Subtle Heritage divider line
@@ -148,7 +118,7 @@ fun AlexandriaNavbar(
     // Account Details Context Modal
     if (showAccountDialog) {
         AlertDialog(
-            onDismissRequest = { showAccountDialog = false },
+            onDismissRequest = onAccountDialogDismiss,
             containerColor = HeritageBlack,
             shape = RoundedCornerShape(24.dp),
             title = {
@@ -237,7 +207,9 @@ fun AlexandriaNavbar(
                                 )
                                 Button(
                                     onClick = {
-                                        clipboardManager.setText(AnnotatedString(familyId!!))
+                                        clipboard.nativeClipboardManager.setPrimaryClip(
+                                            ClipData.newPlainText("Family Vault Code", familyId)
+                                        )
                                         Toast.makeText(context, "Copied Vault Code (${familyId}) to clipboard!", Toast.LENGTH_SHORT).show()
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Amber500.copy(alpha = 0.2f)),
@@ -270,7 +242,7 @@ fun AlexandriaNavbar(
                                     modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Help,
+                                        imageVector = Icons.AutoMirrored.Filled.Help,
                                         contentDescription = "AI Privacy Info",
                                         tint = Amber500,
                                         modifier = Modifier.size(16.dp)
@@ -280,7 +252,13 @@ fun AlexandriaNavbar(
 
                             Switch(
                                 checked = enableAi,
-                                onCheckedChange = { enableAi = it },
+                                onCheckedChange = { enabled ->
+                                    enableAi = enabled
+                                    context.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+                                        .edit {
+                                            putBoolean(PREFERENCE_ENABLE_AI, enabled)
+                                        }
+                                },
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = HeritageBlack,
                                     checkedTrackColor = Amber500,
@@ -295,7 +273,7 @@ fun AlexandriaNavbar(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showAccountDialog = false
+                        onAccountDialogDismiss()
                         authViewModel.signOut()
                     }
                 ) {
@@ -309,7 +287,7 @@ fun AlexandriaNavbar(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAccountDialog = false }) {
+                TextButton(onClick = onAccountDialogDismiss) {
                     Text(
                         text = "CLOSE",
                         color = Stone400,
@@ -371,3 +349,6 @@ fun AlexandriaNavbar(
         )
     }
 }
+
+private const val PREFERENCES_NAME = "alexandria_settings"
+private const val PREFERENCE_ENABLE_AI = "enable_ai"

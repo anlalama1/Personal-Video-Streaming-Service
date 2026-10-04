@@ -265,7 +265,7 @@ fun FamilyReviewPane(
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
-                        label = { Text("Description") },
+                        label = { Text("Description (Optional)") },
                         modifier = Modifier.fillMaxWidth().height(100.dp),
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
                     )
@@ -277,17 +277,31 @@ fun FamilyReviewPane(
                         OutlinedButton(
                             onClick = { showRejectConfirmation = true },
                             enabled = !isPublishing,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                         ) {
-                            Text("REJECT", color = MaterialTheme.colorScheme.error, fontSize = 10.sp)
+                            Text(
+                                "REJECT",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
                         }
 
                         OutlinedButton(
                             onClick = { selectedVideo = null },
                             enabled = !isPublishing,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                         ) {
-                            Text("Cancel", color = Stone400, fontSize = 10.sp)
+                            Text(
+                                "Cancel",
+                                color = Parchment,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
                         }
 
                         Button(
@@ -323,9 +337,16 @@ fun FamilyReviewPane(
                             },
                             enabled = !isPublishing && registeredGenres.contains(genre),
                             colors = ButtonDefaults.buttonColors(containerColor = Amber500),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                         ) {
-                            Text("PUBLISH", color = HeritageBlack, fontWeight = FontWeight.Black, fontSize = 10.sp)
+                            Text(
+                                "PUBLISH",
+                                color = HeritageBlack,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp,
+                                maxLines = 1
+                            )
                         }
                     }
                 }

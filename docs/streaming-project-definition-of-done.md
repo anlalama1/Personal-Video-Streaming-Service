@@ -180,6 +180,12 @@ The project is **done** when all of the following are true:
 - [x] **Android Local Video Picker**: Built 3-column previewable video picker grid (`LocalVideoPicker.kt`) querying `MediaStore.Video.Media` with multi-selection checkmarks.
 - [x] **Android Family Review Pane**: Built `FamilyReviewPane.kt` displaying `REVIEW_PENDING` items for the user's `familyId` with Heritage Genre dropdowns and "Approve & Publish" action.
 
+### Milestone 39 — Android Jetpack WorkManager Background Upload Engine & Privacy Controls
+- [x] **Persistent WorkManager Service**: Built `S3UploadWorker.kt` (`CoroutineWorker`) running 10MB chunked S3 uploads as a system-managed background service that survives app closure, orientation changes, and screen locks.
+- [x] **Foreground Progress Notification**: Configured `S3UploadWorker` with an ongoing system notification bar item showing real-time upload progress (`Uploading Family Memory 2/5 (60%)...`).
+- [x] **Manual Privacy Ingestion Mode (Default)**: Implemented `useAi: false` Manual Mode across Web Viewer and Android App, bypassing Bedrock Fargate extraction tasks and making uploads immediately available on the Review Board.
+- [x] **AWS Zero AI Training Guarantee Disclosure**: Integrated interactive `?` privacy disclosure modals in `AlexandriaNavbar.kt` and `AppNavbar.tsx` displaying AWS Bedrock's enterprise zero-model-training guarantee.
+
 ### Milestone 38 — Venture Capital Pitch Package & Live Demo Harness
 - [ ] **10-Slide Investor Pitch Deck**: Slide-by-slide narrative script and visual layout specifications.
 - [ ] **Financial Model & Unit Economics Spreadsheet**: 3-year SaaS financial model (87% Gross Margins).

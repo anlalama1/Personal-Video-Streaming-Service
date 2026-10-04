@@ -413,7 +413,7 @@ const ReviewBoard = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-heritage-400">Detailed Description</label>
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-heritage-400">Detailed Description (Optional)</label>
                 <textarea
                   name="description"
                   rows={4}

@@ -409,7 +409,7 @@ const ConsumerUpload = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-heritage-400">Description</label>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-heritage-400">Description (Optional)</label>
                     <textarea
                       name="description"
                       rows={3}

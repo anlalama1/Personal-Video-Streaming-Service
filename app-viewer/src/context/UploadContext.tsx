@@ -144,7 +144,7 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       await api.post(
         'upload/complete',
-        { key: s3Key, uploadId, parts: completedParts },
+        { key: s3Key, uploadId, parts: completedParts, videoId },
         { timeout: API_TIMEOUT_MS }
       );
       updateTask(taskId, { status: 'completed', progress: 100 });

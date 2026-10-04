@@ -127,6 +127,8 @@ export class ApiStack extends cdk.Stack {
     const videoResource = catalog.addResource('{videoId}');
     const familyResource = videoResource.addResource('{familyId}');
     familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    const rejectResource = familyResource.addResource('reject');
+    rejectResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
     const ingest = api.root.addResource('ingest');
     ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });

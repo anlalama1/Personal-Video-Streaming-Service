@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
  * ============================================================================
  * Enterprise Architecture Strategy: Mobile Family Review Board.
  * Displays REVIEW_PENDING media items for the user's family vault, allowing
- * family members to review Bedrock AI metadata drafts (Title, Heritage Genre, Description)
+ * family members to review upload metadata (Title, Heritage Genre, Description)
  * and publish videos directly into their catalog.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +62,8 @@ fun FamilyReviewPane(
     var genre by remember { mutableStateOf("Holidays, Birthdays and Special Occasions") }
     var description by remember { mutableStateOf("") }
     var isPublishing by remember { mutableStateOf(false) }
+    var isGenreMenuExpanded by remember { mutableStateOf(false) }
+    var showRejectConfirmation by remember { mutableStateOf(false) }
 
     val heritageGenres = listOf(
         "Holidays, Birthdays and Special Occasions",
@@ -84,7 +86,7 @@ fun FamilyReviewPane(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
-                text = "Finalize AI-suggested metadata for your family memories.",
+                text = "Review and finalize metadata for your family memories.",
                 color = Stone400,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -124,15 +126,23 @@ fun FamilyReviewPane(
                                     .clip(RoundedCornerShape(16.dp))
                                     .then(if (isReadyForReview) Modifier.clickable {
                                         selectedVideo = video
-                                        title = video.aiTitle.ifBlank { video.title }
-                                        val suggestedGenre = video.aiGenre.ifBlank { video.genre }
+                                        title = if (video.useAi) video.aiTitle.ifBlank { video.title } else video.title
+                                        val suggestedGenre = if (video.useAi) {
+                                            video.aiGenre.ifBlank { video.genre }
+                                        } else {
+                                            video.genre
+                                        }
                                         genre = when {
                                             registeredGenres.contains(suggestedGenre) -> suggestedGenre
                                             registeredGenres.isNotEmpty() -> registeredGenres.first()
                                             heritageGenres.contains(suggestedGenre) -> suggestedGenre
                                             else -> heritageGenres.first()
                                         }
-                                        description = video.description
+                                        description = if (video.useAi) {
+                                            video.aiDescription.ifBlank { video.description }
+                                        } else {
+                                            video.description
+                                        }
                                     } else Modifier),
                                 colors = CardDefaults.cardColors(
                                     containerColor = Stone900.copy(alpha = if (isReadyForReview) 0.9f else 0.55f)
@@ -153,14 +163,14 @@ fun FamilyReviewPane(
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            text = video.aiTitle.ifBlank { video.title },
+                                            text = if (video.useAi) video.aiTitle.ifBlank { video.title } else video.title,
                                             color = Parchment,
                                             fontSize = 15.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = if (isReadyForReview) {
-                                                "Tap to finalize AI metadata"
+                                                if (video.useAi) "Tap to review AI metadata" else "Tap to review memory"
                                             } else {
                                                 "Processing — review available when ready"
                                             },
@@ -198,6 +208,34 @@ fun FamilyReviewPane(
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
                     )
 
+                    Box {
+                        OutlinedButton(
+                            onClick = { isGenreMenuExpanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Genre: $genre",
+                                color = Parchment,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text("▼", color = Amber500)
+                        }
+                        DropdownMenu(
+                            expanded = isGenreMenuExpanded,
+                            onDismissRequest = { isGenreMenuExpanded = false }
+                        ) {
+                            (registeredGenres.ifEmpty { heritageGenres }).forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option) },
+                                    onClick = {
+                                        genre = option
+                                        isGenreMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
@@ -211,7 +249,16 @@ fun FamilyReviewPane(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
+                            onClick = { showRejectConfirmation = true },
+                            enabled = !isPublishing,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("REJECT", color = MaterialTheme.colorScheme.error)
+                        }
+
+                        OutlinedButton(
                             onClick = { selectedVideo = null },
+                            enabled = !isPublishing,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Cancel", color = Stone400)
@@ -248,13 +295,54 @@ fun FamilyReviewPane(
                                     }
                                 }
                             },
-                            enabled = !isPublishing,
+                            enabled = !isPublishing && registeredGenres.contains(genre),
                             colors = ButtonDefaults.buttonColors(containerColor = Amber500),
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("PUBLISH", color = HeritageBlack, fontWeight = FontWeight.Black)
                         }
                     }
+                }
+
+                if (showRejectConfirmation) {
+                    AlertDialog(
+                        onDismissRequest = { showRejectConfirmation = false },
+                        title = { Text("Reject this memory?") },
+                        text = { Text("This permanently removes the review entry from your family vault.") },
+                        confirmButton = {
+                            TextButton(
+                                enabled = !isPublishing,
+                                onClick = {
+                                    val videoToReject = selectedVideo ?: return@TextButton
+                                    coroutineScope.launch {
+                                        isPublishing = true
+                                        try {
+                                            viewModel.rejectReview(videoToReject)
+                                            Toast.makeText(context, "Memory rejected.", Toast.LENGTH_SHORT).show()
+                                            selectedVideo = null
+                                            showRejectConfirmation = false
+                                            viewModel.loadReviewQueue()
+                                        } catch (exception: Exception) {
+                                            Toast.makeText(
+                                                context,
+                                                "Reject failed: ${exception.localizedMessage ?: "Please try again."}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        } finally {
+                                            isPublishing = false
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text("REJECT", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showRejectConfirmation = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
                 }
             }
         }

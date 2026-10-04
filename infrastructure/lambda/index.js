@@ -11,7 +11,7 @@
  */
 
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
@@ -77,6 +77,8 @@ exports.handler = async (event) => {
             return await handlePublishVideo(event, tenantId);
         } else if (path === '/catalog/{videoId}/{familyId}' && method === 'DELETE') {
             return await handleDeleteVideo(event, tenantId);
+        } else if (path === '/catalog/{videoId}/{familyId}/reject' && method === 'DELETE') {
+            return await handleRejectReviewItem(event, tenantId, claims);
         }
 
         return response(404, { message: "Not Found" });
@@ -206,9 +208,11 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
             thumbnailUrl,
             videoUrl,
             transcodeStatus: item.transcodeStatus || 'INGESTED',
-            description: item.description || item.aiDescription || '',
-            tags: item.tags || item.aiTags || [],
+            useAi: item.useAi === true,
+            description: item.description || '',
+            tags: item.tags || [],
             aiTitle: item.aiTitle || '',
+            aiTags: item.aiTags || [],
             aiDescription: item.aiDescription || '',
             aiTags: item.aiTags || [],
             videoKey: item.videoKey || '',
@@ -475,6 +479,37 @@ async function handleDeleteVideo(event, tenantId) {
     }));
 
     return response(200, { success: true, message: "Asset moved to trash. Will be permanently purged after retention period." });
+}
+
+async function handleRejectReviewItem(event, tenantId, claims) {
+    const { videoId, familyId } = event.pathParameters;
+    const jwtFamilyId = claims['custom:familyId'];
+    const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
+
+    if (!isShopAdmin && jwtFamilyId !== familyId) {
+        return response(403, { error: "You can only reject videos in your family vault." });
+    }
+
+    try {
+        await docClient.send(new DeleteCommand({
+            TableName: process.env.TABLE_NAME,
+            Key: {
+                PK: `TENANT#${tenantId}`,
+                SK: `FAMILY#${familyId}#VIDEO#${videoId}`
+            },
+            ConditionExpression: "transcodeStatus = :reviewPending",
+            ExpressionAttributeValues: {
+                ":reviewPending": "REVIEW_PENDING"
+            }
+        }));
+    } catch (err) {
+        if (err.name === "ConditionalCheckFailedException") {
+            return response(409, { error: "Only videos pending review can be rejected." });
+        }
+        throw err;
+    }
+
+    return response(200, { success: true, message: "Review item rejected and removed." });
 }
 
 /**

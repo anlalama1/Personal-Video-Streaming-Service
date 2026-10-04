@@ -12,8 +12,10 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.Path
 import retrofit2.http.POST
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -37,8 +39,11 @@ data class MediaItemDto(
     val description: String? = null,
     val tags: List<String>? = null,
     val transcodeStatus: String = "",
+    val useAi: Boolean = false,
     val aiTitle: String? = null,
     val aiGenre: String? = null,
+    val aiTags: List<String>? = null,
+    val aiDescription: String? = null,
     val familyId: String = "",
     val videoKey: String = ""
 )
@@ -133,8 +138,14 @@ interface StreamingApiService {
     @GET("catalog")
     suspend fun getCatalog(): List<MediaItemDto>
 
-    @GET("catalog?adminView=true")
+    @GET("catalog?reviewQueue=true")
     suspend fun getReviewQueue(): List<MediaItemDto>
+
+    @DELETE("catalog/{videoId}/{familyId}/reject")
+    suspend fun rejectReviewItem(
+        @Path("videoId") videoId: String,
+        @Path("familyId") familyId: String
+    )
 
     @POST("catalog/publish")
     suspend fun publishVideo(@Body request: PublishVideoRequest)

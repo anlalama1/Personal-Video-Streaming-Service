@@ -15,8 +15,11 @@ data class MediaFile(
     val description: String = "",
     val tags: List<String> = emptyList(),
     val transcodeStatus: String = "",
+    val useAi: Boolean = false,
     val aiTitle: String = "",
     val aiGenre: String = "",
+    val aiTags: List<String> = emptyList(),
+    val aiDescription: String = "",
     val familyId: String = "",
     val videoKey: String = ""
 )

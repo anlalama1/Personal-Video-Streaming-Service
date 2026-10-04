@@ -80,8 +80,11 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                         description = dto.description ?: "",
                         tags = dto.tags ?: emptyList(),
                         transcodeStatus = dto.transcodeStatus,
+                        useAi = dto.useAi,
                         aiTitle = dto.aiTitle.orEmpty(),
                         aiGenre = dto.aiGenre.orEmpty(),
+                        aiTags = dto.aiTags ?: emptyList(),
+                        aiDescription = dto.aiDescription.orEmpty(),
                         familyId = dto.familyId,
                         videoKey = dto.videoKey
                     )
@@ -103,7 +106,9 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                 val dtos = withContext(Dispatchers.IO) {
                     StreamingApi.service.getReviewQueue()
                 }
-                _reviewQueue.value = dtos.map { dto ->
+                _reviewQueue.value = dtos
+                    .filter { it.transcodeStatus in setOf("REVIEW_PENDING", "UPLOADING", "PROCESSING") }
+                    .map { dto ->
                     MediaFile(
                         id = dto.videoId,
                         title = dto.title,
@@ -114,8 +119,11 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                         description = dto.description ?: "",
                         tags = dto.tags ?: emptyList(),
                         transcodeStatus = dto.transcodeStatus,
+                        useAi = dto.useAi,
                         aiTitle = dto.aiTitle.orEmpty(),
                         aiGenre = dto.aiGenre.orEmpty(),
+                        aiTags = dto.aiTags ?: emptyList(),
+                        aiDescription = dto.aiDescription.orEmpty(),
                         familyId = dto.familyId,
                         videoKey = dto.videoKey
                     )
@@ -147,8 +155,12 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                 genre = genre,
                 releaseYear = releaseYear,
                 description = description,
-                tags = video.tags
+                tags = if (video.useAi && video.aiTags.isNotEmpty()) video.aiTags else video.tags
             )
         )
+    }
+
+    suspend fun rejectReview(video: MediaFile) = withContext(Dispatchers.IO) {
+        StreamingApi.service.rejectReviewItem(video.id, video.familyId)
     }
 }

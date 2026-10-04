@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUpload } from '../context/UploadContext';
 import { useAuth } from '../context/AuthContext';
-import { CloudUpload, CheckCircle2, ClipboardCheck, Sparkles, Key, Loader2 } from 'lucide-react';
+import { CloudUpload, CheckCircle2, ClipboardCheck, Sparkles, Key, Loader2, Trash2 } from 'lucide-react';
 import api from '../api';
 
 interface MediaItem {
@@ -21,11 +21,13 @@ interface MediaItem {
   releaseYear: string;
   transcodeStatus: string;
   thumbnailUrl: string;
+  description?: string;
   aiTitle?: string;
   aiDescription?: string;
   aiTags?: string[] | string;
   videoKey: string;
   familyId: string;
+  useAi?: boolean;
 }
 
 const DEFAULT_HERITAGE_GENRES = [
@@ -53,6 +55,7 @@ const ConsumerUpload = () => {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [loadingReview, setLoadingReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
   const [formData, setFormData] = useState({
@@ -86,7 +89,9 @@ const ConsumerUpload = () => {
       const pending = res.data.filter((item: MediaItem) =>
         ['REVIEW_PENDING', 'UPLOADING', 'PROCESSING'].includes(item.transcodeStatus)
       );
-      setReviewItems(pending);
+      setReviewItems(pending.filter((item: MediaItem) =>
+        ['REVIEW_PENDING', 'UPLOADING', 'PROCESSING'].includes(item.transcodeStatus)
+      ));
     } catch (err) {
       console.error('Failed to load family review queue:', err);
     } finally {
@@ -131,17 +136,17 @@ const ConsumerUpload = () => {
     setSuccessMsg('');
 
     let formattedTags = '';
-    if (item.aiTags) {
+    if (item.useAi && item.aiTags) {
       formattedTags = Array.isArray(item.aiTags) ? item.aiTags.join(', ') : String(item.aiTags);
     }
 
-    const selectedGenre = item.aiGenre || item.genre || 'Holidays, Birthdays and Special Occasions';
+    const selectedGenre = (item.useAi && item.aiGenre) || item.genre || 'Holidays, Birthdays and Special Occasions';
 
     setFormData({
-      title: item.aiTitle || item.title || '',
+      title: (item.useAi && item.aiTitle) || item.title || '',
       genre: genres.includes(selectedGenre) ? selectedGenre : genres[0] || 'Miscellaneous',
       releaseYear: item.releaseYear && item.releaseYear !== '0' ? item.releaseYear : new Date().getFullYear().toString(),
-      description: item.aiDescription || '',
+      description: (item.useAi && item.aiDescription) || item.description || '',
       tags: formattedTags
     });
   };
@@ -180,6 +185,22 @@ const ConsumerUpload = () => {
       console.error('Publish failed:', err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedItem || !window.confirm(`Permanently remove "${selectedItem.title}" from the review queue?`)) return;
+
+    setRejecting(true);
+    try {
+      await api.delete(`catalog/${selectedItem.videoId}/${selectedItem.familyId}/reject`);
+      setSuccessMsg(`"${selectedItem.title}" was rejected and removed.`);
+      setSelectedItem(null);
+      await fetchFamilyQueue();
+    } catch (err) {
+      console.error('Rejection failed:', err);
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -266,7 +287,7 @@ const ConsumerUpload = () => {
             <div className="bg-heritage-gold/10 border border-heritage-gold/30 p-4 rounded-xl flex items-center gap-3 text-heritage-gold">
               <CheckCircle2 className="text-heritage-gold" size={20} />
               <span className="text-xs font-black uppercase tracking-wider">
-                Upload initiated! Switch to the Review Queue tab to inspect AI metadata drafts.
+                Upload initiated! Switch to the Review Queue tab when processing is complete.
               </span>
             </div>
           )}
@@ -312,7 +333,7 @@ const ConsumerUpload = () => {
                       className="w-16 h-12 object-cover rounded-lg border border-heritage-800 bg-heritage-black"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-heritage-parchment truncate text-xs">{item.aiTitle || item.title}</p>
+                      <p className="font-bold text-heritage-parchment truncate text-xs">{item.useAi && item.aiTitle ? item.aiTitle : item.title}</p>
                       {isReady ? (
                         <span className="text-[9px] text-heritage-gold bg-heritage-gold/10 px-1.5 py-0.5 rounded font-black border border-heritage-gold/20 flex items-center gap-1 w-max mt-1">
                           <Sparkles size={8} /> AI Staged
@@ -398,13 +419,23 @@ const ConsumerUpload = () => {
                     />
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full bg-gradient-to-r from-heritage-gold to-heritage-sunset text-heritage-black font-black py-3 rounded-xl uppercase tracking-widest text-xs shadow-xl"
-                  >
-                    {submitting ? 'Publishing...' : 'Publish to Family Vault'}
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      disabled={submitting || rejecting}
+                      onClick={handleReject}
+                      className="flex items-center justify-center gap-2 border border-heritage-sunset/50 text-heritage-sunset px-4 py-3 rounded-xl uppercase tracking-widest text-xs font-black"
+                    >
+                      <Trash2 size={14} /> {rejecting ? 'Rejecting...' : 'Reject'}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting || rejecting}
+                      className="flex-1 bg-gradient-to-r from-heritage-gold to-heritage-sunset text-heritage-black font-black py-3 rounded-xl uppercase tracking-widest text-xs shadow-xl"
+                    >
+                      {submitting ? 'Publishing...' : 'Publish to Family Vault'}
+                    </button>
+                  </div>
                 </form>
               ) : (
                 <div className="bg-heritage-900/40 border border-dashed border-heritage-800 rounded-2xl p-12 text-center text-heritage-400 italic text-xs h-full flex flex-col items-center justify-center gap-2">

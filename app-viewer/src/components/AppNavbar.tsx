@@ -1,23 +1,49 @@
 /**
  * ============================================================================
- * Desktop Viewer Header Navigation Bar & Account Profile Modal
+ * Desktop Viewer Header Navigation Bar, Search Overlay & Account Profile Modal
  * ============================================================================
- * Enterprise Architecture Strategy: Responsive Header & Identity Display.
+ * Enterprise Architecture Strategy: Responsive Header & Search Ranking Engine.
  * Serves as global layout navigation header featuring "Logo-as-a-Letter" lockup,
- * route hiding during video playback, interactive Account Details Modal, and
- * AI Privacy & Zero-Training Guarantee Disclosures.
+ * top-right search button trigger, reactive 3-tier priority search ranking,
+ * interactive Account Details Modal, and AWS Zero-Training Guarantee Disclosures.
  */
 
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { User, LogOut, Key, Mail, ShieldCheck, X, Copy, Sparkles, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { User, LogOut, Key, Mail, ShieldCheck, X, Copy, Sparkles, HelpCircle, Search, Film } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../api';
+
+interface MediaItem {
+  videoId: string;
+  title: string;
+  genre: string;
+  releaseYear: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  description: string;
+  tags: string[];
+}
+
+interface RankedResult {
+  video: MediaItem;
+  priority: number; // 1 = Title Prefix, 2 = Title Substring, 3 = Description
+  matchType: string;
+}
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { userProfile, signOut } = useAuth();
+
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showAiDisclosure, setShowAiDisclosure] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+
+  // Search Engine State
+  const [catalog, setCatalog] = useState<MediaItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<RankedResult[]>([]);
 
   // Default setting: Manual Mode (No-AI) is false
   const [enableAi, setEnableAi] = useState<boolean>(() => {
@@ -30,6 +56,54 @@ const Navbar = () => {
     localStorage.setItem('alexandria_enable_ai', String(newValue));
   };
 
+  // Pre-fetch family vault catalog for live search evaluation
+  useEffect(() => {
+    if (showSearchModal && catalog.length === 0) {
+      api.get('catalog')
+        .then(res => setCatalog(res.data || []))
+        .catch(err => console.error('Failed to pre-fetch catalog for search:', err));
+    }
+  }, [showSearchModal, catalog.length]);
+
+  /**
+   * Priority Search Ranking Engine:
+   * Constraint 1: Gated until query length >= 3 letters
+   * Constraint 2: Ranked by Priority 1 (Title Prefix) > Priority 2 (Title Substring) > Priority 3 (Description Match)
+   * Constraint 3: Bounded to Top 10 matches
+   */
+  useEffect(() => {
+    const q = searchQuery.trim().toLowerCase();
+
+    if (q.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    const matches: RankedResult[] = [];
+
+    catalog.forEach(item => {
+      const titleLower = (item.title || '').toLowerCase();
+      const descLower = (item.description || '').toLowerCase();
+
+      if (titleLower.startsWith(q)) {
+        matches.push({ video: item, priority: 1, matchType: 'Title Prefix Match' });
+      } else if (titleLower.includes(q)) {
+        matches.push({ video: item, priority: 2, matchType: 'Title Substring Match' });
+      } else if (descLower.includes(q)) {
+        matches.push({ video: item, priority: 3, matchType: 'Description Match' });
+      }
+    });
+
+    // Sort by priority rank (1 < 2 < 3), then alphabetically by title
+    matches.sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return a.video.title.localeCompare(b.video.title);
+    });
+
+    // Cap results to top 10 potential matches
+    setSearchResults(matches.slice(0, 10));
+  }, [searchQuery, catalog]);
+
   // Hide navbar in the player for full-screen cinematic immersion
   if (location.pathname === '/player') return null;
 
@@ -37,14 +111,17 @@ const Navbar = () => {
     ? userProfile.email.charAt(0).toUpperCase()
     : 'U';
 
-  /**
-   * Copies the active Family Vault Partition Key to the user's clipboard.
-   */
   const handleCopyFamilyCode = () => {
     if (userProfile.familyId) {
       navigator.clipboard.writeText(userProfile.familyId);
       alert(`Copied Family Vault Code (${userProfile.familyId}) to clipboard!`);
     }
+  };
+
+  const handleSelectSearchResult = (video: MediaItem) => {
+    setShowSearchModal(false);
+    setSearchQuery('');
+    navigate('/details', { state: { video } });
   };
 
   return (
@@ -56,12 +133,21 @@ const Navbar = () => {
           <h1 className="text-2xl font-black tracking-tighter text-heritage-parchment uppercase hidden sm:block -ml-[4px]">Lexandria+</h1>
         </Link>
 
-        {/* Global Links & Account Avatar */}
+        {/* Global Links, Search Trigger & Account Avatar */}
         <div className="flex items-center gap-6 lg:gap-8 text-sm font-black uppercase tracking-widest text-heritage-400">
             <Link to="/" className="cursor-pointer hover:text-heritage-parchment transition-colors">Home</Link>
             <Link to="/upload" className="cursor-pointer text-heritage-gold hover:text-heritage-gold/80 transition-colors flex items-center gap-1.5">
               <span>Upload</span>
             </Link>
+
+            {/* Top-Right Search Trigger Button */}
+            <button
+              onClick={() => setShowSearchModal(true)}
+              className="p-2 text-heritage-parchment hover:text-heritage-gold transition-colors cursor-pointer rounded-full hover:bg-heritage-800/50"
+              title="Search Vault Media"
+            >
+              <Search size={20} />
+            </button>
 
             {/* Account Button Trigger */}
             <button
@@ -73,6 +159,100 @@ const Navbar = () => {
             </button>
         </div>
       </nav>
+
+      {/* Top-Right Ranked Video Search Overlay */}
+      {showSearchModal && (
+        <div className="fixed inset-0 z-50 bg-heritage-black/90 backdrop-blur-md flex items-start justify-center pt-20 px-4">
+          <div className="bg-heritage-900 border border-heritage-gold/30 rounded-3xl p-6 lg:p-8 max-w-2xl w-full shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => {
+                setShowSearchModal(false);
+                setSearchQuery('');
+              }}
+              className="absolute top-6 right-6 text-heritage-400 hover:text-heritage-parchment transition-colors p-1"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-heritage-gold flex items-center gap-1.5">
+                <Search size={12} /> Live Vault Media Search
+              </span>
+              <div className="relative">
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Search titles or descriptions (min 3 letters)..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full bg-heritage-black border border-heritage-gold/40 rounded-2xl px-5 py-4 text-heritage-parchment text-lg font-bold outline-none focus:ring-2 focus:ring-heritage-gold pr-12 shadow-inner"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-heritage-400 hover:text-heritage-parchment p-1"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-heritage-400 italic px-1">
+                Type at least 3 letters to view live ranked matches (Prefix Match &gt; Title Substring &gt; Description).
+              </p>
+            </div>
+
+            {/* Live Search Results Area */}
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {searchQuery.trim().length >= 3 && searchResults.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-heritage-400 border-b border-heritage-800 pb-2">
+                    <span>Ranked Results ({searchResults.length} of 10 max)</span>
+                    <span className="text-heritage-gold font-mono">Keystroke Live</span>
+                  </div>
+
+                  {searchResults.map(({ video, matchType }) => (
+                    <div
+                      key={video.videoId}
+                      onClick={() => handleSelectSearchResult(video)}
+                      className="p-3 bg-heritage-black/60 border border-heritage-800 hover:border-heritage-gold rounded-2xl flex items-center gap-4 cursor-pointer transition-all hover:scale-[1.01] group"
+                    >
+                      <img
+                        src={video.thumbnailUrl || "https://via.placeholder.com/150"}
+                        alt={video.title}
+                        className="w-20 h-14 object-cover rounded-xl border border-heritage-800 bg-heritage-900 group-hover:border-heritage-gold/50"
+                      />
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <h4 className="font-bold text-heritage-parchment text-sm group-hover:text-heritage-gold transition-colors truncate">
+                          {video.title}
+                        </h4>
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <span className="text-heritage-gold font-mono font-bold bg-heritage-gold/10 px-2 py-0.5 rounded border border-heritage-gold/20">
+                            {matchType}
+                          </span>
+                          <span className="text-heritage-400">{video.genre} • {video.releaseYear}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {searchQuery.trim().length >= 3 && searchResults.length === 0 && (
+                <div className="py-12 text-center text-heritage-400 italic text-sm border border-dashed border-heritage-800 rounded-2xl space-y-2">
+                  <Film size={32} className="mx-auto text-heritage-800" />
+                  <p>No titles or descriptions matched "{searchQuery}".</p>
+                </div>
+              )}
+
+              {searchQuery.trim().length > 0 && searchQuery.trim().length < 3 && (
+                <div className="py-8 text-center text-heritage-gold text-xs font-bold bg-heritage-gold/5 border border-heritage-gold/20 rounded-2xl">
+                  Please type at least {3 - searchQuery.trim().length} more letter(s) to evaluate vault matches.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Account Details Modal */}
       {showAccountModal && (

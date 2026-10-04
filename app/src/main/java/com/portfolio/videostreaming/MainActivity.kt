@@ -11,7 +11,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,7 +43,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.portfolio.videostreaming.ui.CatalogScreen
 import com.portfolio.videostreaming.ui.FamilyReviewPane
-import com.portfolio.videostreaming.ui.IngestViewModel
 import com.portfolio.videostreaming.ui.LocalVideoPicker
 import com.portfolio.videostreaming.ui.MediaBrowserViewModel
 import com.portfolio.videostreaming.ui.MediaDetailsScreen
@@ -59,6 +57,7 @@ import com.portfolio.videostreaming.ui.auth.SignupScreen
 import com.portfolio.videostreaming.ui.components.AlexandriaBottomBar
 import com.portfolio.videostreaming.ui.components.AlexandriaNavbar
 import com.portfolio.videostreaming.ui.components.BottomNavItem
+import com.portfolio.videostreaming.ui.components.VideoSearchDialog
 import com.portfolio.videostreaming.ui.theme.AlexandriaTheme
 import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
@@ -90,7 +89,7 @@ sealed class Screen(val route: String) {
  * MainActivity - Single-Activity Jetpack Compose Architecture
  * ============================================================================
  * Enterprise Architecture Strategy: Single-Activity Pattern.
- * Hosts declarative navigation graph, bottom navigation bar, and screen routing.
+ * Hosts declarative navigation graph, top search trigger, bottom bar, and screen routing.
  */
 class MainActivity : ComponentActivity() {
 
@@ -100,12 +99,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         hasPermission = isGranted
-        if (isGranted) requestNotificationPermission()
     }
-
-    private val requestNotificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -157,16 +151,18 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Authenticated Navigation Shell containing Global Header Navbar, Bottom Bar, and Screen Graph.
+     * Authenticated Navigation Shell containing Global Header Navbar, Bottom Bar, Search Overlay, and Screen Graph.
      */
     @Composable
     private fun MainAppContent(authViewModel: AuthViewModel) {
         val screenTimeViewModel: ScreenTimeViewModel = viewModel()
         val mediaBrowserViewModel: MediaBrowserViewModel = viewModel()
-        val ingestViewModel: IngestViewModel = viewModel()
         val navController = rememberNavController()
-        var showProfileDialog by remember { mutableStateOf(false) }
 
+        var showProfileDialog by remember { mutableStateOf(false) }
+        var showSearchDialog by remember { mutableStateOf(false) }
+
+        val videoList by mediaBrowserViewModel.videoList.collectAsState()
         val sessionSeconds by screenTimeViewModel.sessionSeconds.collectAsState()
         val dailySeconds by screenTimeViewModel.dailySeconds.collectAsState()
         val isCounterVisible by screenTimeViewModel.isCounterVisible.collectAsState()
@@ -197,7 +193,8 @@ class MainActivity : ComponentActivity() {
                     AlexandriaNavbar(
                         authViewModel = authViewModel,
                         showAccountDialog = showProfileDialog,
-                        onAccountDialogDismiss = { showProfileDialog = false }
+                        onAccountDialogDismiss = { showProfileDialog = false },
+                        onOpenSearch = { showSearchDialog = true }
                     )
                 }
 
@@ -221,8 +218,7 @@ class MainActivity : ComponentActivity() {
                         LocalVideoPicker(
                             onUploadSuccess = {
                                 navController.navigate(Screen.FamilyReview.route)
-                            },
-                            ingestViewModel = ingestViewModel
+                            }
                         )
                     }
                     composable(Screen.FamilyReview.route) {
@@ -311,6 +307,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Full-Screen Live Ranked Video Search Dialog
+            if (showSearchDialog) {
+                VideoSearchDialog(
+                    catalog = videoList,
+                    onDismiss = { showSearchDialog = false },
+                    onVideoSelected = { video ->
+                        showSearchDialog = false
+                        mediaBrowserViewModel.selectVideo(video)
+                        navController.navigate(Screen.Details.route)
+                    }
+                )
+            }
+
             AnimatedVisibility(
                 visible = isCounterVisible && isPlayerScreen,
                 enter = fadeIn(),
@@ -337,18 +346,8 @@ class MainActivity : ComponentActivity() {
 
         if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
             hasPermission = true
-            requestNotificationPermission()
         } else {
             requestPermissionLauncher.launch(permission)
-        }
-    }
-
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 

@@ -1,6 +1,7 @@
 package com.portfolio.videostreaming.ui.components
 
 import android.content.ClipData
+import android.content.Context
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.compose.foundation.Image
@@ -10,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,14 +38,15 @@ import com.portfolio.videostreaming.ui.theme.Stone400
  * Global Heritage Header Navbar & Account Details Context Dialog
  * ============================================================================
  * Enterprise Architecture Strategy: Cross-Platform UI Ergonomics Parity.
- * Renders the top brand header navigation lockup with Home catalog navigation,
- * interactive Account Details Modal, AI Privacy Toggle, and AWS Zero-Training Guarantee.
+ * Renders top brand header navigation lockup, top-right Search Button trigger,
+ * Account Details Modal, AI Privacy Toggle, and AWS Zero-Training Guarantee.
  */
 @Composable
 fun AlexandriaNavbar(
     authViewModel: AuthViewModel,
     showAccountDialog: Boolean,
     onAccountDialogDismiss: () -> Unit,
+    onOpenSearch: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val userEmail by authViewModel.userEmail.collectAsState()
@@ -55,7 +58,7 @@ fun AlexandriaNavbar(
     val clipboard = LocalClipboard.current
     var enableAi by remember(context) {
         mutableStateOf(
-            context.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+            context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
                 .getBoolean(PREFERENCE_ENABLE_AI, false)
         )
     }
@@ -103,6 +106,19 @@ fun AlexandriaNavbar(
                     )
                 }
 
+                // Search & Account Avatar Actions
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    IconButton(onClick = onOpenSearch) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search Vault Media",
+                            tint = Parchment
+                        )
+                    }
+                }
             }
             
             // Subtle Heritage divider line
@@ -254,7 +270,7 @@ fun AlexandriaNavbar(
                                 checked = enableAi,
                                 onCheckedChange = { enabled ->
                                     enableAi = enabled
-                                    context.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+                                    context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
                                         .edit {
                                             putBoolean(PREFERENCE_ENABLE_AI, enabled)
                                         }

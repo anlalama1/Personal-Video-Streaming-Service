@@ -186,6 +186,15 @@ The project is **done** when all of the following are true:
 - [x] **Manual Privacy Ingestion Mode (Default)**: Implemented `useAi: false` Manual Mode across Web Viewer and Android App, bypassing Bedrock Fargate extraction tasks and making uploads immediately available on the Review Board.
 - [x] **AWS Zero AI Training Guarantee Disclosure**: Integrated interactive `?` privacy disclosure modals in `AlexandriaNavbar.kt` and `AppNavbar.tsx` displaying AWS Bedrock's enterprise zero-model-training guarantee.
 
+### Milestone 40 — Video Search Engine & Ranked Results Overlay
+- [x] **Top Banner Search Trigger**: Integrated top-right search button triggers in `AppNavbar.tsx` (Web) and `AlexandriaNavbar.kt` (Android).
+- [x] **3-Tier Priority Search Ranking Algorithm**: Evaluates live search queries with case-insensitive priority sorting:
+  - **Priority 1**: Title starts with search query (Prefix Match).
+  - **Priority 2**: Title contains search query elsewhere (Substring Match).
+  - **Priority 3**: Description contains search query (Content Match).
+- [x] **Input Gating & Result Bounding**: Enforces $\ge$ 3-character query length gating and caps output to top 10 ranked matches.
+- [x] **Selection Navigation**: Selecting any search result card closes the overlay and redirects directly to the Title Preview / Details Page (`/details` on Web, `Screen.Details` on Android).
+
 ### Milestone 38 — Venture Capital Pitch Package & Live Demo Harness
 - [ ] **10-Slide Investor Pitch Deck**: Slide-by-slide narrative script and visual layout specifications.
 - [ ] **Financial Model & Unit Economics Spreadsheet**: 3-year SaaS financial model (87% Gross Margins).

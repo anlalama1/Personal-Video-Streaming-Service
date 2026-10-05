@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,10 +48,12 @@ fun AlexandriaNavbar(
     showAccountDialog: Boolean,
     onAccountDialogDismiss: () -> Unit,
     onOpenSearch: () -> Unit,
+    onOpenVaultAdmin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val userEmail by authViewModel.userEmail.collectAsState()
     val familyId by authViewModel.familyId.collectAsState()
+    val isAdmin by authViewModel.isAdmin.collectAsState()
 
     var showAiDisclosureDialog by remember { mutableStateOf(false) }
 
@@ -111,6 +114,15 @@ fun AlexandriaNavbar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (isAdmin) {
+                        IconButton(onClick = onOpenVaultAdmin) {
+                            Icon(
+                                imageVector = Icons.Default.AdminPanelSettings,
+                                contentDescription = "Vault Administration",
+                                tint = Amber500
+                            )
+                        }
+                    }
                     IconButton(onClick = onOpenSearch) {
                         Icon(
                             imageVector = Icons.Default.Search,

@@ -97,6 +97,8 @@ export class AuthStack extends cdk.Stack {
       // Mandatory Family Vault Code attribute for customer isolation
       customAttributes: {
         'familyId': new cognito.StringAttribute({ mutable: true }),
+        'isAdmin': new cognito.StringAttribute({ mutable: true }),
+        'isApproved': new cognito.StringAttribute({ mutable: true }),
       },
       passwordPolicy: {
         minLength: 8,
@@ -125,6 +127,12 @@ export class AuthStack extends cdk.Stack {
 
     this.customerWebClient = this.customerUserPool.addClient('CustomerWebClient', {
       userPoolClientName: 'Alexandria-Scroll-Viewer-Client',
+      readAttributes: new cognito.ClientAttributes()
+        .withStandardAttributes({ email: true })
+        .withCustomAttributes('familyId', 'isAdmin', 'isApproved'),
+      writeAttributes: new cognito.ClientAttributes()
+        .withStandardAttributes({ email: true })
+        .withCustomAttributes('familyId'),
       authFlows: {
         userPassword: true,
         userSrp: true,
@@ -133,6 +141,12 @@ export class AuthStack extends cdk.Stack {
 
     this.customerAndroidClient = this.customerUserPool.addClient('CustomerAndroidClient', {
       userPoolClientName: 'Alexandria-Android-Client',
+      readAttributes: new cognito.ClientAttributes()
+        .withStandardAttributes({ email: true })
+        .withCustomAttributes('familyId', 'isAdmin', 'isApproved'),
+      writeAttributes: new cognito.ClientAttributes()
+        .withStandardAttributes({ email: true })
+        .withCustomAttributes('familyId'),
       authFlows: {
         userPassword: true,
         userSrp: true,

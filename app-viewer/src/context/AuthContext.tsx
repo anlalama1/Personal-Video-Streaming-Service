@@ -10,6 +10,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Amplify } from 'aws-amplify';
 import { getCurrentUser, fetchAuthSession, signIn, signUp, confirmSignUp, signOut, type AuthUser } from 'aws-amplify/auth';
+import api from '../api';
 
 const USER_POOL_ID = import.meta.env.VITE_USER_POOL_ID;
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
@@ -34,6 +35,8 @@ if (USER_POOL_ID && APP_CLIENT_ID) {
 export interface UserProfile {
   email: string | null;
   familyId: string | null;
+  isAdmin: boolean;
+  isApproved: boolean;
 }
 
 interface AuthContextType {
@@ -51,7 +54,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile>({ email: null, familyId: null });
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    email: null,
+    familyId: null,
+    isAdmin: false,
+    isApproved: false
+  });
   const [loading, setLoading] = useState(true);
 
   /**
@@ -62,15 +70,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = await getCurrentUser();
       setUser(currentUser);
 
-      const session = await fetchAuthSession();
-      const payload = session.tokens?.idToken?.payload;
+      let session = await fetchAuthSession();
+      let payload = session.tokens?.idToken?.payload;
       const email = (payload?.email as string) || (currentUser.signInDetails?.loginId as string) || currentUser.username;
       const familyId = (payload?.['custom:familyId'] as string) || null;
 
-      setUserProfile({ email, familyId });
+      if (familyId) {
+        try {
+          await api.post('vault/members');
+          session = await fetchAuthSession({ forceRefresh: true });
+          payload = session.tokens?.idToken?.payload;
+        } catch (registrationError) {
+          console.error('Failed to initialize family vault membership:', registrationError);
+        }
+      }
+
+      setUserProfile({
+        email: (payload?.email as string) || email,
+        familyId,
+        isAdmin: payload?.['custom:isAdmin'] === 'true',
+        isApproved: payload?.['custom:isApproved'] === 'true'
+      });
     } catch (err) {
       setUser(null);
-      setUserProfile({ email: null, familyId: null });
+      setUserProfile({ email: null, familyId: null, isAdmin: false, isApproved: false });
     } finally {
       setLoading(false);
     }
@@ -109,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleSignOut = async () => {
     await signOut();
     setUser(null);
-    setUserProfile({ email: null, familyId: null });
+    setUserProfile({ email: null, familyId: null, isAdmin: false, isApproved: false });
   };
 
   return (

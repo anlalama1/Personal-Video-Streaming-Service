@@ -14,9 +14,9 @@ import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
-import retrofit2.http.Header
 import retrofit2.http.Path
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -131,12 +131,48 @@ data class CompleteUploadResponse(
     val message: String
 )
 
+@Serializable
+data class VaultMemberDto(
+    val username: String,
+    val email: String = "",
+    val isAdmin: Boolean = false,
+    val isApproved: Boolean = false,
+    val isCurrentUser: Boolean = false,
+    val enabled: Boolean = true,
+    val status: String = ""
+)
+
+@Serializable
+data class VaultMemberActionRequest(
+    val username: String
+)
+
+@Serializable
+data class VaultActionResponse(
+    val success: Boolean = false,
+    val isAdmin: Boolean = false,
+    val isApproved: Boolean = false,
+    val message: String = ""
+)
+
+@Serializable
+data class VaultVideoMetadataRequest(
+    val title: String,
+    val genre: String,
+    val releaseYear: String,
+    val description: String,
+    val tags: List<String>
+)
+
 /**
  * Retrofit Interface definition for Scribe API endpoints.
  */
 interface StreamingApiService {
     @GET("catalog")
     suspend fun getCatalog(): List<MediaItemDto>
+
+    @GET("catalog?adminView=true")
+    suspend fun getVaultCatalog(): List<MediaItemDto>
 
     @GET("catalog?reviewQueue=true")
     suspend fun getReviewQueue(): List<MediaItemDto>
@@ -149,6 +185,39 @@ interface StreamingApiService {
 
     @POST("catalog/publish")
     suspend fun publishVideo(@Body request: PublishVideoRequest)
+
+    @GET("vault/members")
+    suspend fun getVaultMembers(): List<VaultMemberDto>
+
+    @POST("vault/members")
+    suspend fun registerVaultMember(): VaultActionResponse
+
+    @POST("vault/members/approve")
+    suspend fun approveVaultMember(@Body request: VaultMemberActionRequest): VaultActionResponse
+
+    @POST("vault/members/promote")
+    suspend fun promoteVaultMember(@Body request: VaultMemberActionRequest): VaultActionResponse
+
+    @POST("vault/members/demote")
+    suspend fun demoteVaultMember(@Body request: VaultMemberActionRequest): VaultActionResponse
+
+    @POST("vault/members/ban")
+    suspend fun banVaultMember(@Body request: VaultMemberActionRequest): VaultActionResponse
+
+    @POST("vault/members/reject")
+    suspend fun rejectVaultMember(@Body request: VaultMemberActionRequest): VaultActionResponse
+
+    @PUT("vault/videos/{videoId}")
+    suspend fun updateVaultVideo(
+        @Path("videoId") videoId: String,
+        @Body request: VaultVideoMetadataRequest
+    ): VaultActionResponse
+
+    @DELETE("catalog/{videoId}/{familyId}")
+    suspend fun deleteVaultVideo(
+        @Path("videoId") videoId: String,
+        @Path("familyId") familyId: String
+    ): VaultActionResponse
 
     @GET("genres")
     suspend fun getGenres(): List<GenreDto>

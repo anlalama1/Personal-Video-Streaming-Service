@@ -4,12 +4,16 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amplifyframework.auth.AuthUserAttributeKey
+import com.amplifyframework.auth.options.AuthFetchSessionOptions
 import com.amplifyframework.auth.options.AuthSignUpOptions
 import com.amplifyframework.core.Amplify
+import com.portfolio.videostreaming.core.data.network.StreamingApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Sealed class representing discrete Auth Lifecycle States.
@@ -40,6 +44,12 @@ class AuthViewModel : ViewModel() {
     private val _familyId = MutableStateFlow<String?>(null)
     val familyId = _familyId.asStateFlow()
 
+    private val _isAdmin = MutableStateFlow(false)
+    val isAdmin = _isAdmin.asStateFlow()
+
+    private val _isApproved = MutableStateFlow(false)
+    val isApproved = _isApproved.asStateFlow()
+
     init {
         checkSession()
     }
@@ -67,13 +77,31 @@ class AuthViewModel : ViewModel() {
     /**
      * Fetches authenticated user email and family vault partition code from Cognito User Pool attributes.
      */
-    private fun fetchUserAttributes() {
+    private fun fetchUserAttributes(registerMembership: Boolean = true) {
         Amplify.Auth.fetchUserAttributes(
             { attributes ->
                 val email = attributes.find { it.key == AuthUserAttributeKey.email() }?.value
                 val famId = attributes.find { it.key.keyString == "custom:familyId" }?.value
                 _userEmail.value = email
                 _familyId.value = famId
+                _isAdmin.value = attributes.find { it.key.keyString == "custom:isAdmin" }?.value == "true"
+                _isApproved.value = attributes.find { it.key.keyString == "custom:isApproved" }?.value == "true"
+                if (registerMembership && !famId.isNullOrBlank()) {
+                    viewModelScope.launch {
+                        try {
+                            withContext(Dispatchers.IO) {
+                                StreamingApi.service.registerVaultMember()
+                            }
+                            Amplify.Auth.fetchAuthSession(
+                                AuthFetchSessionOptions.builder().forceRefresh(true).build(),
+                                { fetchUserAttributes(registerMembership = false) },
+                                { error -> Log.e("AuthVM", "Failed to refresh vault membership claims", error) }
+                            )
+                        } catch (error: Exception) {
+                            Log.e("AuthVM", "Failed to initialize family vault membership", error)
+                        }
+                    }
+                }
             },
             { error -> Log.e("AuthVM", "Failed to fetch attributes", error) }
         )
@@ -111,7 +139,7 @@ class AuthViewModel : ViewModel() {
             .build()
 
         Amplify.Auth.signUp(email, pword, options,
-            { result ->
+            { _ ->
                 _authState.value = AuthState.NeedsVerification
             },
             { error ->
@@ -127,7 +155,7 @@ class AuthViewModel : ViewModel() {
     fun confirmSignUp(email: String, code: String, password: String? = null) {
         _authState.value = AuthState.Loading
         Amplify.Auth.confirmSignUp(email, code,
-            { result ->
+            { _ ->
                 if (!password.isNullOrBlank()) {
                     signIn(email, password)
                 } else {
@@ -148,6 +176,8 @@ class AuthViewModel : ViewModel() {
             _authState.value = AuthState.SignedOut
             _userEmail.value = null
             _familyId.value = null
+            _isAdmin.value = false
+            _isApproved.value = false
         }
     }
 }

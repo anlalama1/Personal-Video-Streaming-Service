@@ -14,6 +14,14 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } = require("@aws-sdk/client-s3");
+const {
+    CognitoIdentityProviderClient,
+    AdminGetUserCommand,
+    AdminUpdateUserAttributesCommand,
+    AdminDisableUserCommand,
+    AdminUserGlobalSignOutCommand,
+    ListUsersCommand
+} = require("@aws-sdk/client-cognito-identity-provider");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 // Initialize AWS SDK v3 Clients outside the handler for TCP connection reuse across warm Lambda invocations.
@@ -21,6 +29,7 @@ const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({});
 const lambdaClient = new LambdaClient({});
+const cognitoClient = new CognitoIdentityProviderClient({});
 
 /**
  * Standardized HTTP response helper with cross-origin CORS headers enabled.
@@ -79,6 +88,22 @@ exports.handler = async (event) => {
             return await handleDeleteVideo(event, tenantId);
         } else if (path === '/catalog/{videoId}/{familyId}/reject' && method === 'DELETE') {
             return await handleRejectReviewItem(event, tenantId, claims);
+        } else if (path === '/vault/members' && method === 'GET') {
+            return await handleListVaultMembers(claims);
+        } else if (path === '/vault/members' && method === 'POST') {
+            return await handleRegisterVaultMember(claims);
+        } else if (path === '/vault/members/approve' && method === 'POST') {
+            return await handleManageVaultMember(event, claims, 'approve');
+        } else if (path === '/vault/members/promote' && method === 'POST') {
+            return await handleManageVaultMember(event, claims, 'promote');
+        } else if (path === '/vault/members/demote' && method === 'POST') {
+            return await handleManageVaultMember(event, claims, 'demote');
+        } else if (path === '/vault/members/ban' && method === 'POST') {
+            return await handleManageVaultMember(event, claims, 'ban');
+        } else if (path === '/vault/members/reject' && method === 'POST') {
+            return await handleManageVaultMember(event, claims, 'reject');
+        } else if (path === '/vault/videos/{videoId}' && method === 'PUT') {
+            return await handleUpdateVaultVideo(event, tenantId, claims);
         }
 
         return response(404, { message: "Not Found" });
@@ -99,6 +124,20 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
     const isReviewQueue = queryParams.reviewQueue === 'true';
     const jwtFamilyId = claims['custom:familyId'];
     const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
+    const isVaultAdmin = claims['custom:isAdmin'] === 'true';
+    const trustedFamilyId = isShopAdmin ? null : await getTrustedFamilyId(claims);
+
+    if (isAdminView && !isShopAdmin && !isVaultAdmin) {
+        return response(403, { error: "Administrator privileges are required for the full vault management view." });
+    }
+
+    if (!isShopAdmin && (
+        (!isVaultAdmin && claims['custom:isApproved'] !== 'true') ||
+        !trustedFamilyId ||
+        trustedFamilyId !== claims['custom:familyId']
+    )) {
+        return response(403, { error: "Family vault membership is awaiting administrator approval." });
+    }
 
     if (isReviewQueue && !isShopAdmin && !jwtFamilyId) {
         return response(403, { error: "A family vault claim is required to view the review queue" });
@@ -121,7 +160,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
 
     // Query DynamoDB Single-Table Design using Partition Key (PK) & Sort Key (SK) range query
     let items;
-    if ((!isAdminView || isReviewQueue) && jwtFamilyId) {
+    if (((!isAdminView || isReviewQueue) && jwtFamilyId) || (isAdminView && isVaultAdmin && !isShopAdmin)) {
         const queryFamily = async (requestedFamilyId) => {
             const result = await docClient.send(new QueryCommand({
                 TableName: tableName,
@@ -136,7 +175,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
         };
 
         items = await queryFamily(jwtFamilyId);
-        if (!isReviewQueue && jwtFamilyId !== 'PUBLIC') {
+        if (!isReviewQueue && !isAdminView && jwtFamilyId !== 'PUBLIC') {
             items = [...items, ...await queryFamily('PUBLIC')];
         }
     } else {
@@ -228,6 +267,8 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
  * Creates initial metadata record in DynamoDB when a shop operator initiates media upload.
  */
 async function handleIngest(event, tenantId) {
+    const accessDenied = await requireApprovedFamilyAccess(event);
+    if (accessDenied) return accessDenied;
     const body = JSON.parse(event.body || "{}");
     const { videoId, title, genre, releaseYear, familyId, videoFileName, useAi = false, status } = body;
 
@@ -237,7 +278,8 @@ async function handleIngest(event, tenantId) {
     const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
 
     // Enforce cryptographic tenancy containment for customer accounts
-    const targetFamilyId = (!isShopAdmin && jwtFamilyId) ? jwtFamilyId : (familyId || 'PUBLIC');
+    const targetFamilyId = (!isShopAdmin && jwtFamilyId) ? await getTrustedFamilyId(claims) : (familyId || 'PUBLIC');
+    if (!targetFamilyId) return response(403, { error: "Family vault membership could not be verified." });
 
     // Default status: If useAi is false (default Manual Mode), set status directly to REVIEW_PENDING.
     // If useAi is true, set status to UPLOADING so Fargate Bedrock task runs upon S3 upload completion.
@@ -271,7 +313,11 @@ async function handleIngest(event, tenantId) {
  * Initiates an S3 Resumable Multipart Upload pass.
  */
 async function handleStartMultipart(event, tenantId) {
+    const accessDenied = await requireApprovedFamilyAccess(event);
+    if (accessDenied) return accessDenied;
     const { key, contentType } = JSON.parse(event.body);
+    const keyDenied = requireUploadKeyAccess(event, key);
+    if (keyDenied) return keyDenied;
     const res = await s3Client.send(new CreateMultipartUploadCommand({
         Bucket: process.env.MEDIA_BUCKET,
         Key: key,
@@ -284,7 +330,11 @@ async function handleStartMultipart(event, tenantId) {
  * Generates an S3 Pre-Signed URL for uploading an individual 10MB chunk.
  */
 async function handleGetPartUrl(event, tenantId) {
+    const accessDenied = await requireApprovedFamilyAccess(event);
+    if (accessDenied) return accessDenied;
     const { key, uploadId, partNumber, totalParts } = JSON.parse(event.body);
+    const keyDenied = requireUploadKeyAccess(event, key);
+    if (keyDenied) return keyDenied;
     console.log(`INGESTION: Part ${partNumber}/${totalParts || '?'} | Key=${key}`);
 
     const url = await getSignedUrl(s3Client, new UploadPartCommand({
@@ -301,7 +351,11 @@ async function handleGetPartUrl(event, tenantId) {
  * Finalizes an S3 Multipart Upload and normalizes ETag quotes.
  */
 async function handleCompleteMultipart(event, tenantId) {
+    const accessDenied = await requireApprovedFamilyAccess(event);
+    if (accessDenied) return accessDenied;
     const { key, uploadId, parts } = JSON.parse(event.body);
+    const keyDenied = requireUploadKeyAccess(event, key);
+    if (keyDenied) return keyDenied;
 
     const normalizedParts = parts.map(part => ({
         ETag: part.ETag.startsWith('"') ? part.ETag : `"${part.ETag}"`,
@@ -324,6 +378,8 @@ async function handleCompleteMultipart(event, tenantId) {
  * Marks an unsuccessful upload as failed and aborts any unfinished S3 multipart upload.
  */
 async function handleFailMultipart(event, tenantId) {
+    const accessDenied = await requireApprovedFamilyAccess(event);
+    if (accessDenied) return accessDenied;
     const { videoId, familyId, key, uploadId } = JSON.parse(event.body || "{}");
     const claims = ((event.requestContext || {}).authorizer || {}).claims || {};
     const jwtFamilyId = claims['custom:familyId'];
@@ -336,7 +392,8 @@ async function handleFailMultipart(event, tenantId) {
         return response(403, { error: "A family vault claim is required" });
     }
 
-    const targetFamilyId = isShopAdmin ? familyId : jwtFamilyId;
+    const targetFamilyId = isShopAdmin ? familyId : await getTrustedFamilyId(claims);
+    if (!targetFamilyId) return response(403, { error: "Family vault membership could not be verified." });
     if (key && !key.startsWith(`${targetFamilyId}/`)) {
         return response(400, { error: "Upload key does not belong to the target family vault" });
     }
@@ -381,6 +438,19 @@ async function handleFailMultipart(event, tenantId) {
 async function handlePublishVideo(event, tenantId) {
     const body = JSON.parse(event.body || "{}");
     const { videoId, familyId, oldFamilyId, title, genre, releaseYear, description, tags, videoKey } = body;
+    const claims = event.requestContext?.authorizer?.claims || {};
+    const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
+    const jwtFamilyId = claims['custom:familyId'];
+    const trustedFamilyId = isShopAdmin ? null : await getTrustedFamilyId(claims);
+    if (!isShopAdmin && (
+        claims['custom:isApproved'] !== 'true' ||
+        !trustedFamilyId ||
+        trustedFamilyId !== jwtFamilyId ||
+        familyId !== jwtFamilyId ||
+        (oldFamilyId && oldFamilyId !== jwtFamilyId)
+    )) {
+        return response(403, { error: "Approved family membership is required to publish within your own vault." });
+    }
     const tableName = process.env.TABLE_NAME;
 
     if (!videoId || !familyId || !videoKey || !title) {
@@ -461,6 +531,15 @@ async function handlePublishVideo(event, tenantId) {
 async function handleDeleteVideo(event, tenantId) {
     const { videoId, familyId } = event.pathParameters;
     const tableName = process.env.TABLE_NAME;
+    const claims = event.requestContext?.authorizer?.claims || {};
+    const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
+    if (!isShopAdmin && (
+        claims['custom:isAdmin'] !== 'true' ||
+        claims['custom:familyId'] !== familyId ||
+        await getTrustedFamilyId(claims) !== familyId
+    )) {
+        return response(403, { error: "Only a family vault administrator can delete videos in that vault." });
+    }
 
     console.log(`DELETE: Soft-deleting ${videoId} for Tenant ${tenantId}`);
 
@@ -486,7 +565,11 @@ async function handleRejectReviewItem(event, tenantId, claims) {
     const jwtFamilyId = claims['custom:familyId'];
     const isShopAdmin = claims['custom:role'] === 'ShopAdmin';
 
-    if (!isShopAdmin && jwtFamilyId !== familyId) {
+    if (!isShopAdmin && (
+        claims['custom:isApproved'] !== 'true' ||
+        jwtFamilyId !== familyId ||
+        await getTrustedFamilyId(claims) !== familyId
+    )) {
         return response(403, { error: "You can only reject videos in your family vault." });
     }
 
@@ -510,6 +593,471 @@ async function handleRejectReviewItem(event, tenantId, claims) {
     }
 
     return response(200, { success: true, message: "Review item rejected and removed." });
+}
+
+async function getTrustedFamilyId(claims) {
+    const familyId = claims['custom:familyId'];
+    if (!claims.sub || !/^[A-Za-z0-9_-]{1,64}$/.test(familyId || '')) {
+        return null;
+    }
+    const member = await getMemberRecord(claims.sub);
+    if (
+        member?.familyId !== familyId ||
+        member.accessDisabled === true ||
+        (!member.isApproved && !member.isAdmin) ||
+        (claims['custom:isAdmin'] === 'true' && member.isAdmin !== true) ||
+        (claims['custom:isApproved'] === 'true' && member.isApproved !== true && member.isAdmin !== true)
+    ) {
+        return null;
+    }
+    return familyId;
+}
+
+async function ensureVaultMemberRecord(sub, familyId) {
+    const key = { PK: `VAULT_MEMBER#${sub}`, SK: 'IDENTITY' };
+    try {
+        await docClient.send(new PutCommand({
+            TableName: process.env.TABLE_NAME,
+            Item: {
+                ...key,
+                familyId,
+                isAdmin: false,
+                isApproved: false,
+                accessDisabled: false,
+                createdAt: Date.now()
+            },
+            ConditionExpression: 'attribute_not_exists(PK)'
+        }));
+        return true;
+    } catch (error) {
+        if (error.name !== 'ConditionalCheckFailedException') {
+            throw error;
+        }
+        const result = await docClient.send(new GetCommand({
+            TableName: process.env.TABLE_NAME,
+            Key: key,
+            ConsistentRead: true,
+            ProjectionExpression: 'familyId'
+        }));
+        return result.Item?.familyId === familyId;
+    }
+}
+
+async function getMemberRecord(sub) {
+    const result = await docClient.send(new GetCommand({
+        TableName: process.env.TABLE_NAME,
+        Key: { PK: `VAULT_MEMBER#${sub}`, SK: 'IDENTITY' },
+        ConsistentRead: true
+    }));
+    return result.Item || null;
+}
+
+async function setVaultMemberState(sub, familyId, isAdmin, isApproved, accessDisabled = false) {
+    await docClient.send(new UpdateCommand({
+        TableName: process.env.TABLE_NAME,
+        Key: { PK: `VAULT_MEMBER#${sub}`, SK: 'IDENTITY' },
+        UpdateExpression: 'SET isAdmin = :isAdmin, isApproved = :isApproved, accessDisabled = :accessDisabled',
+        ConditionExpression: 'familyId = :familyId',
+        ExpressionAttributeValues: {
+            ':isAdmin': isAdmin,
+            ':isApproved': isApproved,
+            ':accessDisabled': accessDisabled,
+            ':familyId': familyId
+        }
+    }));
+}
+
+async function getMemberFamilyId(sub) {
+    return (await getMemberRecord(sub))?.familyId || null;
+}
+
+async function requireVaultAdmin(claims) {
+    if (
+        claims['custom:isAdmin'] !== 'true' ||
+        !claims['cognito:username']
+    ) {
+        return null;
+    }
+    return getTrustedFamilyId(claims);
+}
+
+async function requireApprovedFamilyAccess(event) {
+    const claims = event.requestContext?.authorizer?.claims || {};
+    if (claims['custom:role'] === 'ShopAdmin') {
+        return null;
+    }
+    const trustedFamilyId = await getTrustedFamilyId(claims);
+    if (
+        trustedFamilyId &&
+        trustedFamilyId === claims['custom:familyId'] &&
+        (claims['custom:isAdmin'] === 'true' || claims['custom:isApproved'] === 'true')
+    ) return null;
+    return response(403, { error: "Family vault membership is awaiting administrator approval." });
+}
+
+function requireUploadKeyAccess(event, key) {
+    const claims = event.requestContext?.authorizer?.claims || {};
+    if (claims['custom:role'] === 'ShopAdmin') {
+        return null;
+    }
+    const familyId = claims['custom:familyId'];
+    if (!familyId || !key || !key.startsWith(`${familyId}/`)) {
+        return response(403, { error: "Upload key must belong to your family vault." });
+    }
+    return null;
+}
+
+function getAttribute(user, name) {
+    return user.UserAttributes?.find(attribute => attribute.Name === name)?.Value;
+}
+
+async function getVaultUser(username, familyId) {
+    let user;
+    try {
+        user = await cognitoClient.send(new AdminGetUserCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Username: username
+        }));
+    } catch (error) {
+        if (error.name === 'UserNotFoundException') {
+            return null;
+        }
+        throw error;
+    }
+    if (getAttribute(user, 'custom:familyId') !== familyId) {
+        return null;
+    }
+    return user;
+}
+
+async function handleRegisterVaultMember(claims) {
+    const familyId = claims['custom:familyId'];
+    const username = claims['cognito:username'];
+    const sub = claims.sub;
+    if (!familyId || !/^[A-Za-z0-9_-]{1,64}$/.test(familyId) || !username || !sub) {
+        return response(403, { error: "A verified family vault identity is required." });
+    }
+
+    const existingUser = await getVaultUser(username, familyId);
+    if (!existingUser) {
+        return response(403, { error: "This account is not registered in the claimed family vault." });
+    }
+    if (!await ensureVaultMemberRecord(sub, familyId)) {
+        return response(403, { error: "This account is already bound to a different family vault." });
+    }
+    const memberRecord = await getMemberRecord(sub);
+    if (memberRecord?.accessDisabled === true) {
+        return response(403, { error: "This family vault membership has been disabled." });
+    }
+
+    const tableName = process.env.TABLE_NAME;
+    const bootstrapKey = {
+        PK: `VAULT#${familyId}`,
+        SK: 'GOVERNANCE#BOOTSTRAP'
+    };
+    let isBootstrapAdmin = false;
+    try {
+        await docClient.send(new PutCommand({
+            TableName: tableName,
+            Item: { ...bootstrapKey, bootstrapSub: sub, createdAt: Date.now() },
+            ConditionExpression: 'attribute_not_exists(PK)'
+        }));
+        isBootstrapAdmin = true;
+    } catch (error) {
+        if (error.name !== 'ConditionalCheckFailedException') {
+            throw error;
+        }
+        const bootstrap = await docClient.send(new GetCommand({
+            TableName: tableName,
+            Key: bootstrapKey,
+            ConsistentRead: true
+        }));
+        isBootstrapAdmin = bootstrap.Item?.bootstrapSub === sub;
+    }
+
+    const updates = {};
+    if (isBootstrapAdmin) {
+        updates['custom:isAdmin'] = 'true';
+        updates['custom:isApproved'] = 'true';
+    } else {
+        if (getAttribute(existingUser, 'custom:isAdmin') !== 'true') {
+            updates['custom:isAdmin'] = 'false';
+        }
+        if (getAttribute(existingUser, 'custom:isApproved') !== 'true') {
+            updates['custom:isApproved'] = 'false';
+        }
+    }
+
+    try {
+        if (Object.keys(updates).length) {
+            await cognitoClient.send(new AdminUpdateUserAttributesCommand({
+                UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+                Username: username,
+                UserAttributes: Object.entries(updates).map(([Name, Value]) => ({ Name, Value }))
+            }));
+        }
+        const isAdmin = isBootstrapAdmin || getAttribute(existingUser, 'custom:isAdmin') === 'true';
+        const isApproved = isBootstrapAdmin || getAttribute(existingUser, 'custom:isApproved') === 'true';
+        await setVaultMemberState(sub, familyId, isAdmin, isApproved, memberRecord?.accessDisabled === true);
+    } catch (error) {
+        if (isBootstrapAdmin) {
+            try {
+                await docClient.send(new DeleteCommand({
+                    TableName: tableName,
+                    Key: bootstrapKey,
+                    ConditionExpression: 'bootstrapSub = :sub',
+                    ExpressionAttributeValues: { ':sub': sub }
+                }));
+            } catch (cleanupError) {
+                console.error('Failed to release vault bootstrap claim after Cognito update error', cleanupError);
+            }
+        }
+        throw error;
+    }
+
+    return response(200, {
+        success: true,
+        isAdmin: isBootstrapAdmin || getAttribute(existingUser, 'custom:isAdmin') === 'true',
+        isApproved: isBootstrapAdmin || getAttribute(existingUser, 'custom:isApproved') === 'true',
+        message: isBootstrapAdmin
+            ? "This account is the first administrator for the family vault."
+            : "Family vault membership is awaiting administrator approval."
+    });
+}
+
+async function handleListVaultMembers(claims) {
+    const familyId = await requireVaultAdmin(claims);
+    if (!familyId) {
+        return response(403, { error: "Vault administrator privileges are required." });
+    }
+
+    const users = [];
+    let paginationToken;
+    do {
+        const page = await cognitoClient.send(new ListUsersCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Filter: `custom:familyId = "${familyId.replace(/["\\]/g, '\\$&')}"`,
+            PaginationToken: paginationToken,
+            Limit: 60
+        }));
+        for (const user of page.Users || []) {
+            const attributes = Object.fromEntries((user.Attributes || []).map(attribute => [attribute.Name, attribute.Value]));
+            const memberRecord = attributes.sub ? await getMemberRecord(attributes.sub) : null;
+            if (attributes['custom:familyId'] === familyId && (!memberRecord || memberRecord.familyId === familyId)) {
+                users.push({
+                    username: user.Username,
+                    email: attributes.email || '',
+                    isCurrentUser: user.Username === claims['cognito:username'],
+                    isAdmin: memberRecord?.isAdmin === true,
+                    isApproved: memberRecord?.isApproved === true,
+                    enabled: user.Enabled !== false,
+                    status: user.UserStatus || 'UNKNOWN'
+                });
+            }
+        }
+        paginationToken = page.PaginationToken;
+    } while (paginationToken);
+
+    return response(200, users);
+}
+
+async function handleManageVaultMember(event, claims, action) {
+    const familyId = await requireVaultAdmin(claims);
+    if (!familyId) {
+        return response(403, { error: "Vault administrator privileges are required." });
+    }
+    const { username } = JSON.parse(event.body || '{}');
+    if (!username || username === claims['cognito:username']) {
+        return response(400, { error: "A different family member username is required." });
+    }
+
+    const user = await getVaultUser(username, familyId);
+    if (!user) {
+        return response(404, { error: "The requested account is not a member of your family vault." });
+    }
+
+    const attributes = Object.fromEntries((user.UserAttributes || []).map(attribute => [attribute.Name, attribute.Value]));
+    if (!attributes.sub || !await ensureVaultMemberRecord(attributes.sub, familyId)) {
+        return response(403, { error: "The requested account is bound to a different family vault." });
+    }
+    const isTargetAdmin = attributes['custom:isAdmin'] === 'true';
+    let adminLockHeld = false;
+    if ((action === 'ban' || action === 'demote') && isTargetAdmin) {
+        adminLockHeld = await acquireLastAdminGuard(familyId, claims.sub);
+        if (!adminLockHeld) {
+            return response(409, { error: "The last active vault administrator cannot be demoted or banned, or another administrator change is in progress." });
+        }
+    }
+
+    try {
+    if (action === 'ban' || action === 'reject') {
+        if (action === 'reject' && attributes['custom:isApproved'] === 'true') {
+            return response(409, { error: "Only pending membership requests can be rejected." });
+        }
+        await setVaultMemberState(attributes.sub, familyId, false, false, true);
+        await cognitoClient.send(new AdminUpdateUserAttributesCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Username: username,
+            UserAttributes: [{ Name: 'custom:isApproved', Value: 'false' }]
+        }));
+        await cognitoClient.send(new AdminUserGlobalSignOutCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Username: username
+        }));
+        await cognitoClient.send(new AdminDisableUserCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Username: username
+        }));
+        return response(200, {
+            success: true,
+            message: action === 'reject'
+                ? "Family membership request rejected."
+                : "Family member access has been disabled."
+        });
+    }
+
+    if (action === 'demote') {
+        if (!isTargetAdmin) {
+            return response(409, { error: "The selected member is not a vault administrator." });
+        }
+        await setVaultMemberState(attributes.sub, familyId, false, attributes['custom:isApproved'] === 'true');
+        await cognitoClient.send(new AdminUpdateUserAttributesCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Username: username,
+            UserAttributes: [{ Name: 'custom:isAdmin', Value: 'false' }]
+        }));
+        return response(200, { success: true, message: "Member administrator privileges removed." });
+    }
+
+    const updates = action === 'promote'
+        ? [{ Name: 'custom:isAdmin', Value: 'true' }, { Name: 'custom:isApproved', Value: 'true' }]
+        : [{ Name: 'custom:isApproved', Value: 'true' }];
+    await cognitoClient.send(new AdminUpdateUserAttributesCommand({
+        UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+        Username: username,
+        UserAttributes: updates
+    }));
+    await setVaultMemberState(
+        attributes.sub,
+        familyId,
+        action === 'promote' || isTargetAdmin,
+        true
+    );
+    return response(200, {
+        success: true,
+        message: action === 'promote'
+            ? "Member promoted to vault administrator."
+            : "Family member access approved."
+    });
+    } finally {
+        if (adminLockHeld) {
+            try {
+                await releaseAdminMutationLock(familyId, claims.sub);
+            } catch (error) {
+                console.error("Failed to release family administrator mutation lock", error);
+            }
+        }
+    }
+}
+
+async function acquireLastAdminGuard(familyId, lockOwner) {
+    const lockKey = { PK: `VAULT#${familyId}`, SK: 'GOVERNANCE#ADMIN_MUTATION_LOCK' };
+    const now = Date.now();
+    try {
+        await docClient.send(new PutCommand({
+            TableName: process.env.TABLE_NAME,
+            Item: { ...lockKey, lockOwner, lockExpires: now + 120000 },
+            ConditionExpression: 'attribute_not_exists(PK) OR lockExpires < :now',
+            ExpressionAttributeValues: { ':now': now }
+        }));
+    } catch (error) {
+        if (error.name === 'ConditionalCheckFailedException') {
+            return false;
+        }
+        throw error;
+    }
+
+    try {
+        if (await countActiveVaultAdmins(familyId) <= 1) {
+            await releaseAdminMutationLock(familyId, lockOwner);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        await releaseAdminMutationLock(familyId, lockOwner);
+        throw error;
+    }
+}
+
+async function countActiveVaultAdmins(familyId) {
+    let count = 0;
+    let paginationToken;
+    do {
+        const page = await cognitoClient.send(new ListUsersCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Filter: `custom:familyId = "${familyId}"`,
+            PaginationToken: paginationToken,
+            Limit: 60
+        }));
+        for (const user of page.Users || []) {
+            const attributes = Object.fromEntries((user.Attributes || []).map(attribute => [attribute.Name, attribute.Value]));
+            if (user.Enabled === false || attributes['custom:familyId'] !== familyId || !attributes.sub) continue;
+            const member = await getMemberRecord(attributes.sub);
+            if (member?.familyId === familyId && member.isAdmin === true && member.accessDisabled !== true) count++;
+        }
+        paginationToken = page.PaginationToken;
+    } while (paginationToken);
+    return count;
+}
+
+async function releaseAdminMutationLock(familyId, lockOwner) {
+    await docClient.send(new DeleteCommand({
+        TableName: process.env.TABLE_NAME,
+        Key: { PK: `VAULT#${familyId}`, SK: 'GOVERNANCE#ADMIN_MUTATION_LOCK' },
+        ConditionExpression: 'lockOwner = :owner',
+        ExpressionAttributeValues: { ':owner': lockOwner }
+    }));
+}
+
+async function handleUpdateVaultVideo(event, tenantId, claims) {
+    const { videoId } = event.pathParameters;
+    const familyId = await requireVaultAdmin(claims);
+    if (!familyId) {
+        return response(403, { error: "Vault administrator privileges are required." });
+    }
+
+    const body = JSON.parse(event.body || '{}');
+    const { title, genre, releaseYear, description = '', tags = [] } = body;
+    if (!title || !genre || !releaseYear || !Array.isArray(tags)) {
+        return response(400, { error: "title, genre, releaseYear, and a tags array are required." });
+    }
+
+    try {
+        await docClient.send(new UpdateCommand({
+            TableName: process.env.TABLE_NAME,
+            Key: {
+                PK: `TENANT#${tenantId}`,
+                SK: `FAMILY#${familyId}#VIDEO#${videoId}`
+            },
+            UpdateExpression: 'SET title = :title, genre = :genre, releaseYear = :year, description = :description, tags = :tags, lastUpdated = :updated',
+            ConditionExpression: 'attribute_exists(PK) AND (attribute_not_exists(transcodeStatus) OR transcodeStatus <> :deleted)',
+            ExpressionAttributeValues: {
+                ':title': title,
+                ':genre': genre,
+                ':year': String(releaseYear),
+                ':description': description,
+                ':tags': tags,
+                ':updated': Date.now(),
+                ':deleted': 'DELETED'
+            }
+        }));
+    } catch (error) {
+        if (error.name === 'ConditionalCheckFailedException') {
+            return response(404, { error: "The video was not found in your family vault." });
+        }
+        throw error;
+    }
+    return response(200, { success: true, message: "Video metadata updated." });
 }
 
 /**

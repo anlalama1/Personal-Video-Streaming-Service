@@ -13,6 +13,7 @@ import PlayerPage from './pages/PlayerPage';
 import MediaDetails from './pages/MediaDetails';
 import ConsumerUpload from './pages/ConsumerUpload';
 import Auth from './pages/Auth';
+import VaultAdmin from './pages/VaultAdmin';
 import Navbar from './components/AppNavbar';
 import UploadDrawer from './components/UploadDrawer';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -34,7 +35,7 @@ function App() {
  * App Content Component enforcing authentication gates and layout wrappers.
  */
 const AppContent = () => {
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading, signOut } = useAuth();
 
   // Render initial loading pulse while checking Cognito session
   if (loading) {
@@ -46,6 +47,20 @@ const AppContent = () => {
     return <Auth />;
   }
 
+  if (!userProfile.familyId || (!userProfile.isApproved && !userProfile.isAdmin)) {
+    return (
+      <div className="min-h-screen bg-heritage-black text-heritage-parchment flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <h1 className="text-2xl font-black uppercase text-heritage-gold">Access Pending</h1>
+        <p className="max-w-md text-heritage-400">
+          {userProfile.familyId
+            ? 'A Family Vault administrator must approve your membership before you can view the catalog.'
+            : 'This account does not have a valid Family Vault assignment.'}
+        </p>
+        <button onClick={() => void signOut()} className="rounded-xl bg-heritage-gold px-5 py-3 font-black text-heritage-black">Sign Out</button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-heritage-black text-heritage-parchment selection:bg-heritage-gold selection:text-heritage-black">
       <Navbar />
@@ -54,6 +69,7 @@ const AppContent = () => {
         <Route path="/upload" element={<ConsumerUpload />} />
         <Route path="/details" element={<MediaDetails />} />
         <Route path="/player" element={<PlayerPage />} />
+        <Route path="/vault-admin" element={<VaultAdmin />} />
       </Routes>
       <UploadDrawer />
     </div>

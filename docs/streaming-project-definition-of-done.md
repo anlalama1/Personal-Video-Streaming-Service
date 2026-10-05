@@ -195,6 +195,13 @@ The project is **done** when all of the following are true:
 - [x] **Input Gating & Result Bounding**: Enforces $\ge$ 3-character query length gating and caps output to top 10 ranked matches.
 - [x] **Selection Navigation**: Selecting any search result card closes the overlay and redirects directly to the Title Preview / Details Page (`/details` on Web, `Screen.Details` on Android).
 
+### Milestone 41 — Family Vault Administrator Governance & RBAC
+- [x] **Cognito Governance Claims**: Added server-managed `custom:isAdmin` and `custom:isApproved` attributes; customer app clients can read, but cannot write, these authorization claims.
+- [x] **First-Member Bootstrap & Quarantine**: The first verified member is atomically established as the vault administrator; later members remain quarantined until approval.
+- [x] **Family-Scoped Member Administration**: Added member roster, approval/rejection, promotion, and ban APIs backed by immutable server-side family bindings; bans revoke sessions and immediately quarantine API access.
+- [x] **Catalog Authorization**: Pending users are denied catalog and upload access; family video deletion and metadata edits require same-vault administrator claims, including for full-catalog views.
+- [x] **Cross-Platform Governance Panels**: Added member auditing and access management plus video metadata editing and deletion in the Desktop Viewer and Android app.
+
 ### Milestone 38 — Venture Capital Pitch Package & Live Demo Harness
 - [ ] **10-Slide Investor Pitch Deck**: Slide-by-slide narrative script and visual layout specifications.
 - [ ] **Financial Model & Unit Economics Spreadsheet**: 3-year SaaS financial model (87% Gross Margins).

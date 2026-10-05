@@ -17,6 +17,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as route53 from 'aws-cdk-lib/aws-route53';
@@ -52,6 +53,7 @@ export class ApiStack extends cdk.Stack {
         CLOUDFRONT_DOMAIN: props.cdnDomain,
         MEDIA_BUCKET: props.mediaBucket.bucketName,
         ORCHESTRATOR_LAMBDA_ARN: props.orchestratorLambda ? props.orchestratorLambda.functionArn : '',
+        CUSTOMER_USER_POOL_ID: props.customerUserPool.userPoolId,
       },
     });
 
@@ -71,6 +73,16 @@ export class ApiStack extends cdk.Stack {
     props.table.grantReadWriteData(scribeLambda);
     props.table.grantReadData(this.logPlayLambda);
     props.mediaBucket.grantPut(scribeLambda);
+    scribeLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'cognito-idp:AdminGetUser',
+        'cognito-idp:AdminUpdateUserAttributes',
+        'cognito-idp:AdminDisableUser',
+        'cognito-idp:AdminUserGlobalSignOut',
+        'cognito-idp:ListUsers',
+      ],
+      resources: [props.customerUserPool.userPoolArn],
+    }));
     if (props.orchestratorLambda) {
       props.orchestratorLambda.grantInvoke(scribeLambda);
     }
@@ -126,9 +138,20 @@ export class ApiStack extends cdk.Stack {
 
     const videoResource = catalog.addResource('{videoId}');
     const familyResource = videoResource.addResource('{familyId}');
-    familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
     const rejectResource = familyResource.addResource('reject');
     rejectResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+
+    const vault = api.root.addResource('vault');
+    const members = vault.addResource('members');
+    members.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    members.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    for (const action of ['approve', 'promote', 'demote', 'ban', 'reject']) {
+      members.addResource(action).addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    }
+    const vaultVideos = vault.addResource('videos');
+    const vaultVideo = vaultVideos.addResource('{videoId}');
+    vaultVideo.addMethod('PUT', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
     const ingest = api.root.addResource('ingest');
     ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });

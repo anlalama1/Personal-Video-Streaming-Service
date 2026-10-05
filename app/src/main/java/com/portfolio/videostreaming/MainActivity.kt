@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Button
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +51,7 @@ import com.portfolio.videostreaming.ui.PlayerIntent
 import com.portfolio.videostreaming.ui.ScreenTimeViewModel
 import com.portfolio.videostreaming.ui.VideoPlayer
 import com.portfolio.videostreaming.ui.VideoPlayerViewModel
+import com.portfolio.videostreaming.ui.VaultAdminScreen
 import com.portfolio.videostreaming.ui.auth.AuthState
 import com.portfolio.videostreaming.ui.auth.AuthViewModel
 import com.portfolio.videostreaming.ui.auth.LoginScreen
@@ -76,6 +78,7 @@ sealed class Screen(val route: String) {
     object Signup : Screen("signup")
     object LocalPicker : Screen("local_picker")
     object FamilyReview : Screen("family_review")
+    object VaultAdmin : Screen("vault_admin")
     object Player : Screen("player/{videoId}/{videoUri}") {
         fun createRoute(videoId: String, videoUri: String): String {
             val encoded = URLEncoder.encode(videoUri, StandardCharsets.UTF_8.toString())
@@ -155,6 +158,26 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun MainAppContent(authViewModel: AuthViewModel) {
+        val isApproved by authViewModel.isApproved.collectAsState()
+        val isAdmin by authViewModel.isAdmin.collectAsState()
+        val familyId by authViewModel.familyId.collectAsState()
+        if (!isApproved && !isAdmin) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+            ) {
+                Text("Family vault access is pending administrator approval.", color = Color.White)
+                if (familyId.isNullOrBlank()) {
+                    Text("This account has no family vault assignment.", color = Color.White)
+                }
+                Button(onClick = { authViewModel.signOut() }) {
+                    Text("Sign out")
+                }
+            }
+            return
+        }
+
         val screenTimeViewModel: ScreenTimeViewModel = viewModel()
         val mediaBrowserViewModel: MediaBrowserViewModel = viewModel()
         val navController = rememberNavController()
@@ -194,7 +217,8 @@ class MainActivity : ComponentActivity() {
                         authViewModel = authViewModel,
                         showAccountDialog = showProfileDialog,
                         onAccountDialogDismiss = { showProfileDialog = false },
-                        onOpenSearch = { showSearchDialog = true }
+                        onOpenSearch = { showSearchDialog = true },
+                        onOpenVaultAdmin = { navController.navigate(Screen.VaultAdmin.route) }
                     )
                 }
 
@@ -229,6 +253,14 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate(Screen.Catalog.route)
                             }
                         )
+                    }
+                    composable(Screen.VaultAdmin.route) {
+                        if (isAdmin) {
+                            VaultAdminScreen(
+                                authViewModel = authViewModel,
+                                mediaBrowserViewModel = mediaBrowserViewModel
+                            )
+                        }
                     }
                     composable(Screen.Details.route) {
                         val selectedVideo by mediaBrowserViewModel.selectedVideo.collectAsState()

@@ -22,6 +22,7 @@ interface VaultVideo {
   description: string;
   tags: string[];
   familyId: string;
+  transcodeStatus: string;
 }
 
 const requestErrorMessage = (error: unknown, fallback: string) => {
@@ -49,7 +50,9 @@ const VaultAdmin = () => {
         api.get<VaultVideo[]>('catalog?adminView=true')
       ]);
       setMembers(memberResponse.data);
-      setVideos(videoResponse.data.filter(video => video.familyId === userProfile.familyId));
+      setVideos(videoResponse.data.filter(video =>
+        video.familyId === userProfile.familyId && video.transcodeStatus === 'COMPLETED'
+      ));
     } catch (requestError) {
       setError(requestErrorMessage(requestError, 'Unable to load family vault data.'));
     }

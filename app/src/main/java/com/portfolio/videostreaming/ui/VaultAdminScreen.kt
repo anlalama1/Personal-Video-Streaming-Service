@@ -73,7 +73,7 @@ fun VaultAdminScreen(
                 members = withContext(Dispatchers.IO) { StreamingApi.service.getVaultMembers() }
                 videos = withContext(Dispatchers.IO) {
                     StreamingApi.service.getVaultCatalog()
-                        .filter { it.familyId == familyId }
+                        .filter { it.familyId == familyId && it.transcodeStatus == "COMPLETED" }
                         .map { dto ->
                             MediaFile(
                                 id = dto.videoId,

@@ -1035,15 +1035,42 @@ async function handleUpdateVaultVideo(event, tenantId, claims) {
         return response(400, { error: "title, genre, releaseYear, and a tags array are required." });
     }
 
+    const sortKey = `FAMILY#${familyId}#VIDEO#${videoId}`;
+    const matchingItems = [];
+    let lastEvaluatedKey;
+    do {
+        const result = await docClient.send(new QueryCommand({
+            TableName: process.env.TABLE_NAME,
+            IndexName: 'FamilyCatalogIndex',
+            KeyConditionExpression: 'familyId = :familyId AND SK = :sortKey',
+            ExpressionAttributeValues: {
+                ':familyId': familyId,
+                ':sortKey': sortKey
+            },
+            ExclusiveStartKey: lastEvaluatedKey
+        }));
+        matchingItems.push(...(result.Items || []));
+        lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    const completedItems = matchingItems.filter(item => item.transcodeStatus === 'COMPLETED');
+    const preferredItem = completedItems.find(item => item.PK === `TENANT#${tenantId}`);
+    const targetItem = preferredItem || (completedItems.length === 1 ? completedItems[0] : null);
+    if (!targetItem) {
+        return completedItems.length > 1
+            ? response(409, { error: "Multiple completed videos share this ID in the family vault. Refresh the list and retry." })
+            : response(404, { error: "The completed video was not found in your family vault." });
+    }
+
     try {
         await docClient.send(new UpdateCommand({
             TableName: process.env.TABLE_NAME,
             Key: {
-                PK: `TENANT#${tenantId}`,
-                SK: `FAMILY#${familyId}#VIDEO#${videoId}`
+                PK: targetItem.PK,
+                SK: targetItem.SK
             },
             UpdateExpression: 'SET #title = :title, #genre = :genre, #releaseYear = :year, #description = :description, #tags = :tags, #lastUpdated = :updated',
-            ConditionExpression: 'attribute_exists(PK) AND (attribute_not_exists(#transcodeStatus) OR #transcodeStatus <> :deleted)',
+            ConditionExpression: '#transcodeStatus = :completed',
             ExpressionAttributeNames: {
                 '#title': 'title',
                 '#genre': 'genre',
@@ -1060,12 +1087,12 @@ async function handleUpdateVaultVideo(event, tenantId, claims) {
                 ':description': description,
                 ':tags': tags,
                 ':updated': Date.now(),
-                ':deleted': 'DELETED'
+                ':completed': 'COMPLETED'
             }
         }));
     } catch (error) {
         if (error.name === 'ConditionalCheckFailedException') {
-            return response(404, { error: "The video was not found in your family vault." });
+            return response(409, { error: "The video is no longer completed and cannot be edited here." });
         }
         throw error;
     }

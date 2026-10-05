@@ -656,8 +656,14 @@ async function setVaultMemberState(sub, familyId, isAdmin, isApproved, accessDis
     await docClient.send(new UpdateCommand({
         TableName: process.env.TABLE_NAME,
         Key: { PK: `VAULT_MEMBER#${sub}`, SK: 'IDENTITY' },
-        UpdateExpression: 'SET isAdmin = :isAdmin, isApproved = :isApproved, accessDisabled = :accessDisabled',
-        ConditionExpression: 'familyId = :familyId',
+        UpdateExpression: 'SET #isAdmin = :isAdmin, #isApproved = :isApproved, #accessDisabled = :accessDisabled',
+        ConditionExpression: '#familyId = :familyId',
+        ExpressionAttributeNames: {
+            '#isAdmin': 'isAdmin',
+            '#isApproved': 'isApproved',
+            '#accessDisabled': 'accessDisabled',
+            '#familyId': 'familyId'
+        },
         ExpressionAttributeValues: {
             ':isAdmin': isAdmin,
             ':isApproved': isApproved,
@@ -832,33 +838,40 @@ async function handleListVaultMembers(claims) {
     }
 
     const users = [];
+    for await (const user of iterateCognitoUsers()) {
+        const attributes = Object.fromEntries((user.Attributes || []).map(attribute => [attribute.Name, attribute.Value]));
+        if (attributes['custom:familyId'] !== familyId) continue;
+
+        const memberRecord = attributes.sub ? await getMemberRecord(attributes.sub) : null;
+        if (memberRecord && memberRecord.familyId !== familyId) continue;
+
+        users.push({
+            username: user.Username,
+            email: attributes.email || '',
+            isCurrentUser: user.Username === claims['cognito:username'],
+            isAdmin: memberRecord?.isAdmin === true,
+            isApproved: memberRecord?.isApproved === true,
+            enabled: user.Enabled !== false,
+            status: user.UserStatus || 'UNKNOWN'
+        });
+    }
+
+    return response(200, users);
+}
+
+async function* iterateCognitoUsers() {
     let paginationToken;
     do {
         const page = await cognitoClient.send(new ListUsersCommand({
             UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
-            Filter: `custom:familyId = "${familyId.replace(/["\\]/g, '\\$&')}"`,
             PaginationToken: paginationToken,
             Limit: 60
         }));
         for (const user of page.Users || []) {
-            const attributes = Object.fromEntries((user.Attributes || []).map(attribute => [attribute.Name, attribute.Value]));
-            const memberRecord = attributes.sub ? await getMemberRecord(attributes.sub) : null;
-            if (attributes['custom:familyId'] === familyId && (!memberRecord || memberRecord.familyId === familyId)) {
-                users.push({
-                    username: user.Username,
-                    email: attributes.email || '',
-                    isCurrentUser: user.Username === claims['cognito:username'],
-                    isAdmin: memberRecord?.isAdmin === true,
-                    isApproved: memberRecord?.isApproved === true,
-                    enabled: user.Enabled !== false,
-                    status: user.UserStatus || 'UNKNOWN'
-                });
-            }
+            yield user;
         }
         paginationToken = page.PaginationToken;
     } while (paginationToken);
-
-    return response(200, users);
 }
 
 async function handleManageVaultMember(event, claims, action) {
@@ -991,22 +1004,12 @@ async function acquireLastAdminGuard(familyId, lockOwner) {
 
 async function countActiveVaultAdmins(familyId) {
     let count = 0;
-    let paginationToken;
-    do {
-        const page = await cognitoClient.send(new ListUsersCommand({
-            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
-            Filter: `custom:familyId = "${familyId}"`,
-            PaginationToken: paginationToken,
-            Limit: 60
-        }));
-        for (const user of page.Users || []) {
-            const attributes = Object.fromEntries((user.Attributes || []).map(attribute => [attribute.Name, attribute.Value]));
-            if (user.Enabled === false || attributes['custom:familyId'] !== familyId || !attributes.sub) continue;
-            const member = await getMemberRecord(attributes.sub);
-            if (member?.familyId === familyId && member.isAdmin === true && member.accessDisabled !== true) count++;
-        }
-        paginationToken = page.PaginationToken;
-    } while (paginationToken);
+    for await (const user of iterateCognitoUsers()) {
+        const attributes = Object.fromEntries((user.Attributes || []).map(attribute => [attribute.Name, attribute.Value]));
+        if (user.Enabled === false || attributes['custom:familyId'] !== familyId || !attributes.sub) continue;
+        const member = await getMemberRecord(attributes.sub);
+        if (member?.familyId === familyId && member.isAdmin === true && member.accessDisabled !== true) count++;
+    }
     return count;
 }
 
@@ -1039,8 +1042,17 @@ async function handleUpdateVaultVideo(event, tenantId, claims) {
                 PK: `TENANT#${tenantId}`,
                 SK: `FAMILY#${familyId}#VIDEO#${videoId}`
             },
-            UpdateExpression: 'SET title = :title, genre = :genre, releaseYear = :year, description = :description, tags = :tags, lastUpdated = :updated',
-            ConditionExpression: 'attribute_exists(PK) AND (attribute_not_exists(transcodeStatus) OR transcodeStatus <> :deleted)',
+            UpdateExpression: 'SET #title = :title, #genre = :genre, #releaseYear = :year, #description = :description, #tags = :tags, #lastUpdated = :updated',
+            ConditionExpression: 'attribute_exists(PK) AND (attribute_not_exists(#transcodeStatus) OR #transcodeStatus <> :deleted)',
+            ExpressionAttributeNames: {
+                '#title': 'title',
+                '#genre': 'genre',
+                '#releaseYear': 'releaseYear',
+                '#description': 'description',
+                '#tags': 'tags',
+                '#lastUpdated': 'lastUpdated',
+                '#transcodeStatus': 'transcodeStatus'
+            },
             ExpressionAttributeValues: {
                 ':title': title,
                 ':genre': genre,

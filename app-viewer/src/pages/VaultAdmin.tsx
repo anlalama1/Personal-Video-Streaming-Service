@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
@@ -23,6 +24,13 @@ interface VaultVideo {
   familyId: string;
 }
 
+const requestErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError<{ error?: string; message?: string }>(error)) {
+    return error.response?.data?.error || error.response?.data?.message || error.message || fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
+};
+
 const VaultAdmin = () => {
   const { userProfile } = useAuth();
   const navigate = useNavigate();
@@ -43,7 +51,7 @@ const VaultAdmin = () => {
       setMembers(memberResponse.data);
       setVideos(videoResponse.data.filter(video => video.familyId === userProfile.familyId));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to load family vault data.');
+      setError(requestErrorMessage(requestError, 'Unable to load family vault data.'));
     }
   }, [userProfile.familyId]);
 
@@ -69,7 +77,7 @@ const VaultAdmin = () => {
       );
       await refresh();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : `Unable to ${action} member.`);
+      setError(requestErrorMessage(requestError, `Unable to ${action} member.`));
     } finally {
       setBusy(false);
     }
@@ -94,7 +102,7 @@ const VaultAdmin = () => {
       setSelectedVideo(null);
       await refresh();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to update video metadata.');
+      setError(requestErrorMessage(requestError, 'Unable to update video metadata.'));
     } finally {
       setBusy(false);
     }
@@ -110,7 +118,7 @@ const VaultAdmin = () => {
       setNotice('Video moved to trash.');
       await refresh();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to delete video.');
+      setError(requestErrorMessage(requestError, 'Unable to delete video.'));
     } finally {
       setBusy(false);
     }

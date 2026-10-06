@@ -208,6 +208,12 @@ The project is **done** when all of the following are true:
 - [ ] **3-Minute Live Demo Script & Harness**: Minute-by-minute live software demo script.
 - [ ] **Executive Teaser One-Pager**: 1-page PDF executive summary for VC introduction emails.
 
+### Milestone 42 — AWS KMS Envelope Encryption & Data-at-Rest Security
+- [ ] **Customer Managed KMS Key (CMK)**: Provision a Customer Managed Key with automated key rotation in `StorageStack.ts` (`kms.Key`).
+- [ ] **S3 SSE-KMS Encryption**: Configure `MediaSourceBucket`, `HlsOutputBucket`, and `ThumbnailBucket` to enforce Server-Side Encryption with AWS KMS (`SSE-KMS`).
+- [ ] **CloudFront OAC KMS Decryption Grant**: Grant `kms:Decrypt` authority exclusively to `CloudFrontOACRole`, `FargateTaskRole`, and `ScribeLambdaRole`, locking out unauthorized IAM principals and account intruders.
+- [ ] **Zero-Latency Streaming Verification**: Verify that HLS video streaming over CloudFront CDN maintains millisecond playback startup with KMS envelope decryption.
+
 ---
 
 ## Requirement Coverage Map

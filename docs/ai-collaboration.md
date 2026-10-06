@@ -1030,6 +1030,14 @@ This document tracks the high-level collaboration between the human developer an
     - Updated button styling with explicit heights (`50.dp`), high-contrast borders, and refined `enabled = !isPublishing && title.isNotBlank()`, restoring full button visibility and clickability.
 - **Outcome**: Delivered prominent, high-contrast, fully scrollable action buttons on the Android Family Review Board.
 
+### 121. Milestone 41: Family Vault Administrator Governance & RBAC (Oct 3, 2026)
+- **Challenge**: Family vaults lacked role-based administrative governance (RBAC) to manage member access, edit published titles, or delete catalog media.
+- **AI Contribution**: 
+    - Provisioned `custom:isAdmin` and `custom:isApproved` Cognito attributes in [`AuthStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/AuthStack.ts).
+    - Built REST governance endpoints (`/vault/members`, `/vault/members/approve`, `/vault/members/promote`, `/vault/members/ban`) in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js) and bound them to `dualAuthorizer` in [`ApiStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/ApiStack.ts).
+    - Built [`VaultAdmin.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/VaultAdmin.tsx) in `app-viewer` and [`VaultAdminScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/VaultAdminScreen.kt) on Android for member roster auditing, access request approvals, promotions, user bans, and catalog metadata management.
+- **Outcome**: Delivered complete zero-trust family vault governance and role-based access control across Web and Android platforms.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

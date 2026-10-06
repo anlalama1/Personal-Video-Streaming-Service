@@ -45,7 +45,8 @@ data class MediaItemDto(
     val aiTags: List<String>? = null,
     val aiDescription: String? = null,
     val familyId: String = "",
-    val videoKey: String = ""
+    val videoKey: String = "",
+    val lastUpdated: Long = 0L
 )
 
 @Serializable

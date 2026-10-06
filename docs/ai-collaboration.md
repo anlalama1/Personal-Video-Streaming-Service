@@ -1038,6 +1038,14 @@ This document tracks the high-level collaboration between the human developer an
     - Built [`VaultAdmin.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/VaultAdmin.tsx) in `app-viewer` and [`VaultAdminScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/VaultAdminScreen.kt) on Android for member roster auditing, access request approvals, promotions, user bans, and catalog metadata management.
 - **Outcome**: Delivered complete zero-trust family vault governance and role-based access control across Web and Android platforms.
 
+### 122. Milestone 43: "Recently Added" Dynamic Top Category Row (Oct 3, 2026)
+- **Challenge**: Users lacked a premier top category row displaying newly published video memories without mutating the underlying backend genre attribute.
+- **AI Contribution**: 
+    - Exported `RECENTLY_ADDED_THRESHOLD_DAYS = 14` in [`config.ts`](file:///I:/Android%20Projects/app-viewer/src/config.ts) (Web) and [`Config.kt`](file:///I:/Android%20Projects/core/data/src/main/java/com/portfolio/videostreaming/core/data/Config.kt) (Android).
+    - Extended `MediaItemDto` in [`StreamingApiService.kt`](file:///I:/Android%20Projects/core/data/src/main/java/com/portfolio/videostreaming/core/data/network/StreamingApiService.kt) and `MediaFile` in [`MediaFile.kt`](file:///I:/Android%20Projects/core/data/src/main/java/com/portfolio/videostreaming/core/data/model/MediaFile.kt) with `lastUpdated: Long`.
+    - Transformed [`Home.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/Home.tsx) and [`CatalogScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/CatalogScreen.kt) to evaluate timestamp deltas ($\Delta t \le 14 \text{ Days}$) and prepend `"Recently Added"` as the premier top category row above all Heritage Genres.
+- **Outcome**: Delivered dynamic, non-mutating fresh content discovery as the top category row across Web and Android client platforms.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

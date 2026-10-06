@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.portfolio.videostreaming.core.data.Config
 import com.portfolio.videostreaming.core.data.model.MediaFile
 import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
@@ -51,7 +52,8 @@ import com.portfolio.videostreaming.ui.theme.Stone900
  * ============================================================================
  * Enterprise Architecture Strategy: Nested Lazy Rows & Category Grouping.
  * Dynamically groups published family media files into horizontal scrolling
- * category rows using the genres configured in the DynamoDB registry.
+ * category rows using the genres configured in the DynamoDB registry, featuring
+ * a premier top "Recently Added" category row for newly published memories.
  */
 @Composable
 fun CatalogScreen(
@@ -85,20 +87,28 @@ fun CatalogScreen(
                 color = Parchment.copy(alpha = 0.6f),
                 modifier = Modifier.align(Alignment.Center)
             )
-        } else if (genres.isEmpty()) {
-            Text(
-                text = "No video genres are configured.",
-                color = Parchment.copy(alpha = 0.6f),
-                modifier = Modifier.align(Alignment.Center)
-            )
         } else {
-            val groupedVideos = genres.mapNotNull { genreName ->
+            // Clock-Drift Proof Recency Filter: Evaluated relative to the latest upload in the vault
+            val maxLastUpdated = videoList.maxOfOrNull { it.lastUpdated } ?: 0L
+            val recencyThresholdMs = Config.RECENTLY_ADDED_THRESHOLD_DAYS * 24 * 60 * 60 * 1000L
+
+            val recentlyAddedVideos = if (maxLastUpdated > 0L) {
+                videoList.filter { video ->
+                    video.lastUpdated > 0L && (maxLastUpdated - video.lastUpdated) <= recencyThresholdMs
+                }.sortedByDescending { it.lastUpdated }
+            } else {
+                videoList.take(5)
+            }
+
+            // Resilient Category Grouping: Ensure all published videos are grouped by genre
+            val allGenres = (genres + videoList.map { it.genre }).distinct().filter { it.isNotBlank() }
+            val groupedVideos = allGenres.mapNotNull { genreName ->
                 videoList.filter { it.genre == genreName }
                     .takeIf { it.isNotEmpty() }
                     ?.let { genreName to it }
             }
 
-            if (groupedVideos.isEmpty()) {
+            if (groupedVideos.isEmpty() && recentlyAddedVideos.isEmpty()) {
                 Text(
                     text = "No videos match the configured genres.",
                     color = Parchment.copy(alpha = 0.6f),
@@ -108,6 +118,47 @@ fun CatalogScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(vertical = 16.dp)
                 ) {
+                    // Premier Top Category Row: Recently Added
+                    if (recentlyAddedVideos.isNotEmpty()) {
+                        item {
+                            Column(modifier = Modifier.padding(vertical = 12.dp)) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 4.dp, height = 20.dp)
+                                            .clip(RoundedCornerShape(2.dp))
+                                            .background(Amber500)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Recently Added",
+                                        color = Parchment,
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = (-0.5).sp
+                                    )
+                                }
+
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 24.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                ) {
+                                    items(recentlyAddedVideos, key = { "recent_${it.id}" }) { video ->
+                                        CategoryVideoCard(
+                                            video = video,
+                                            onClick = { onVideoSelected(video) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Heritage Genre Category Rows
                     groupedVideos.forEach { (genreName, videosInGenre) ->
                         item {
                             Column(modifier = Modifier.padding(vertical = 12.dp)) {

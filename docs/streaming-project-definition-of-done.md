@@ -202,6 +202,12 @@ The project is **done** when all of the following are true:
 - [x] **Catalog Authorization**: Pending users are denied catalog and upload access; family video deletion and metadata edits require same-vault administrator claims, including for full-catalog views.
 - [x] **Cross-Platform Governance Panels**: Added member auditing and access management plus video metadata editing and deletion in the Desktop Viewer and Android app.
 
+### Milestone 43 — "Recently Added" Dynamic Top Category Row
+- [x] **Configurable Recency Threshold**: Centralized `RECENTLY_ADDED_THRESHOLD_DAYS = 14` config constants across Web and Android client modules.
+- [x] **Premier Top Category Row**: Prepend `"Recently Added"` as the premier top category row above all Heritage Genres in `Home.tsx` (Web) and `CatalogScreen.kt` (Android).
+- [x] **Timestamp Delta Evaluation**: Evaluates `lastUpdated` timestamp deltas ($\Delta t \le 14 \text{ Days}$) dynamically on the client without mutating the backend DynamoDB video `genre` attribute.
+- [x] **Automatic Content Expiration**: Videos automatically transition off the "Recently Added" row after 14 days and continue displaying under their assigned Heritage Genre.
+
 ### Milestone 38 — Venture Capital Pitch Package & Live Demo Harness
 - [ ] **10-Slide Investor Pitch Deck**: Slide-by-slide narrative script and visual layout specifications.
 - [ ] **Financial Model & Unit Economics Spreadsheet**: 3-year SaaS financial model (87% Gross Margins).

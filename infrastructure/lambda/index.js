@@ -256,7 +256,8 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
             aiTags: item.aiTags || [],
             videoKey: item.videoKey || '',
             thumbnailKey,
-            familyId: itemFamilyId
+            familyId: itemFamilyId,
+            lastUpdated: item.lastUpdated || 0
         };
     };
 

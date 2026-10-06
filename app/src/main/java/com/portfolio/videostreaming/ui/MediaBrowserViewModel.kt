@@ -86,7 +86,8 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                         aiTags = dto.aiTags ?: emptyList(),
                         aiDescription = dto.aiDescription.orEmpty(),
                         familyId = dto.familyId,
-                        videoKey = dto.videoKey
+                        videoKey = dto.videoKey,
+                        lastUpdated = dto.lastUpdated
                     )
                 }
             } catch (e: Exception) {

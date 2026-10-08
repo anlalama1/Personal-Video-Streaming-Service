@@ -125,6 +125,13 @@ export class AuthStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // Add Cognito Hosted UI Domain for OAuth 2.0 Identity Federation
+    this.customerUserPool.addDomain('CustomerCognitoDomain', {
+      cognitoDomain: {
+        domainPrefix: `alexandria-vault-${Config.account.slice(-6)}`,
+      },
+    });
+
     this.customerWebClient = this.customerUserPool.addClient('CustomerWebClient', {
       userPoolClientName: 'Alexandria-Scroll-Viewer-Client',
       readAttributes: new cognito.ClientAttributes()
@@ -136,6 +143,14 @@ export class AuthStack extends cdk.Stack {
       authFlows: {
         userPassword: true,
         userSrp: true,
+      },
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+        },
+        scopes: [cognito.OAuthScope.EMAIL, cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
+        callbackUrls: ['https://www.alexandria-plus.com/', 'http://localhost:5173/'],
+        logoutUrls: ['https://www.alexandria-plus.com/', 'http://localhost:5173/'],
       },
     });
 
@@ -150,6 +165,14 @@ export class AuthStack extends cdk.Stack {
       authFlows: {
         userPassword: true,
         userSrp: true,
+      },
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+        },
+        scopes: [cognito.OAuthScope.EMAIL, cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
+        callbackUrls: ['myapp://callback'],
+        logoutUrls: ['myapp://logout'],
       },
     });
 

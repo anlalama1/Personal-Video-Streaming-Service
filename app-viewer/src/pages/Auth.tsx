@@ -217,12 +217,39 @@ const Auth = () => {
         </form>
 
         {!needsVerification && (
-            <div className="text-center">
+            <div className="space-y-4 text-center">
                 <button
                     onClick={() => setIsLogin(!isLogin)}
                     className="text-heritage-gold text-xs font-black uppercase tracking-widest hover:underline"
                 >
                     {isLogin ? 'Have a Family Code? Join Vault' : 'Already registered? Sign In'}
+                </button>
+
+                <div className="flex items-center gap-3 pt-2">
+                    <div className="flex-1 h-px bg-heritage-800" />
+                    <span className="text-[10px] text-heritage-400 uppercase font-black tracking-widest">Or</span>
+                    <div className="flex-1 h-px bg-heritage-800" />
+                </div>
+
+                <button
+                    type="button"
+                    onClick={async () => {
+                        try {
+                            const { signInWithRedirect } = await import('aws-amplify/auth');
+                            await signInWithRedirect({ provider: 'Google' });
+                        } catch (googleErr: any) {
+                            setError(googleErr.message || 'Google sign-in failed');
+                        }
+                    }}
+                    className="w-full bg-heritage-black border border-heritage-800 hover:border-heritage-gold text-heritage-parchment font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-wider cursor-pointer"
+                >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.18 1-.78 1.85-1.63 2.45v2.03h2.64c1.55-1.42 2.44-3.52 2.44-6.49z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-2.64-2.03c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H3.18v2.07C4.99 20.5 8.24 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.84c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V8.59H3.18C2.42 10.02 2 11.96 2 14s.42 3.98 1.18 5.41l2.66-2.07z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 8.24 1 4.99 3.5 3.18 7.07l2.66 2.07c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Continue with Google</span>
                 </button>
             </div>
         )}

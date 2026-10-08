@@ -1084,6 +1084,13 @@ This document tracks the high-level collaboration between the human developer an
     - Expanded task overrides in [`orchestrator.js`](file:///I:/Android%20Projects/infrastructure/lambda/orchestrator.js#L135-L150) from `512MB` to `2048MB` (2 GB RAM) and `1024` CPU units for Fargate metadata/thumbnail tasks, eliminating container OOM cgroup kills on high-res videos.
 - **Outcome**: Resolved post-login UI flash warnings and eliminated container OutOfMemoryErrors for high-resolution video intake.
 
+### 128. Milestone 30 Part 2: Google OAuth Identity Federation (Oct 3, 2026)
+- **Challenge**: Users needed frictionless 1-click registration and sign-in using their Google/Gmail accounts across Web and Android.
+- **AI Contribution**: 
+    - Provisioned Cognito Hosted UI Domain in [`AuthStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/AuthStack.ts) and configured OAuth 2.0 Authorization Code Grant settings on web and mobile client definitions.
+    - Integrated **"Continue with Google"** buttons on Web ([`Auth.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/Auth.tsx)) and Android ([`LoginScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/LoginScreen.kt) / [`AuthViewModel.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/AuthViewModel.kt)).
+- **Outcome**: Delivered 1-click Google OAuth registration and social sign-in across Web and Android platforms.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

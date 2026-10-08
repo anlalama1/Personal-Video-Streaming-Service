@@ -1,11 +1,14 @@
 package com.portfolio.videostreaming.ui.auth
 
+import android.app.Activity
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.amplifyframework.auth.AuthException
 import com.amplifyframework.auth.AuthUserAttributeKey
 import com.amplifyframework.auth.options.AuthFetchSessionOptions
 import com.amplifyframework.auth.options.AuthSignUpOptions
+import com.amplifyframework.auth.result.AuthSignInResult
 import com.amplifyframework.core.Amplify
 import com.portfolio.videostreaming.core.data.network.StreamingApi
 import kotlinx.coroutines.Dispatchers
@@ -141,6 +144,28 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Triggers Google OAuth 2.0 federated social sign-in via AWS Amplify Auth Hosted UI.
+     */
+    fun signInWithGoogle(activity: Activity) {
+        _authState.value = AuthState.Loading
+        Amplify.Auth.signInWithWebUI(
+            activity,
+            { result: AuthSignInResult ->
+                if (result.isSignedIn) {
+                    _authState.value = AuthState.SignedIn
+                    fetchUserAttributes()
+                } else {
+                    _authState.value = AuthState.Error("Google sign-in incomplete: ${result.nextStep}")
+                }
+            },
+            { error: AuthException ->
+                Log.e("AuthVM", "Google social sign in failed", error)
+                _authState.value = AuthState.Error(error.message ?: "Google sign in failed")
+            }
+        )
+    }
+
+    /**
      * Registers a new user with email and custom:familyId tenancy attribute.
      */
     fun signUp(email: String, pword: String, familyId: String) {
@@ -160,7 +185,6 @@ class AuthViewModel : ViewModel() {
                 val errMessage = error.message ?: ""
                 if (errMessage.contains("UsernameExistsException", ignoreCase = true) ||
                     errMessage.contains("already exists", ignoreCase = true)) {
-                    // Automatically attempt sign in to route to verification if unconfirmed
                     signIn(email, pword)
                 } else {
                     _authState.value = AuthState.Error(errMessage.ifBlank { "Sign up failed" })

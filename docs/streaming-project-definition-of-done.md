@@ -142,7 +142,7 @@ The project is **done** when all of the following are true:
 - [x] **Unconfirmed Account Rerouting**: Intercepted `UserNotConfirmedException` during sign-in across Web (`Auth.tsx`) and Android (`AuthViewModel.kt`), automatically re-routing unconfirmed users directly to the 6-digit Verification Code screen.
 - [x] **Resend Verification Code**: Added "Resend Verification Code" button in `Auth.tsx` and `SignupScreen.kt` invoking Cognito `resendSignUpCode`.
 - [x] **15-Minute Code Expiration**: Configured `codeValidity: cdk.Duration.minutes(15)` in `AuthStack.ts` for both `adminUserPool` and `customerUserPool`.
-- [ ] **Google OAuth Registration**: Identity provider federation for Google/Gmail accounts.
+- [x] **Google OAuth Identity Federation**: Enabled 1-click Google OAuth 2.0 social sign-in across Web (`Auth.tsx`) and Android (`LoginScreen.kt`), configured Hosted UI domain in `AuthStack.ts`, and bound federated identities to family vault codes.
 
 ### Milestone 31 — Tiered Storage Metering, Short-Form Passthrough & FinOps Engine
 - [ ] **SaaS Pricing & Storage Tier Architecture**: Free 2 GB Starter Vault, $8.99/mo Base Plan (200 GB + 100% features), 500 GB ($14.99/mo), 1 TB ($24.99/mo), 2.5 TB ($49.99/mo), 5 TB ($89.99/mo).

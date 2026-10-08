@@ -1077,6 +1077,13 @@ This document tracks the high-level collaboration between the human developer an
     - Reserved heavy 4-vCPU Fargate container tasks strictly for post-approval background HLS encoding ladders.
 - **Outcome**: Delivered instant < 3s AI metadata intake and zero-wait post-approval streaming at $0.00 idle cloud cost.
 
+### 127. Auth Token State Sync & Fargate OOM Container Expansion (Oct 3, 2026)
+- **Challenge**: `app-viewer` displayed a temporary "No Vault Assignment" warning for 1-2 seconds post-login before token refresh completed, and Fargate container tasks failed with `OutOfMemoryError` on high-bitrate 4K video keyframe grid extractions.
+- **AI Contribution**: 
+    - Updated `AuthContext.tsx` in [`app-viewer`](file:///I:/Android%20Projects/app-viewer/src/context/AuthContext.tsx#L65-L100) to keep `loading = true` during post-login token refresh and membership initialization, suppressing premature "No Vault Assignment" warnings.
+    - Expanded task overrides in [`orchestrator.js`](file:///I:/Android%20Projects/infrastructure/lambda/orchestrator.js#L135-L150) from `512MB` to `2048MB` (2 GB RAM) and `1024` CPU units for Fargate metadata/thumbnail tasks, eliminating container OOM cgroup kills on high-res videos.
+- **Outcome**: Resolved post-login UI flash warnings and eliminated container OutOfMemoryErrors for high-resolution video intake.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

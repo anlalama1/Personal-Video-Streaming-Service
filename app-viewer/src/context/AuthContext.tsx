@@ -64,8 +64,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * Verifies active Cognito user session and extracts ID Token payload claims.
+   * Keeps loading=true during token refresh to suppress premature "No Vault" warnings.
    */
   const checkUser = async () => {
+    setLoading(true);
     try {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
@@ -73,13 +75,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let session = await fetchAuthSession();
       let payload = session.tokens?.idToken?.payload;
       const email = (payload?.email as string) || (currentUser.signInDetails?.loginId as string) || currentUser.username;
-      const familyId = (payload?.['custom:familyId'] as string) || null;
+      let familyId = (payload?.['custom:familyId'] as string) || null;
 
       if (familyId) {
         try {
           await api.post('vault/members');
           session = await fetchAuthSession({ forceRefresh: true });
           payload = session.tokens?.idToken?.payload;
+          familyId = (payload?.['custom:familyId'] as string) || familyId;
         } catch (registrationError) {
           console.error('Failed to initialize family vault membership:', registrationError);
         }
@@ -108,22 +111,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Uses rest parameters (...args) to resolve TypeScript overload signatures cleanly.
    */
   const handleSignIn = async (...args: Parameters<typeof signIn>) => {
-    const result = await signIn(...args);
-    if (result.isSignedIn) {
-      await checkUser();
+    setLoading(true);
+    try {
+      const result = await signIn(...args);
+      if (result.isSignedIn) {
+        await checkUser();
+      }
+      return result;
+    } finally {
+      setLoading(false);
     }
-    return result;
   };
 
   /**
    * Wrapped ConfirmSignUp Function: Triggers state check on confirmation complete.
    */
   const handleConfirmSignUp = async (...args: Parameters<typeof confirmSignUp>) => {
-    const result = await confirmSignUp(...args);
-    if (result.isSignUpComplete) {
-      await checkUser();
+    setLoading(true);
+    try {
+      const result = await confirmSignUp(...args);
+      if (result.isSignUpComplete) {
+        await checkUser();
+      }
+      return result;
+    } finally {
+      setLoading(false);
     }
-    return result;
   };
 
   /**

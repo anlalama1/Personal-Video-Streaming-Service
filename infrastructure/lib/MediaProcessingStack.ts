@@ -117,11 +117,13 @@ export class MediaProcessingStack extends cdk.Stack {
     });
     rule.addTarget(new targets.SqsQueue(transcodeQueue));
 
-    // 3. Orchestrator Lambda: Receives SQS events and launches ECS Fargate tasks
+    // 3. Orchestrator Lambda: Receives SQS events and executes Track 1 intake or launches Fargate tasks
     this.orchestratorLambda = new lambda.Function(this, 'OrchestratorLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'orchestrator.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      memorySize: 1024,
+      timeout: cdk.Duration.minutes(3),
       environment: {
         CLUSTER_NAME: cluster.clusterName,
         TASK_DEFINITION: taskDefinition.taskDefinitionArn,
@@ -130,6 +132,7 @@ export class MediaProcessingStack extends cdk.Stack {
         CONTAINER_NAME: container.containerName,
         TABLE_NAME: props.metadataTable.tableName,
         THUMBNAIL_BUCKET: props.thumbnailBucket.bucketName,
+        BEDROCK_MODEL_ID: Config.bedrockModelId,
       },
     });
 

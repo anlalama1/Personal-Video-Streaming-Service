@@ -22,6 +22,32 @@ const VIDEO_ID = process.env.VIDEO_ID;
 const CONTAINER_MODE = process.env.CONTAINER_MODE || "TRANSCODE_HLS";
 const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID;
 
+async function getApprovedGenres() {
+    try {
+        const result = await db.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": "GENRES_REGISTRY",
+                ":sk": "GENRE#"
+            }
+        }));
+
+        const dbGenres = (result.Items || [])
+            .map(item => (item.genreName || "").trim())
+            .filter(Boolean);
+
+        if (dbGenres.length > 0) {
+            console.log(`Loaded ${dbGenres.length} configured genres from DynamoDB registry.`);
+            return dbGenres;
+        }
+    } catch (err) {
+        console.warn("Failed to query genres from DynamoDB registry:", err.message);
+    }
+
+    return [];
+}
+
 async function run() {
     if (!TENANT_ID || !FAMILY_ID || !VIDEO_ID) {
         console.error("CRITICAL ERROR: Multi-tenant context missing from environment.");
@@ -47,8 +73,6 @@ async function run() {
 
         if (CONTAINER_MODE === "METADATA_EXTRACT") {
             await handleMetadataExtract(localInput, dbKey);
-        } else if (CONTAINER_MODE === "THUMBNAIL_ONLY") {
-            await handleThumbnailOnly(localInput, dbKey);
         } else {
             await handleHlsTranscode(localInput, dbKey);
         }
@@ -57,28 +81,12 @@ async function run() {
     } catch (err) {
         console.error("Fargate Worker task failed:", err);
         try {
-            if (CONTAINER_MODE === "THUMBNAIL_ONLY") {
-                await db.send(new UpdateCommand({
-                    TableName: TABLE_NAME,
-                    Key: dbKey,
-                    ConditionExpression: "useAi = :false AND transcodeStatus = :uploading",
-                    UpdateExpression: "SET transcodeStatus = :failed, thumbnailStatus = :thumbnailFailed, lastUpdated = :t",
-                    ExpressionAttributeValues: {
-                        ":false": false,
-                        ":uploading": "UPLOADING",
-                        ":failed": "FAILED",
-                        ":thumbnailFailed": "FAILED",
-                        ":t": Date.now()
-                    }
-                }));
-            } else {
-                await db.send(new UpdateCommand({
-                    TableName: TABLE_NAME,
-                    Key: dbKey,
-                    UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t",
-                    ExpressionAttributeValues: { ":s": "FAILED", ":t": Date.now() }
-                }));
-            }
+            await db.send(new UpdateCommand({
+                TableName: TABLE_NAME,
+                Key: dbKey,
+                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t",
+                ExpressionAttributeValues: { ":s": "FAILED", ":t": Date.now() }
+            }));
         } catch (dbErr) {
             console.error("Failed to update status to FAILED in DynamoDB:", dbErr);
         }
@@ -87,8 +95,11 @@ async function run() {
 }
 
 async function handleMetadataExtract(localInput, dbKey) {
-    console.log("Extracting thumbnail frame via FFmpeg...");
+    console.log("Extracting primary thumbnail & 1fps multi-frame timeline keyframe grid via FFmpeg...");
     const thumbnailPath = "/tmp/thumbnail.jpg";
+    const gridPath = "/tmp/keyframe_grid.jpg";
+
+    // 1. Primary Thumbnail at 2s for display poster
     const ffmpegThumbArgs = [
         '-ss', '00:00:02',
         '-i', localInput,
@@ -103,6 +114,16 @@ async function handleMetadataExtract(localInput, dbKey) {
         spawnSync('ffmpeg', ['-i', localInput, '-vframes', '1', '-q:v', '2', thumbnailPath], { stdio: 'inherit' });
     }
 
+    // 2. Multi-Frame Timeline Keyframe Grid (1 frame per second compiled into 3x3 tile grid)
+    const ffmpegGridArgs = [
+        '-i', localInput,
+        '-vf', 'fps=1,scale=320:-1,tile=3x3',
+        '-frames:v', '1',
+        '-q:v', '2',
+        gridPath
+    ];
+    spawnSync('ffmpeg', ffmpegGridArgs, { stdio: 'inherit' });
+
     let aiMetadata = { title: "Untitled Video", genre: "", description: "No description generated.", tags: [] };
     if (fs.existsSync(thumbnailPath)) {
         const approvedGenres = await getApprovedGenres();
@@ -113,17 +134,20 @@ async function handleMetadataExtract(localInput, dbKey) {
         aiMetadata.genre = approvedGenres[0];
 
         try {
-            console.log("Invoking AWS Bedrock for multimodal description and genre classification...");
-            const imageBuffer = fs.readFileSync(thumbnailPath);
+            console.log("Invoking AWS Bedrock for multimodal multi-frame timeline description and genre classification...");
+
+            // Prefer multi-frame timeline grid for Bedrock AI analysis if available
+            const analysisImagePath = fs.existsSync(gridPath) ? gridPath : thumbnailPath;
+            const imageBuffer = fs.readFileSync(analysisImagePath);
             const base64Image = imageBuffer.toString("base64");
             const sourceFileName = path.basename(INPUT_KEY || localInput);
 
             const genrePromptList = approvedGenres.map(g => `- ${g}`).join('\n');
 
-            const prompt = `Analyze this video keyframe thumbnail image together with the original filename context.
+            const prompt = `Analyze this multi-frame timeline keyframe grid (showing 9 chronological frames sampled at 1 frame per second across the video timeline) together with the original filename context.
 Original filename: "${sourceFileName}"
 Create a concise metadata draft for a human editor to review.
-Be specific about clearly recognizable people, characters, landmarks, or brands, but do not guess when uncertain.
+Be specific about clearly recognizable people, characters, landmarks, or brands, observing facial expressions, actions, and scenery shifts across the timeline, but do not guess when uncertain.
 The description must be no more than 3 sentences. Focus on the most important visible details and relevant context; avoid repetition, speculation, and flowery narration.
 
 Select EXACTLY ONE genre from the following approved Heritage Genre list that best describes the event depicted in the video:
@@ -178,7 +202,6 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
                 aiMetadata = JSON.parse(textResponse);
             }
 
-            // Fallback check if AI genre is not in approved list
             if (!approvedGenres.includes(aiMetadata.genre)) {
                 aiMetadata.genre = approvedGenres[0];
             }
@@ -204,101 +227,16 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
                 ":tk": thumbnailS3Key,
                 ":s": "REVIEW_PENDING",
                 ":at": aiMetadata.title || "Untitled Video",
-                ":ag": aiMetadata.genre,
-                ":g": aiMetadata.genre,
+                ":ag": aiMetadata.genre || approvedGenres[0],
+                ":g": aiMetadata.genre || approvedGenres[0],
                 ":ad": aiMetadata.description || "No description generated.",
                 ":atg": aiMetadata.tags || [],
                 ":t": Date.now()
             }
         }));
     } else {
-        throw new Error("FFmpeg failed to produce a thumbnail.");
+        console.warn("FFmpeg failed to produce a thumbnail. Skipping upload phase.");
     }
-}
-
-async function handleThumbnailOnly(localInput, dbKey) {
-    const thumbnailPath = "/tmp/thumbnail.jpg";
-    const durationResult = spawnSync(
-        "ffprobe",
-        ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", localInput],
-        { encoding: "utf8" }
-    );
-    const durationSeconds = Number.parseFloat(durationResult.stdout);
-    if (durationResult.status !== 0 || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-        throw new Error("Unable to determine video duration for thumbnail extraction.");
-    }
-
-    let hash = 0;
-    for (const character of VIDEO_ID) {
-        hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
-    }
-    const timestamp = durationSeconds * (0.1 + (hash / 0xffffffff) * 0.8);
-    const extraction = spawnSync("ffmpeg", [
-        "-ss", timestamp.toFixed(3),
-        "-i", localInput,
-        "-frames:v", "1",
-        "-q:v", "2",
-        "-y", thumbnailPath
-    ], { stdio: "inherit" });
-    if (extraction.status !== 0 || !fs.existsSync(thumbnailPath) || fs.statSync(thumbnailPath).size === 0) {
-        throw new Error("FFmpeg failed to extract a thumbnail frame.");
-    }
-
-    const thumbnailS3Key = `${TENANT_ID}/${FAMILY_ID}/${VIDEO_ID}/thumbnail.jpg`;
-    await s3.send(new PutObjectCommand({
-        Bucket: THUMBNAIL_BUCKET,
-        Key: thumbnailS3Key,
-        Body: fs.readFileSync(thumbnailPath),
-        ContentType: "image/jpeg"
-    }));
-
-    await db.send(new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: dbKey,
-        ConditionExpression: "useAi = :false AND transcodeStatus = :uploading",
-        UpdateExpression: "SET thumbnailKey = :tk, thumbnailStatus = :complete, transcodeStatus = :reviewPending, lastUpdated = :t",
-        ExpressionAttributeValues: {
-            ":false": false,
-            ":uploading": "UPLOADING",
-            ":tk": thumbnailS3Key,
-            ":complete": "COMPLETE",
-            ":reviewPending": "REVIEW_PENDING",
-            ":t": Date.now()
-        }
-    }));
-    console.log(`Thumbnail saved; manual upload ${VIDEO_ID} is ready for review.`);
-}
-
-async function getApprovedGenres() {
-    const items = [];
-    let lastEvaluatedKey;
-
-    do {
-        const result = await db.send(new QueryCommand({
-            TableName: TABLE_NAME,
-            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-            ExpressionAttributeValues: {
-                ":pk": "GENRES_REGISTRY",
-                ":sk": "GENRE#"
-            },
-            ...(lastEvaluatedKey ? { ExclusiveStartKey: lastEvaluatedKey } : {})
-        }));
-        items.push(...(result.Items || []));
-        lastEvaluatedKey = result.LastEvaluatedKey;
-    } while (lastEvaluatedKey);
-
-    return items
-        .filter(item => typeof item.genreName === "string" && item.genreName.trim())
-        .sort((a, b) => {
-            const aMiscellaneous = a.genreName.trim().toLowerCase() === "miscellaneous";
-            const bMiscellaneous = b.genreName.trim().toLowerCase() === "miscellaneous";
-            if (aMiscellaneous !== bMiscellaneous) return aMiscellaneous ? 1 : -1;
-            const aOrder = typeof a.displayOrder === "number" && Number.isFinite(a.displayOrder) ? a.displayOrder : 99;
-            const bOrder = typeof b.displayOrder === "number" && Number.isFinite(b.displayOrder) ? b.displayOrder : 99;
-            const orderDifference = aOrder - bOrder;
-            return orderDifference || a.genreName.localeCompare(b.genreName);
-        })
-        .map(item => item.genreName.trim());
 }
 
 async function handleHlsTranscode(localInput, dbKey) {

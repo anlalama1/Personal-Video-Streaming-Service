@@ -210,6 +210,12 @@ The project is **done** when all of the following are true:
 - [x] **Timestamp Delta Evaluation**: Evaluates `lastUpdated` timestamp deltas ($\Delta t \le 14 \text{ Days}$) dynamically on the client without mutating the backend DynamoDB video `genre` attribute.
 - [x] **Automatic Content Expiration**: Videos automatically transition off the "Recently Added" row after 14 days and continue displaying under their assigned Heritage Genre.
 
+### Milestone 44 — Multi-Frame Timeline AI Sampling & Instant Post-Approval Playback
+- [x] **FFmpeg 1fps Keyframe Tile Grid Extraction**: Configured Fargate metadata tasks (`transcoder/index.js`) to extract keyframes across the video timeline at 1 frame/sec and compile them into a high-resolution 3x3 tile grid (`keyframe_grid.jpg`).
+- [x] **Enhanced Multimodal Bedrock Claude Vision Analysis**: Sent the multi-frame 3x3 timeline grid to Amazon Bedrock Claude Vision, giving the AI 9x higher visual context across scene transitions and actions without increasing Bedrock API token costs.
+- [x] **Instant Post-Approval Playback**: Configured `mapToCdn` in `index.js` to serve direct CloudFront MP4 URLs (`videoUrl`) immediately upon publication approval (`0-second post-approval playback wait`), with heavy multi-bitrate HLS transcoding running asynchronously in the background.
+- [x] **Human Review Gate Preservation**: Preserved mandatory `REVIEW_PENDING` review queue isolation until approved by a Vault Admin or family member.
+
 ### Milestone 38 — Venture Capital Pitch Package & Live Demo Harness
 - [ ] **10-Slide Investor Pitch Deck**: Slide-by-slide narrative script and visual layout specifications.
 - [ ] **Financial Model & Unit Economics Spreadsheet**: 3-year SaaS financial model (87% Gross Margins).

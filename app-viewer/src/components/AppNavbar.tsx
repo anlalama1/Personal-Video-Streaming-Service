@@ -2,9 +2,9 @@
  * ============================================================================
  * Desktop Viewer Header Navigation Bar, Search Overlay & Account Profile Modal
  * ============================================================================
- * Enterprise Architecture Strategy: Responsive Header & Search Ranking Engine.
+ * Enterprise Architecture Strategy: Responsive Header & Multi-Keyword Search.
  * Serves as global layout navigation header featuring "Logo-as-a-Letter" lockup,
- * top-right search button trigger, reactive 3-tier priority search ranking,
+ * top-right search button trigger, reactive multi-keyword token priority search ranking,
  * interactive Account Details Modal, and AWS Zero-Training Guarantee Disclosures.
  */
 
@@ -27,7 +27,7 @@ interface MediaItem {
 
 interface RankedResult {
   video: MediaItem;
-  priority: number; // 1 = Title Prefix, 2 = Title Substring, 3 = Description
+  priority: number; // 1 = Title Prefix, 2 = Title Keyword Match, 3 = Description Match
   matchType: string;
 }
 
@@ -66,15 +66,23 @@ const Navbar = () => {
   }, [showSearchModal, catalog.length]);
 
   /**
-   * Priority Search Ranking Engine:
-   * Constraint 1: Gated until query length >= 3 letters
-   * Constraint 2: Ranked by Priority 1 (Title Prefix) > Priority 2 (Title Substring) > Priority 3 (Description Match)
-   * Constraint 3: Bounded to Top 10 matches
+   * Multi-Keyword Priority Search Ranking Engine:
+   * Tokenizes search query into individual keywords (e.g., "Nora Swing" -> ["nora", "swing"]).
+   * Matches if ALL keywords exist across Title or Description.
+   * Priority 1: Exact Title Prefix
+   * Priority 2: All Keywords match Title (e.g. "Nora on a Swing")
+   * Priority 3: Keywords match Title or Description
    */
   useEffect(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const rawQuery = searchQuery.trim().toLowerCase();
 
-    if (q.length < 3) {
+    if (rawQuery.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    const keywords = rawQuery.split(/\s+/).filter(k => k.length > 0);
+    if (keywords.length === 0) {
       setSearchResults([]);
       return;
     }
@@ -85,11 +93,14 @@ const Navbar = () => {
       const titleLower = (item.title || '').toLowerCase();
       const descLower = (item.description || '').toLowerCase();
 
-      if (titleLower.startsWith(q)) {
+      const allTitleMatch = keywords.every(k => titleLower.includes(k));
+      const allCombinedMatch = keywords.every(k => titleLower.includes(k) || descLower.includes(k));
+
+      if (titleLower.startsWith(rawQuery)) {
         matches.push({ video: item, priority: 1, matchType: 'Title Prefix Match' });
-      } else if (titleLower.includes(q)) {
-        matches.push({ video: item, priority: 2, matchType: 'Title Substring Match' });
-      } else if (descLower.includes(q)) {
+      } else if (allTitleMatch) {
+        matches.push({ video: item, priority: 2, matchType: 'Title Keyword Match' });
+      } else if (allCombinedMatch) {
         matches.push({ video: item, priority: 3, matchType: 'Description Match' });
       }
     });
@@ -139,11 +150,6 @@ const Navbar = () => {
             <Link to="/upload" className="cursor-pointer text-heritage-gold hover:text-heritage-gold/80 transition-colors flex items-center gap-1.5">
               <span>Upload</span>
             </Link>
-            {userProfile.isAdmin && (
-              <Link to="/vault-admin" className="cursor-pointer hover:text-heritage-gold transition-colors">
-                Vault Admin
-              </Link>
-            )}
 
             {/* Top-Right Search Trigger Button */}
             <button
@@ -187,7 +193,7 @@ const Navbar = () => {
                 <input
                   type="text"
                   autoFocus
-                  placeholder="Search titles or descriptions..."
+                  placeholder="Search titles or descriptions (e.g., 'Nora Swing')..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full bg-heritage-black border border-heritage-gold/40 rounded-2xl px-5 py-4 text-heritage-parchment text-lg font-bold outline-none focus:ring-2 focus:ring-heritage-gold pr-12 shadow-inner"
@@ -201,6 +207,9 @@ const Navbar = () => {
                   </button>
                 )}
               </div>
+              <p className="text-[10px] text-heritage-400 italic px-1">
+                Type at least 3 letters to view live ranked matches across keywords.
+              </p>
             </div>
 
             {/* Live Search Results Area */}

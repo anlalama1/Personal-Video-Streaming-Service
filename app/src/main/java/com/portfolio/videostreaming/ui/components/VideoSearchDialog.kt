@@ -32,7 +32,7 @@ import com.portfolio.videostreaming.ui.theme.Stone900
 
 data class RankedVideoMatch(
     val video: MediaFile,
-    val priority: Int, // 1 = Title Prefix, 2 = Title Substring, 3 = Description Match
+    val priority: Int, // 1 = Title Prefix, 2 = Title Keyword Match, 3 = Description Match
     val matchType: String
 )
 
@@ -40,11 +40,11 @@ data class RankedVideoMatch(
  * ============================================================================
  * Ranked Video Search Engine Overlay Dialog
  * ============================================================================
- * Enterprise Architecture Strategy: Client-Side Ranked Search Engine.
- * Evaluates live search queries over the family vault catalog with 3-tier priority ranking:
+ * Enterprise Architecture Strategy: Multi-Keyword Search Engine.
+ * Evaluates live multi-keyword search queries over the family vault catalog with 3-tier priority ranking:
  * Priority 1: Title Prefix Match
- * Priority 2: Title Substring Match
- * Priority 3: Description Match
+ * Priority 2: All Keywords match Title (e.g. "Nora Swing" -> "Nora on a Swing")
+ * Priority 3: Keywords match Title or Description
  * Constrained by 3-character minimum query gating and bounded to top 10 matches.
  */
 @Composable
@@ -55,10 +55,13 @@ fun VideoSearchDialog(
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
-    // Priority Search Ranking Evaluation
+    // Multi-Keyword Priority Search Ranking Evaluation
     val rankedResults = remember(searchQuery, catalog) {
-        val q = searchQuery.trim().lowercase()
-        if (q.length < 3) return@remember emptyList()
+        val rawQuery = searchQuery.trim().lowercase()
+        if (rawQuery.length < 3) return@remember emptyList()
+
+        val keywords = rawQuery.split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (keywords.isEmpty()) return@remember emptyList()
 
         val matches = mutableListOf<RankedVideoMatch>()
 
@@ -66,10 +69,13 @@ fun VideoSearchDialog(
             val titleLower = video.title.lowercase()
             val descLower = video.description.lowercase()
 
+            val allTitleMatch = keywords.all { titleLower.contains(it) }
+            val allCombinedMatch = keywords.all { titleLower.contains(it) || descLower.contains(it) }
+
             when {
-                titleLower.startsWith(q) -> matches.add(RankedVideoMatch(video, 1, "Title Start Match"))
-                titleLower.contains(q) -> matches.add(RankedVideoMatch(video, 2, "Title Substring Match"))
-                descLower.contains(q) -> matches.add(RankedVideoMatch(video, 3, "Description Match"))
+                titleLower.startsWith(rawQuery) -> matches.add(RankedVideoMatch(video, 1, "Title Start Match"))
+                allTitleMatch -> matches.add(RankedVideoMatch(video, 2, "Title Keyword Match"))
+                allCombinedMatch -> matches.add(RankedVideoMatch(video, 3, "Description Match"))
             }
         }
 
@@ -117,7 +123,7 @@ fun VideoSearchDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search titles or descriptions...", color = Stone400) },
+                    placeholder = { Text("Search titles or descriptions (e.g., 'Nora Swing')...", color = Stone400) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
@@ -139,6 +145,12 @@ fun VideoSearchDialog(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Type at least 3 letters to view live ranked matches across keywords.",
+                    color = Stone400,
+                    fontSize = 11.sp
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -172,7 +184,7 @@ fun VideoSearchDialog(
                                 )
                             }
                         }
-                        trimmedLen >= 3 -> {
+                        trimmedLen >= 3 && rankedResults.isNotEmpty() -> {
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.fillMaxSize()

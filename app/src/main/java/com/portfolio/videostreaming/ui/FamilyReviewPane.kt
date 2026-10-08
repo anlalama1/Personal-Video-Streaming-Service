@@ -215,7 +215,7 @@ fun FamilyReviewPane(
                     }
                 }
             } else {
-                // Review Form for Selected Memory (Scrollable so buttons are never clipped)
+                // Review Form for Selected Memory
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -294,17 +294,18 @@ fun FamilyReviewPane(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Highly Visible Action Button Row
+                    // Single-Line Fitted Action Button Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // REJECT BUTTON
                         OutlinedButton(
                             onClick = { showRejectConfirmation = true },
                             enabled = !isPublishing,
-                            modifier = Modifier.weight(1f).height(50.dp),
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
                             border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.7f)),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = Color.Red.copy(alpha = 0.1f)
@@ -312,10 +313,12 @@ fun FamilyReviewPane(
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(
-                                "REJECT",
+                                text = "REJECT",
                                 color = Color.Red,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Black
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
 
@@ -323,7 +326,8 @@ fun FamilyReviewPane(
                         OutlinedButton(
                             onClick = { selectedVideo = null },
                             enabled = !isPublishing,
-                            modifier = Modifier.weight(1f).height(50.dp),
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
                             border = BorderStroke(1.dp, Parchment.copy(alpha = 0.4f)),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = HeritageBlack.copy(alpha = 0.5f)
@@ -331,10 +335,12 @@ fun FamilyReviewPane(
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(
-                                "CANCEL",
+                                text = "CANCEL",
                                 color = Parchment,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
 
@@ -371,27 +377,30 @@ fun FamilyReviewPane(
                                 }
                             },
                             enabled = !isPublishing && title.isNotBlank(),
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Amber500,
                                 contentColor = HeritageBlack,
                                 disabledContainerColor = Stone400.copy(alpha = 0.3f),
                                 disabledContentColor = Parchment.copy(alpha = 0.4f)
                             ),
-                            modifier = Modifier.weight(1f).height(50.dp),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             if (isPublishing) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
+                                    modifier = Modifier.size(16.dp),
                                     color = HeritageBlack,
                                     strokeWidth = 2.dp
                                 )
                             } else {
                                 Text(
-                                    "PUBLISH",
+                                    text = "PUBLISH",
                                     color = HeritageBlack,
                                     fontWeight = FontWeight.Black,
-                                    fontSize = 12.sp
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }

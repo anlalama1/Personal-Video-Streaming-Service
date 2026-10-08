@@ -1054,6 +1054,13 @@ This document tracks the high-level collaboration between the human developer an
     - Updated email verification templates in [`AuthStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/AuthStack.ts) to enforce the 15-minute expiration notice.
 - **Outcome**: Eliminated authentication dead-ends for unconfirmed accounts and delivered resilient email verification ergonomics.
 
+### 124. Search Algorithm Refinement: Multi-Keyword Token Matching (Oct 3, 2026)
+- **Challenge**: Searching multi-word queries with non-consecutive keywords (e.g. searching `"Nora Swing"` for `"Nora on a Swing"`) failed because the previous search logic evaluated only exact single-substring matches.
+- **AI Contribution**: 
+    - Refactored the search matching algorithm in [`AppNavbar.tsx`](file:///I:/Android%20Projects/app-viewer/src/components/AppNavbar.tsx) (Web) and [`VideoSearchDialog.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/components/VideoSearchDialog.kt) (Android) to tokenize queries into individual keywords (`query.split(/\s+/)`).
+    - Updated Priority 2 matching to verify that **ALL keyword tokens** exist within the title (`keywords.every(k => title.includes(k))`), enabling instant matches for non-adjacent words like `"Nora Swing"`.
+- **Outcome**: Delivered flexible, multi-keyword search token matching across Web and Mobile.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

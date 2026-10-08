@@ -1046,6 +1046,14 @@ This document tracks the high-level collaboration between the human developer an
     - Transformed [`Home.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/Home.tsx) and [`CatalogScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/CatalogScreen.kt) to evaluate timestamp deltas ($\Delta t \le 14 \text{ Days}$) and prepend `"Recently Added"` as the premier top category row above all Heritage Genres.
 - **Outcome**: Delivered dynamic, non-mutating fresh content discovery as the top category row across Web and Android client platforms.
 
+### 123. Milestone 30: Durable Auth (Unconfirmed Rerouting & 15-Min Code Expiration) (Oct 3, 2026)
+- **Challenge**: Unconfirmed users experienced dead-end sign-in loops, and email verification codes lacked explicit 15-minute expiration notes and resend controls.
+- **AI Contribution**: 
+    - Intercepted `UserNotConfirmedException` and `CONFIRM_SIGN_UP` next steps in [`AuthViewModel.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/AuthViewModel.kt) (Android) and [`Auth.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/Auth.tsx) (Web), automatically re-routing unconfirmed accounts to the Verification Code screen.
+    - Added "Resend Verification Code" buttons in [`SignupScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/SignupScreen.kt) and [`Auth.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/Auth.tsx) with 15-minute expiration notices.
+    - Updated email verification templates in [`AuthStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/AuthStack.ts) to enforce the 15-minute expiration notice.
+- **Outcome**: Eliminated authentication dead-ends for unconfirmed accounts and delivered resilient email verification ergonomics.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

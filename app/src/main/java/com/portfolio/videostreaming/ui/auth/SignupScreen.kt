@@ -24,7 +24,7 @@ import com.portfolio.videostreaming.ui.theme.Parchment
  * ============================================================================
  * Enterprise Architecture Strategy: Mandatory Tenancy Validation.
  * Enforces mandatory Family Code inputs provided by digitization shop operators,
- * preventing unassigned consumer sign-ups and guaranteeing vault data isolation.
+ * supporting 15-minute verification code expiration and resend code capabilities.
  */
 @Composable
 fun SignupScreen(
@@ -37,6 +37,7 @@ fun SignupScreen(
     var familyId by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var resendStatusMessage by remember { mutableStateOf<String?>(null) }
 
     val authState by viewModel.authState.collectAsState()
 
@@ -59,7 +60,7 @@ fun SignupScreen(
 
             Text(
                 text = if (authState is AuthState.NeedsVerification)
-                    "Enter the code sent to your email address."
+                    "Enter the 6-digit code sent to your email (Expires in 15 mins)."
                 else
                     "Enter the Family Code provided by your digitization shop operator.",
                 color = Parchment.copy(alpha = 0.6f),
@@ -72,12 +73,22 @@ fun SignupScreen(
                 OutlinedTextField(
                     value = verificationCode,
                     onValueChange = { verificationCode = it },
-                    label = { Text("Verification Code") },
+                    label = { Text("6-Digit Verification Code") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val displayError = errorMessage
+                if (displayError != null) {
+                    Text(
+                        text = displayError,
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
 
                 Button(
                     onClick = { viewModel.confirmSignUp(email, verificationCode, password) },
@@ -85,6 +96,37 @@ fun SignupScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = Amber500)
                 ) {
                     Text("VERIFY & LAUNCH", color = HeritageBlack, fontWeight = FontWeight.Black)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(
+                    onClick = {
+                        if (email.isBlank()) {
+                            errorMessage = "Please enter your email address above to resend code."
+                            return@TextButton
+                        }
+                        viewModel.resendSignUpCode(email) { success, msg ->
+                            resendStatusMessage = msg
+                        }
+                    }
+                ) {
+                    Text("Resend Verification Code", color = Amber500, fontWeight = FontWeight.Bold)
+                }
+
+                if (resendStatusMessage != null) {
+                    Text(
+                        text = resendStatusMessage!!,
+                        color = Parchment,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(onClick = onNavigateToLogin) {
+                    Text("Back to Sign In", color = Parchment.copy(alpha = 0.7f))
                 }
 
             } else {

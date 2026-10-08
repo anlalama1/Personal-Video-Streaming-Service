@@ -109,6 +109,7 @@ class AuthViewModel : ViewModel() {
 
     /**
      * Authenticates user via email and password using Cognito SRP / UserPassword auth.
+     * Intercepts unconfirmed account state and automatically re-routes to verification code screen.
      */
     fun signIn(email: String, pword: String) {
         _authState.value = AuthState.Loading
@@ -118,11 +119,23 @@ class AuthViewModel : ViewModel() {
                     _authState.value = AuthState.SignedIn
                     fetchUserAttributes()
                 } else {
-                    _authState.value = AuthState.Error("Sign in incomplete: ${result.nextStep}")
+                    val stepName = result.nextStep.signInStep.name
+                    if (stepName.contains("CONFIRM", ignoreCase = true) || stepName.contains("VERIF", ignoreCase = true)) {
+                        _authState.value = AuthState.NeedsVerification
+                    } else {
+                        _authState.value = AuthState.Error("Sign in incomplete: ${result.nextStep}")
+                    }
                 }
             },
             { error ->
-                _authState.value = AuthState.Error(error.message ?: "Sign in failed")
+                val errMessage = error.message ?: ""
+                if (errMessage.contains("UserNotConfirmedException", ignoreCase = true) ||
+                    errMessage.contains("not confirmed", ignoreCase = true)) {
+                    Log.w("AuthVM", "Unconfirmed user sign in attempt -> Rerouting to Verification Screen")
+                    _authState.value = AuthState.NeedsVerification
+                } else {
+                    _authState.value = AuthState.Error(errMessage.ifBlank { "Sign in failed" })
+                }
             }
         )
     }
@@ -144,7 +157,29 @@ class AuthViewModel : ViewModel() {
             },
             { error ->
                 Log.e("AuthVM", "Cognito sign-up failed", error)
-                _authState.value = AuthState.Error(error.message ?: "Sign up failed")
+                val errMessage = error.message ?: ""
+                if (errMessage.contains("UsernameExistsException", ignoreCase = true) ||
+                    errMessage.contains("already exists", ignoreCase = true)) {
+                    // Automatically attempt sign in to route to verification if unconfirmed
+                    signIn(email, pword)
+                } else {
+                    _authState.value = AuthState.Error(errMessage.ifBlank { "Sign up failed" })
+                }
+            }
+        )
+    }
+
+    /**
+     * Resends 6-digit confirmation code via Cognito email.
+     */
+    fun resendSignUpCode(email: String, onComplete: (Boolean, String) -> Unit) {
+        Amplify.Auth.resendSignUpCode(email,
+            { _ ->
+                onComplete(true, "New 6-digit code sent to $email (Expires in 15 mins)")
+            },
+            { error ->
+                Log.e("AuthVM", "Failed to resend verification code", error)
+                onComplete(false, error.message ?: "Failed to resend code")
             }
         )
     }

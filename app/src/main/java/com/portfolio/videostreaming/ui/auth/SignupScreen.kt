@@ -106,7 +106,7 @@ fun SignupScreen(
                             errorMessage = "Please enter your email address above to resend code."
                             return@TextButton
                         }
-                        viewModel.resendSignUpCode(email) { success, msg ->
+                        viewModel.resendSignUpCode(email) { _, msg ->
                             resendStatusMessage = msg
                         }
                     }

@@ -135,6 +135,17 @@ export class MediaProcessingStack extends cdk.Stack {
 
     this.orchestratorLambda.addEventSource(new SqsEventSource(transcodeQueue));
     props.metadataTable.grantReadWriteData(this.orchestratorLambda);
+    props.sourceBucket.grantRead(this.orchestratorLambda);
+    props.thumbnailBucket.grantReadWrite(this.orchestratorLambda);
+
+    // Bedrock Multimodal Inference IAM Grant for Track 1 Lambda AI Metadata Intake
+    this.orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
+      resources: [
+        `arn:aws:bedrock:us-*:${Config.account}:inference-profile/${Config.bedrockModelId}`,
+        `arn:aws:bedrock:us-*::foundation-model/${Config.bedrockModelId.replace('us.', '')}`,
+      ]
+    }));
 
     // Allow Orchestrator Lambda to trigger ECS tasks
     this.orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({

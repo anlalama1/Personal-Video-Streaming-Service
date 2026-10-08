@@ -184,7 +184,7 @@ fun VideoSearchDialog(
                                 )
                             }
                         }
-                        trimmedLen >= 3 && rankedResults.isNotEmpty() -> {
+                        trimmedLen >= 3 -> {
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.fillMaxSize()

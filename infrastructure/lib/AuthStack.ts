@@ -135,8 +135,26 @@ export class AuthStack extends cdk.Stack {
       value: `alexandria-vault-${Config.account.slice(-6)}.auth.${Config.region}.amazoncognito.com`,
     });
 
+    const googleOAuthSecretName = 'alexandria/google-oauth';
+    const googleClientId = cdk.SecretValue.secretsManager(googleOAuthSecretName, {
+      jsonField: 'client_id',
+    }).unsafeUnwrap();
+    const googleClientSecret = cdk.SecretValue.secretsManager(googleOAuthSecretName, {
+      jsonField: 'client_secret',
+    });
+    new cognito.UserPoolIdentityProviderGoogle(this, 'CustomerGoogleIdentityProvider', {
+      userPool: this.customerUserPool,
+      clientId: googleClientId,
+      clientSecretValue: googleClientSecret,
+      scopes: ['openid', 'email', 'profile'],
+    });
+
     this.customerWebClient = this.customerUserPool.addClient('CustomerWebClient', {
       userPoolClientName: 'Alexandria-Scroll-Viewer-Client',
+      supportedIdentityProviders: [
+        cognito.UserPoolClientIdentityProvider.COGNITO,
+        cognito.UserPoolClientIdentityProvider.GOOGLE,
+      ],
       readAttributes: new cognito.ClientAttributes()
         .withStandardAttributes({ email: true })
         .withCustomAttributes('familyId', 'isAdmin', 'isApproved'),
@@ -159,6 +177,10 @@ export class AuthStack extends cdk.Stack {
 
     this.customerAndroidClient = this.customerUserPool.addClient('CustomerAndroidClient', {
       userPoolClientName: 'Alexandria-Android-Client',
+      supportedIdentityProviders: [
+        cognito.UserPoolClientIdentityProvider.COGNITO,
+        cognito.UserPoolClientIdentityProvider.GOOGLE,
+      ],
       readAttributes: new cognito.ClientAttributes()
         .withStandardAttributes({ email: true })
         .withCustomAttributes('familyId', 'isAdmin', 'isApproved'),

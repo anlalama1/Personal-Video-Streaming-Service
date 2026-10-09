@@ -6,7 +6,8 @@
  *
  * Enterprise Decision Rationale:
  * Track 1 (Upload -> Review Intake): Small AI uploads are analyzed in Lambda; larger
- *   AI uploads use a low-compute Fargate task. Manual uploads advance directly to review.
+ *   AI uploads use a low-compute Fargate task. Manual uploads generate a thumbnail
+ *   before advancing to review.
  * Track 2 (Publish -> HLS Transcode): Heavy 4-vCPU Fargate tasks are launched strictly
  *   post-approval when an operator or user clicks "Publish to Vault".
  */
@@ -47,6 +48,63 @@ async function getObjectInfo(bucket, key) {
     return { size: result.ContentLength, eTag: result.ETag };
 }
 
+async function downloadVideo(bucket, key, eTag, inputPath) {
+    const input = await s3.send(new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        ...(eTag ? { IfMatch: eTag } : {})
+    }));
+    if (!input.Body) throw new Error(`S3 returned no video body for s3://${bucket}/${key}.`);
+    await pipeline(input.Body, fs.createWriteStream(inputPath));
+}
+
+function extractThumbnail(inputPath, thumbnailPath) {
+    if (!ffmpegPath) throw new Error("The Lambda FFmpeg binary is unavailable for this runtime.");
+    const thumbnail = spawnSync(ffmpegPath, [
+        "-hide_banner", "-loglevel", "error", "-y", "-ss", "00:00:02", "-i", inputPath,
+        "-frames:v", "1", "-q:v", "2", "-update", "1", thumbnailPath
+    ], { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
+    if (thumbnail.status !== 0 || !fs.existsSync(thumbnailPath) || fs.statSync(thumbnailPath).size === 0) {
+        const fallbackThumbnail = spawnSync(ffmpegPath, [
+            "-hide_banner", "-loglevel", "error", "-y", "-i", inputPath,
+            "-frames:v", "1", "-q:v", "2", "-update", "1", thumbnailPath
+        ], { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
+        if (fallbackThumbnail.status !== 0 || !fs.existsSync(thumbnailPath) || fs.statSync(thumbnailPath).size === 0) {
+            throw new Error(`FFmpeg could not extract a thumbnail from the uploaded video: ${fallbackThumbnail.stderr || thumbnail.stderr || "unknown FFmpeg error"}`);
+        }
+    }
+}
+
+async function generateThumbnailInLambda({ bucket, key, eTag, tenantId, familyId, videoId, dbKey }) {
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "video-thumbnail-"));
+    const inputPath = path.join(workDir, `${videoId}.mp4`);
+    const thumbnailPath = path.join(workDir, "thumbnail.jpg");
+
+    try {
+        await downloadVideo(bucket, key, eTag, inputPath);
+        extractThumbnail(inputPath, thumbnailPath);
+        const thumbnailKey = `${tenantId}/${familyId}/${videoId}/thumbnail.jpg`;
+        await s3.send(new PutObjectCommand({
+            Bucket: process.env.THUMBNAIL_BUCKET,
+            Key: thumbnailKey,
+            Body: fs.readFileSync(thumbnailPath),
+            ContentType: "image/jpeg"
+        }));
+        await ddb.send(new UpdateCommand({
+            TableName: process.env.TABLE_NAME,
+            Key: dbKey,
+            UpdateExpression: "SET thumbnailKey = :thumbnail, transcodeStatus = :status, lastUpdated = :updated REMOVE processingMode",
+            ExpressionAttributeValues: {
+                ":thumbnail": thumbnailKey,
+                ":status": "REVIEW_PENDING",
+                ":updated": Date.now()
+            }
+        }));
+    } finally {
+        fs.rmSync(workDir, { recursive: true, force: true });
+    }
+}
+
 async function analyzeVideoInLambda({ bucket, key, eTag, fileName, tenantId, familyId, videoId, dbKey }) {
     if (!ffmpegPath) throw new Error("The Lambda FFmpeg binary is unavailable for this runtime.");
 
@@ -56,27 +114,8 @@ async function analyzeVideoInLambda({ bucket, key, eTag, fileName, tenantId, fam
     const gridPath = path.join(workDir, "keyframe_grid.jpg");
 
     try {
-        const input = await s3.send(new GetObjectCommand({
-            Bucket: bucket,
-            Key: key,
-            ...(eTag ? { IfMatch: eTag } : {})
-        }));
-        if (!input.Body) throw new Error(`S3 returned no video body for s3://${bucket}/${key}.`);
-        await pipeline(input.Body, fs.createWriteStream(inputPath));
-
-        const thumbnail = spawnSync(ffmpegPath, [
-            "-hide_banner", "-loglevel", "error", "-y", "-ss", "00:00:02", "-i", inputPath,
-            "-frames:v", "1", "-q:v", "2", "-update", "1", thumbnailPath
-        ], { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
-        if (thumbnail.status !== 0 || !fs.existsSync(thumbnailPath)) {
-            const fallbackThumbnail = spawnSync(ffmpegPath, [
-                "-hide_banner", "-loglevel", "error", "-y", "-i", inputPath,
-                "-frames:v", "1", "-q:v", "2", "-update", "1", thumbnailPath
-            ], { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
-            if (fallbackThumbnail.status !== 0 || !fs.existsSync(thumbnailPath)) {
-                throw new Error(`FFmpeg could not extract a thumbnail from the uploaded video: ${fallbackThumbnail.stderr || thumbnail.stderr || "unknown FFmpeg error"}`);
-            }
-        }
+        await downloadVideo(bucket, key, eTag, inputPath);
+        extractThumbnail(inputPath, thumbnailPath);
 
         const probe = spawnSync(ffmpegPath, ["-hide_banner", "-i", inputPath], { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
         const durationMatch = (probe.stderr || "").match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
@@ -175,7 +214,7 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
     }
 }
 
-async function launchFargateMetadataTask({ key, tenantId, familyId, videoId }) {
+async function launchFargateProcessingTask({ key, tenantId, familyId, videoId, mode }) {
     const taskResult = await ecsClient.send(new RunTaskCommand({
         cluster: process.env.CLUSTER_NAME,
         taskDefinition: process.env.TASK_DEFINITION,
@@ -197,7 +236,7 @@ async function launchFargateMetadataTask({ key, tenantId, familyId, videoId }) {
                     { name: "TENANT_ID", value: tenantId },
                     { name: "FAMILY_ID", value: familyId },
                     { name: "VIDEO_ID", value: videoId },
-                    { name: "CONTAINER_MODE", value: "METADATA_EXTRACT" }
+                    { name: "CONTAINER_MODE", value: mode }
                 ],
             }],
         },
@@ -370,7 +409,9 @@ exports.handler = async (event) => {
                             await analyzeVideoInLambda({ bucket, key, eTag: objectInfo.eTag, fileName, tenantId, familyId, videoId, dbKey });
                             console.log(`Completed keyframe-based AI metadata extraction in Lambda for ${videoId}.`);
                         } else {
-                            const taskArn = await launchFargateMetadataTask({ key, tenantId, familyId, videoId });
+                            const taskArn = await launchFargateProcessingTask({
+                                key, tenantId, familyId, videoId, mode: "METADATA_EXTRACT"
+                            });
                             console.log(`Started keyframe-based AI metadata extraction for ${videoId}: ${taskArn}`);
                         }
                     } catch (launchErr) {
@@ -389,34 +430,61 @@ exports.handler = async (event) => {
                     continue;
                 }
 
-                // Manual uploads skip AI processing and advance directly to review in Lambda.
-                console.log(`Manual Track 1 ingestion: advancing ${videoId} directly to REVIEW_PENDING.`);
+                console.log(`Manual Track 1 ingestion: generating thumbnail for ${videoId}.`);
+                const objectInfo = await getObjectInfo(bucket, key);
+                const useLambda = objectInfo.size < MAX_LAMBDA_VIDEO_BYTES;
+                const processingMode = useLambda ? "THUMBNAIL_LAMBDA" : "THUMBNAIL_FARGATE";
 
-                let aiTitle = existingItem?.aiTitle || existingItem?.title || fileName.split('.')[0];
-                let aiDescription = existingItem?.aiDescription || "";
-                let aiTags = existingItem?.aiTags || [];
-                let aiGenre = existingItem?.aiGenre || existingItem?.genre || "Miscellaneous";
-
-                const thumbnailS3Key = `${tenantId}/${familyId}/${videoId}/thumbnail.jpg`;
-
-                await ddb.send(new UpdateCommand({
-                    TableName: process.env.TABLE_NAME,
-                    Key: dbKey,
-                    UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, videoKey = :vk, familyId = :fid, thumbnailKey = if_not_exists(thumbnailKey, :tk), aiTitle = :at, aiGenre = :ag, aiDescription = :ad, aiTags = :atg",
-                    ExpressionAttributeValues: {
-                        ":s": "REVIEW_PENDING",
-                        ":t": Date.now(),
-                        ":vk": key,
-                        ":fid": familyId,
-                        ":tk": thumbnailS3Key,
-                        ":at": aiTitle,
-                        ":ag": aiGenre,
-                        ":ad": aiDescription,
-                        ":atg": aiTags
+                try {
+                    await ddb.send(new UpdateCommand({
+                        TableName: process.env.TABLE_NAME,
+                        Key: dbKey,
+                        UpdateExpression: "SET transcodeStatus = :processing, lastUpdated = :updated, processingMode = :mode, videoKey = :videoKey, familyId = :familyId",
+                        ConditionExpression: "transcodeStatus = :uploading OR transcodeStatus = :failed OR transcodeStatus = :ingested OR (transcodeStatus = :processing AND processingMode = :mode AND lastUpdated < :stale)",
+                        ExpressionAttributeValues: {
+                            ":processing": "PROCESSING",
+                            ":uploading": "UPLOADING",
+                            ":failed": "FAILED",
+                            ":ingested": "INGESTED",
+                            ":mode": processingMode,
+                            ":updated": Date.now(),
+                            ":videoKey": key,
+                            ":familyId": familyId,
+                            ":stale": Date.now() - 60 * 60 * 1000
+                        }
+                    }));
+                } catch (stateErr) {
+                    if (stateErr.name === "ConditionalCheckFailedException") {
+                        console.log(`Thumbnail generation for ${videoId} is already processing. Skipping duplicate event.`);
+                        continue;
                     }
-                }));
+                    throw stateErr;
+                }
 
-                continue; // Manual ingestion does not require a Fargate task.
+                try {
+                    if (useLambda) {
+                        await generateThumbnailInLambda({
+                            bucket, key, eTag: objectInfo.eTag, tenantId, familyId, videoId, dbKey
+                        });
+                        console.log(`Generated thumbnail in Lambda for ${videoId}.`);
+                    } else {
+                        const taskArn = await launchFargateProcessingTask({
+                            key, tenantId, familyId, videoId, mode: "THUMBNAIL_ONLY"
+                        });
+                        console.log(`Started Fargate thumbnail generation for ${videoId}: ${taskArn}`);
+                    }
+                } catch (thumbnailErr) {
+                    await ddb.send(new UpdateCommand({
+                        TableName: process.env.TABLE_NAME,
+                        Key: dbKey,
+                        UpdateExpression: "SET transcodeStatus = :failed, lastUpdated = :updated REMOVE processingMode",
+                        ExpressionAttributeValues: {
+                            ":failed": "FAILED",
+                            ":updated": Date.now()
+                        }
+                    }));
+                    throw thumbnailErr;
+                }
 
             } catch (getErr) {
                 console.error("Could not evaluate intake item status:", getErr);

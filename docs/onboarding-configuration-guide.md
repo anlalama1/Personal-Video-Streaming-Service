@@ -25,12 +25,14 @@ After running initial CDK synthesis/deployment (`npx cdk deploy --all` or CodePi
 * **`Region`**: Target AWS Region (e.g., `"us-east-1"`).
 
 ```json
-"CognitoUserPool": {
+{
+  "CognitoUserPool": {
     "Default": {
         "PoolId": "<YOUR_CUSTOMER_USER_POOL_ID>",
         "AppClientId": "<YOUR_CUSTOMER_ANDROID_CLIENT_ID>",
         "Region": "us-east-1"
     }
+  }
 }
 ```
 
@@ -130,6 +132,29 @@ aws dynamodb query `
   --region $region
 Remove-Item -LiteralPath $valuesPath -ErrorAction SilentlyContinue
 ```
+
+---
+
+## 🔐 Configure Google sign-in
+
+The customer Cognito pool uses a Google identity provider for web and Android
+social sign-in. In AWS Secrets Manager in the CDK deployment account and region,
+create a secret named `alexandria/google-oauth` with this JSON structure:
+
+```json
+{
+  "client_id": "<Google OAuth client ID>",
+  "client_secret": "<Google OAuth client secret>"
+}
+```
+
+In Google Cloud Console, add the customer Cognito domain's
+`https://<cognito-domain>/oauth2/idpresponse` URL as an authorized redirect URI
+for that OAuth client. Cognito then redirects back to the app client callback
+URLs configured in `AuthStack.ts`. Keep the client secret in Secrets Manager;
+the CDK stack references it dynamically and does not store it in source code.
+Deploy the Auth stack after creating the secret. The deployment's CloudFormation
+execution role must be allowed to read the secret.
 
 ---
 

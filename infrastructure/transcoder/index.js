@@ -73,6 +73,8 @@ async function run() {
 
         if (CONTAINER_MODE === "METADATA_EXTRACT") {
             await handleMetadataExtract(localInput, dbKey);
+        } else if (CONTAINER_MODE === "THUMBNAIL_ONLY") {
+            await handleThumbnailOnly(localInput, dbKey);
         } else {
             await handleHlsTranscode(localInput, dbKey);
         }
@@ -92,6 +94,42 @@ async function run() {
         }
         process.exit(1);
     }
+}
+
+async function handleThumbnailOnly(localInput, dbKey) {
+    const thumbnailPath = "/tmp/thumbnail.jpg";
+    console.log("Extracting thumbnail via FFmpeg...");
+    const thumbnail = spawnSync("ffmpeg", [
+        "-hide_banner", "-loglevel", "error", "-y", "-ss", "00:00:02", "-i", localInput,
+        "-frames:v", "1", "-q:v", "2", "-update", "1", thumbnailPath
+    ], { encoding: "utf8" });
+    if (thumbnail.status !== 0 || !fs.existsSync(thumbnailPath) || fs.statSync(thumbnailPath).size === 0) {
+        const fallbackThumbnail = spawnSync("ffmpeg", [
+            "-hide_banner", "-loglevel", "error", "-y", "-i", localInput,
+            "-frames:v", "1", "-q:v", "2", "-update", "1", thumbnailPath
+        ], { encoding: "utf8" });
+        if (fallbackThumbnail.status !== 0 || !fs.existsSync(thumbnailPath) || fs.statSync(thumbnailPath).size === 0) {
+            throw new Error(`FFmpeg could not extract a thumbnail: ${fallbackThumbnail.stderr || thumbnail.stderr || "unknown FFmpeg error"}`);
+        }
+    }
+
+    const thumbnailKey = `${TENANT_ID}/${FAMILY_ID}/${VIDEO_ID}/thumbnail.jpg`;
+    await s3.send(new PutObjectCommand({
+        Bucket: THUMBNAIL_BUCKET,
+        Key: thumbnailKey,
+        Body: fs.readFileSync(thumbnailPath),
+        ContentType: "image/jpeg"
+    }));
+    await db.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: dbKey,
+        UpdateExpression: "SET thumbnailKey = :thumbnail, transcodeStatus = :status, lastUpdated = :updated REMOVE processingMode",
+        ExpressionAttributeValues: {
+            ":thumbnail": thumbnailKey,
+            ":status": "REVIEW_PENDING",
+            ":updated": Date.now()
+        }
+    }));
 }
 
 async function handleMetadataExtract(localInput, dbKey) {

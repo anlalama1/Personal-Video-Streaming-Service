@@ -222,6 +222,13 @@ The project is **done** when all of the following are true:
 - [x] **Zero Idle Cloud Cost ($0.00 / Month)**: Bypassed 24/7 EC2 server costs while achieving 0-second cold starts for Review Board intake.
 - [x] **IAM Permission Integration**: Updated `MediaProcessingStack.ts` to grant `s3:GetObject`/`s3:PutObject` on `ThumbnailBucket` and `bedrock:InvokeModel` permissions to `OrchestratorLambda`.
 
+### Milestone 46 — Codebase Modularization & Parallel Deployments
+- [ ] **Complexity Inventory**: Identify oversized or highly coupled source files and prioritize candidates using complexity, change frequency, and testability.
+- [ ] **Behavior-Preserving Module Boundaries**: Decompose prioritized files into cohesive modules with explicit interfaces while preserving existing application and infrastructure behavior.
+- [ ] **Independent Deployment Units**: Separate suitable services, applications, or infrastructure components so they can be built and deployed independently.
+- [ ] **Parallel Pipeline Execution**: Update CI/CD dependencies and stages to build and deploy independent units concurrently, while retaining required ordering for shared resources and integration.
+- [ ] **Verification & Rollback Safety**: Add or update targeted tests and deployment checks to validate module boundaries, cross-module contracts, and safe rollback.
+
 ### Milestone 38 — Venture Capital Pitch Package & Live Demo Harness
 - [ ] **10-Slide Investor Pitch Deck**: Slide-by-slide narrative script and visual layout specifications.
 - [ ] **Financial Model & Unit Economics Spreadsheet**: 3-year SaaS financial model (87% Gross Margins).

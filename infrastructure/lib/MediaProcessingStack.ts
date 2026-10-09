@@ -123,7 +123,7 @@ export class MediaProcessingStack extends cdk.Stack {
       architecture: lambda.Architecture.X86_64,
       handler: 'orchestrator.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
-      memorySize: 4096,
+      memorySize: 3008,
       ephemeralStorageSize: cdk.Size.mebibytes(2048),
       timeout: cdk.Duration.minutes(10),
       environment: {

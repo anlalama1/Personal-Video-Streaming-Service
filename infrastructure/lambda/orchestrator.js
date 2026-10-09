@@ -27,7 +27,7 @@ const ecsClient = new ECSClient({});
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const s3 = new S3Client({});
 const bedrock = new BedrockRuntimeClient({});
-const MAX_LAMBDA_VIDEO_BYTES = 512 * 1024 * 1024;
+const MAX_LAMBDA_VIDEO_BYTES = 256 * 1024 * 1024;
 
 /**
  * Sanitizes raw filenames into URL-safe, lowercase video identifiers.

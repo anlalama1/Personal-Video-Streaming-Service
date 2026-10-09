@@ -84,7 +84,7 @@ async function run() {
             await db.send(new UpdateCommand({
                 TableName: TABLE_NAME,
                 Key: dbKey,
-                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t",
+                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t REMOVE processingMode",
                 ExpressionAttributeValues: { ":s": "FAILED", ":t": Date.now() }
             }));
         } catch (dbErr) {
@@ -95,7 +95,7 @@ async function run() {
 }
 
 async function handleMetadataExtract(localInput, dbKey) {
-    console.log("Extracting primary thumbnail & 1fps multi-frame timeline keyframe grid via FFmpeg...");
+    console.log("Extracting primary thumbnail and nine-frame timeline keyframe grid via FFmpeg...");
     const thumbnailPath = "/tmp/thumbnail.jpg";
     const gridPath = "/tmp/keyframe_grid.jpg";
 
@@ -109,23 +109,40 @@ async function handleMetadataExtract(localInput, dbKey) {
         thumbnailPath
     ];
     const ffmpegThumb = spawnSync('ffmpeg', ffmpegThumbArgs, { stdio: 'inherit' });
-    if (ffmpegThumb.status !== 0) {
+    if (ffmpegThumb.status !== 0 || !fs.existsSync(thumbnailPath)) {
         console.warn("Thumbnail extraction at 2s failed. Retrying at 0s...");
-        spawnSync('ffmpeg', ['-i', localInput, '-vframes', '1', '-q:v', '2', thumbnailPath], { stdio: 'inherit' });
+        const fallbackThumb = spawnSync('ffmpeg', ['-i', localInput, '-vframes', '1', '-q:v', '2', thumbnailPath], { stdio: 'inherit' });
+        if (fallbackThumb.status !== 0 || !fs.existsSync(thumbnailPath)) {
+            throw new Error("FFmpeg could not extract a thumbnail from the uploaded video.");
+        }
     }
 
-    // 2. Multi-Frame Timeline Keyframe Grid (1 frame per second compiled into 3x3 tile grid)
+    // Sample nine frames evenly across the full video duration and assemble them chronologically.
+    const probe = spawnSync('ffprobe', [
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        localInput
+    ], { encoding: 'utf8' });
+    const durationSeconds = Number(probe.stdout?.trim());
+    if (probe.status !== 0 || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+        throw new Error(`Could not determine uploaded video duration: ${probe.stderr || "invalid duration"}`);
+    }
+
     const ffmpegGridArgs = [
         '-i', localInput,
-        '-vf', 'fps=1,scale=320:-1,tile=3x3',
+        '-vf', `fps=8.01/${durationSeconds}:round=up,scale=320:-1,tile=3x3:nb_frames=9`,
         '-frames:v', '1',
         '-q:v', '2',
         gridPath
     ];
-    spawnSync('ffmpeg', ffmpegGridArgs, { stdio: 'inherit' });
+    const ffmpegGrid = spawnSync('ffmpeg', ffmpegGridArgs, { stdio: 'inherit' });
+    if (ffmpegGrid.status !== 0 || !fs.existsSync(gridPath) || fs.statSync(gridPath).size === 0) {
+        throw new Error("FFmpeg could not create the nine-frame timeline keyframe grid.");
+    }
 
     let aiMetadata = { title: "Untitled Video", genre: "", description: "No description generated.", tags: [] };
-    if (fs.existsSync(thumbnailPath)) {
+    if (fs.existsSync(gridPath)) {
         const approvedGenres = await getApprovedGenres();
         if (approvedGenres.length === 0) {
             throw new Error("No genres are configured in the DynamoDB genre registry.");
@@ -136,19 +153,17 @@ async function handleMetadataExtract(localInput, dbKey) {
         try {
             console.log("Invoking AWS Bedrock for multimodal multi-frame timeline description and genre classification...");
 
-            // Prefer multi-frame timeline grid for Bedrock AI analysis if available
-            const analysisImagePath = fs.existsSync(gridPath) ? gridPath : thumbnailPath;
-            const imageBuffer = fs.readFileSync(analysisImagePath);
+            const imageBuffer = fs.readFileSync(gridPath);
             const base64Image = imageBuffer.toString("base64");
             const sourceFileName = path.basename(INPUT_KEY || localInput);
 
             const genrePromptList = approvedGenres.map(g => `- ${g}`).join('\n');
 
-            const prompt = `Analyze this multi-frame timeline keyframe grid (showing 9 chronological frames sampled at 1 frame per second across the video timeline) together with the original filename context.
+            const prompt = `Carefully inspect the attached 3-by-3 keyframe grid. It contains nine frames sampled evenly from the beginning through the end of the video, in reading order (left to right, top to bottom). Base your description on what is visibly present in these frames, not on assumptions from the filename.
 Original filename: "${sourceFileName}"
 Create a concise metadata draft for a human editor to review.
-Be specific about clearly recognizable people, characters, landmarks, or brands, observing facial expressions, actions, and scenery shifts across the timeline, but do not guess when uncertain.
-The description must be no more than 3 sentences. Focus on the most important visible details and relevant context; avoid repetition, speculation, and flowery narration.
+Identify the visible subjects, actions, setting, and meaningful changes between the sampled moments. Be specific when details are recognizable, but do not invent identities, events, or context when they are not. If the grid is unclear or does not show enough evidence, say specifically that the visible content cannot be determined instead of inventing a generic description.
+The description must be no more than 3 sentences. Focus on the most important visible details; avoid repetition, speculation, and flowery narration.
 
 Select EXACTLY ONE genre from the following approved Heritage Genre list that best describes the event depicted in the video:
 ${genrePromptList}
@@ -202,11 +217,15 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
                 aiMetadata = JSON.parse(textResponse);
             }
 
+            if (typeof aiMetadata.description !== "string" || !aiMetadata.description.trim()) {
+                throw new Error("Bedrock response did not include a usable visual description.");
+            }
             if (!approvedGenres.includes(aiMetadata.genre)) {
                 aiMetadata.genre = approvedGenres[0];
             }
         } catch (bedrockErr) {
-            console.error("Bedrock metadata call failed, using fallback attributes:", bedrockErr);
+            console.error("Bedrock metadata call failed:", bedrockErr);
+            throw bedrockErr;
         }
 
         console.log("Uploading thumbnail image to dedicated S3 bucket...");
@@ -222,7 +241,7 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
         await db.send(new UpdateCommand({
             TableName: TABLE_NAME,
             Key: dbKey,
-            UpdateExpression: "SET thumbnailKey = :tk, transcodeStatus = :s, aiTitle = :at, aiGenre = :ag, genre = :g, aiDescription = :ad, aiTags = :atg, lastUpdated = :t",
+            UpdateExpression: "SET thumbnailKey = :tk, transcodeStatus = :s, aiTitle = :at, aiGenre = :ag, genre = :g, aiDescription = :ad, aiTags = :atg, lastUpdated = :t REMOVE processingMode",
             ExpressionAttributeValues: {
                 ":tk": thumbnailS3Key,
                 ":s": "REVIEW_PENDING",

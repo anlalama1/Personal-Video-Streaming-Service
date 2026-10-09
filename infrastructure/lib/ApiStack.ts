@@ -46,7 +46,7 @@ export class ApiStack extends cdk.Stack {
     const scribeLambda = new lambda.Function(this, 'ScribeFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), { exclude: ['node_modules/ffmpeg-static/**'] }),
       timeout: cdk.Duration.seconds(30),
       environment: {
         TABLE_NAME: props.table.tableName,
@@ -61,7 +61,7 @@ export class ApiStack extends cdk.Stack {
     this.logPlayLambda = new lambda.Function(this, 'LogPlayEventFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.logPlayHandler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), { exclude: ['node_modules/ffmpeg-static/**'] }),
       environment: {
         TABLE_NAME: props.table.tableName,
       },

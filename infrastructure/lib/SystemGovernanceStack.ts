@@ -40,7 +40,7 @@ export class SystemGovernanceStack extends cdk.Stack {
       functionName: 'StreamingService-NuclearResetFunction',
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'nuclearReset.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), { exclude: ['node_modules/ffmpeg-static/**'] }),
       timeout: cdk.Duration.minutes(15), // Extended 15-minute timeout for multi-resource purges
       environment: {
         SOURCE_BUCKET: props.sourceBucket.bucketName,

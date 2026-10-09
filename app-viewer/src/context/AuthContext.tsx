@@ -15,7 +15,7 @@ import api from '../api';
 
 const USER_POOL_ID = import.meta.env.VITE_USER_POOL_ID;
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
-const COGNITO_DOMAIN = import.meta.env.VITE_COGNITO_DOMAIN || `alexandria-vault-68845a.auth.us-east-1.amazoncognito.com`;
+const COGNITO_DOMAIN = import.meta.env.VITE_COGNITO_DOMAIN || 'alexandria-vault-668616.auth.us-east-1.amazoncognito.com';
 
 console.log('Auth Configuration:', { USER_POOL_ID, APP_CLIENT_ID, COGNITO_DOMAIN });
 

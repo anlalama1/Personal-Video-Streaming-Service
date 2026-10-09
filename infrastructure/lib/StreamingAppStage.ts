@@ -26,6 +26,7 @@ export class StreamingAppStage extends cdk.Stage {
   public readonly customerUserPoolId: cdk.CfnOutput;
   public readonly customerWebClientId: cdk.CfnOutput;
   public readonly customerAndroidClientId: cdk.CfnOutput;
+  public readonly customerCognitoDomain: cdk.CfnOutput;
 
   // Legacy Outputs
   public readonly userPoolId: cdk.CfnOutput;
@@ -53,6 +54,7 @@ export class StreamingAppStage extends cdk.Stage {
     this.customerUserPoolId = auth.node.findChild('CustomerUserPoolId') as cdk.CfnOutput;
     this.customerWebClientId = auth.node.findChild('CustomerWebClientId') as cdk.CfnOutput;
     this.customerAndroidClientId = auth.node.findChild('CustomerAndroidClientId') as cdk.CfnOutput;
+    this.customerCognitoDomain = auth.node.findChild('CustomerHostedUIDomain') as cdk.CfnOutput;
 
     this.userPoolId = auth.node.findChild('UserPoolId') as cdk.CfnOutput;
     this.webClientId = auth.node.findChild('WebClientId') as cdk.CfnOutput;

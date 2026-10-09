@@ -66,7 +66,7 @@ graph TD
 
 ### B. Media Processing Pipeline
 *   **Polymorphic Container Architecture**: Reuses the same Fargate Docker image for two distinct operation roles (`CONTAINER_MODE` variable), maximizing asset utility and simplifying CI/CD.
-*   **Human-in-the-Loop Intake**: Automatically extracts a 2-second thumbnail frame and invokes AWS Bedrock (Claude 3 Haiku) to generate default metadata drafts (`aiTitle`, `aiDescription`, `aiTags`) inside a low-compute Fargate profile, staging the asset in a `REVIEW_PENDING` lock.
+*   **Human-in-the-Loop Intake**: AI-enabled uploads smaller than 512 MiB are downloaded and analyzed in the SQS-triggered Lambda, configured with 4 GiB memory, 2 GiB of `/tmp`, and a 10-minute timeout. Packaged FFmpeg builds a nine-frame timeline grid for Bedrock. Larger uploads use the existing Fargate metadata path. Successful drafts enter `REVIEW_PENDING`; processing failures stay visible as `FAILED` for retry.
 *   **Deferred Transcoding**: Delays heavy multi-bitrate HLS segmentation until a human operator has reviewed, adjusted, and approved the metadata in the Demetrius Portal, eliminating compute waste on bad uploads.
 
 ### C. Backend API (BFF)
@@ -155,7 +155,7 @@ This section documents the "Why" behind our engineering choices, representing Le
 ### 15. Ingestion Sequence: Polymorphic Container & Human-in-the-Loop Optimization
 *   **Decision**: **Bifurcated `CONTAINER_MODE` inside a Single Docker Image, staging under `REVIEW_PENDING` before full HLS transcode**.
 *   **Trade-off**: Minor code branching complexity inside the transcoder image vs. **Extreme FinOps Efficiency & Zero Compute Waste**.
-*   **Reasoning**: Running large multi-bitrate transcodes on heavy 4-vCPU Fargate instances before metadata confirmation can waste massive compute dollars on bad or unwanted files. Reusing the exact same Docker image with a low-horsepower memory/CPU override during `METADATA_EXTRACT` allows fractions-of-a-penny ingestion metadata extraction via Bedrock, ensuring heavy compute clusters are strictly reserved for human-vetted content.
+*   **Reasoning**: Running large multi-bitrate transcodes on heavy 4-vCPU Fargate instances before metadata confirmation can waste massive compute dollars on bad or unwanted files. Small uploads avoid Fargate startup latency by generating metadata in Lambda; larger uploads use Fargate to keep Lambda storage and runtime bounded. Heavy HLS transcoding remains reserved for human-vetted content.
 
 ### 16. User Experience: Cinematic Discovery Layer
 *   **Decision**: **Intermediate "Media Preview" pages across all clients**.

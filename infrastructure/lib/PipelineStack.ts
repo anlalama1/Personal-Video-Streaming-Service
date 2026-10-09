@@ -156,6 +156,7 @@ export class PipelineStack extends cdk.Stack {
           VITE_API_BASE_URL: prodStage.apiUrl,
           VITE_USER_POOL_ID: prodStage.customerUserPoolId,
           VITE_APP_CLIENT_ID: prodStage.customerWebClientId,
+          VITE_COGNITO_DOMAIN: prodStage.customerCognitoDomain,
           VIEWER_BUCKET: prodStage.viewerPortalBucketName,
           DISTRIBUTION_ID: prodStage.distributionId,
         },
@@ -164,7 +165,7 @@ export class PipelineStack extends cdk.Stack {
           'mkdir -p public',
           'cp ../app/src/main/res/drawable/logo_flat.png ./public/logo_flat.png',
           'npm install',
-          'VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_USER_POOL_ID=$VITE_USER_POOL_ID VITE_APP_CLIENT_ID=$VITE_APP_CLIENT_ID npm run build',
+          'VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_USER_POOL_ID=$VITE_USER_POOL_ID VITE_APP_CLIENT_ID=$VITE_APP_CLIENT_ID VITE_COGNITO_DOMAIN=$VITE_COGNITO_DOMAIN npm run build',
           'aws s3 sync dist s3://$VIEWER_BUCKET --delete',
           'aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"'
         ],

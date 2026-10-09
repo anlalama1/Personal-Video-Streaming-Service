@@ -2,11 +2,14 @@
   "name": "scribe-lambda",
   "version": "1.0.0",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.0.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-ecs": "^3.1148.0",
     "@aws-sdk/client-lambda": "^3.0.0",
-    "@aws-sdk/lib-dynamodb": "^3.0.0",
     "@aws-sdk/client-s3": "^3.0.0",
-    "@aws-sdk/s3-request-presigner": "^3.0.0"
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "ffmpeg-static": "^5.2.0"
   }
 }

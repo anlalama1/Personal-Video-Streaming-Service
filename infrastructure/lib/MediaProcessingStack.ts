@@ -101,7 +101,7 @@ export class MediaProcessingStack extends cdk.Stack {
 
     // 2. SQS Buffer Queue for Upload Events
     const transcodeQueue = new sqs.Queue(this, 'TranscodeQueue', {
-      visibilityTimeout: cdk.Duration.minutes(15),
+      visibilityTimeout: cdk.Duration.minutes(60),
     });
 
     // EventBridge Rule: Triggers SQS queue whenever an .mp4 is uploaded to S3
@@ -120,10 +120,12 @@ export class MediaProcessingStack extends cdk.Stack {
     // 3. Orchestrator Lambda: Receives SQS events and executes Track 1 intake or launches Fargate tasks
     this.orchestratorLambda = new lambda.Function(this, 'OrchestratorLambda', {
       runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.X86_64,
       handler: 'orchestrator.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
-      memorySize: 1024,
-      timeout: cdk.Duration.minutes(3),
+      memorySize: 4096,
+      ephemeralStorageSize: cdk.Size.mebibytes(2048),
+      timeout: cdk.Duration.minutes(10),
       environment: {
         CLUSTER_NAME: cluster.clusterName,
         TASK_DEFINITION: taskDefinition.taskDefinitionArn,
@@ -136,19 +138,10 @@ export class MediaProcessingStack extends cdk.Stack {
       },
     });
 
-    this.orchestratorLambda.addEventSource(new SqsEventSource(transcodeQueue));
+    this.orchestratorLambda.addEventSource(new SqsEventSource(transcodeQueue, { batchSize: 1 }));
     props.metadataTable.grantReadWriteData(this.orchestratorLambda);
     props.sourceBucket.grantRead(this.orchestratorLambda);
     props.thumbnailBucket.grantReadWrite(this.orchestratorLambda);
-
-    // Bedrock Multimodal Inference IAM Grant for Track 1 Lambda AI Metadata Intake
-    this.orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['bedrock:InvokeModel'],
-      resources: [
-        `arn:aws:bedrock:us-*:${Config.account}:inference-profile/${Config.bedrockModelId}`,
-        `arn:aws:bedrock:us-*::foundation-model/${Config.bedrockModelId.replace('us.', '')}`,
-      ]
-    }));
 
     // Allow Orchestrator Lambda to trigger ECS tasks
     this.orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
@@ -159,12 +152,19 @@ export class MediaProcessingStack extends cdk.Stack {
       actions: ['iam:PassRole'],
       resources: [taskDefinition.taskRole.roleArn, taskDefinition.executionRole!.roleArn],
     }));
+    this.orchestratorLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
+      resources: [
+        `arn:aws:bedrock:us-*:${Config.account}:inference-profile/${Config.bedrockModelId}`,
+        `arn:aws:bedrock:us-*::foundation-model/${Config.bedrockModelId.replace('us.', '')}`,
+      ]
+    }));
 
     // 4. Automated Sweeper Cron Job (Ran every 15 minutes for self-healing)
     const sweeperLambda = new lambda.Function(this, 'TranscodingSweeper', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'sweeper.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), { exclude: ['node_modules/ffmpeg-static/**'] }),
       timeout: cdk.Duration.minutes(5),
       environment: {
         TABLE_NAME: props.metadataTable.tableName,

@@ -131,6 +131,9 @@ export class AuthStack extends cdk.Stack {
         domainPrefix: `alexandria-vault-${Config.account.slice(-6)}`,
       },
     });
+    new cdk.CfnOutput(this, 'CustomerHostedUIDomain', {
+      value: `alexandria-vault-${Config.account.slice(-6)}.auth.${Config.region}.amazoncognito.com`,
+    });
 
     this.customerWebClient = this.customerUserPool.addClient('CustomerWebClient', {
       userPoolClientName: 'Alexandria-Scroll-Viewer-Client',

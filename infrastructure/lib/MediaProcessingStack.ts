@@ -119,7 +119,7 @@ export class MediaProcessingStack extends cdk.Stack {
 
     // 3. Orchestrator Lambda: Receives SQS events and executes Track 1 intake or launches Fargate tasks
     this.orchestratorLambda = new lambda.Function(this, 'OrchestratorLambda', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'orchestrator.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       memorySize: 1024,
@@ -162,7 +162,7 @@ export class MediaProcessingStack extends cdk.Stack {
 
     // 4. Automated Sweeper Cron Job (Ran every 15 minutes for self-healing)
     const sweeperLambda = new lambda.Function(this, 'TranscodingSweeper', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'sweeper.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       timeout: cdk.Duration.minutes(5),

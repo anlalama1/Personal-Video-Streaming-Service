@@ -44,7 +44,7 @@ export class ApiStack extends cdk.Stack {
 
     // 1. Unified Scribe Lambda (Logic Layer)
     const scribeLambda = new lambda.Function(this, 'ScribeFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       timeout: cdk.Duration.seconds(30),
@@ -59,7 +59,7 @@ export class ApiStack extends cdk.Stack {
 
     // 2. Log Play Lambda (Telemetry Layer)
     this.logPlayLambda = new lambda.Function(this, 'LogPlayEventFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.logPlayHandler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       environment: {

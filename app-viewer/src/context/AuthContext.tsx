@@ -3,8 +3,9 @@
  * Desktop Viewer Authentication Context & Token Decoder
  * ============================================================================
  * Enterprise Architecture Strategy: Global Auth Context & ID Token Claims Extraction.
- * Configures AWS Amplify Auth, checks active Cognito session states, decodes
- * user attributes (email & custom:familyId), and triggers instant UI state sync.
+ * Configures AWS Amplify Auth with OAuth Hosted UI domain settings, checks active
+ * Cognito session states, decodes user attributes (email & custom:familyId), and
+ * triggers instant UI state sync.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -14,17 +15,27 @@ import api from '../api';
 
 const USER_POOL_ID = import.meta.env.VITE_USER_POOL_ID;
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
+const COGNITO_DOMAIN = import.meta.env.VITE_COGNITO_DOMAIN || `alexandria-vault-68845a.auth.us-east-1.amazoncognito.com`;
 
-console.log('Auth Configuration:', { USER_POOL_ID, APP_CLIENT_ID });
+console.log('Auth Configuration:', { USER_POOL_ID, APP_CLIENT_ID, COGNITO_DOMAIN });
 
-// Initialize AWS Amplify Auth Plugin
+// Initialize AWS Amplify Auth Plugin with OAuth 2.0 Identity Federation configuration
 if (USER_POOL_ID && APP_CLIENT_ID) {
   Amplify.configure({
     Auth: {
       Cognito: {
         userPoolId: USER_POOL_ID,
         userPoolClientId: APP_CLIENT_ID,
-        signUpVerificationMethod: 'code'
+        signUpVerificationMethod: 'code',
+        loginWith: {
+          oauth: {
+            domain: COGNITO_DOMAIN,
+            scopes: ['email', 'openid', 'profile'],
+            redirectSignIn: ['https://www.alexandria-plus.com/', 'http://localhost:5173/'],
+            redirectSignOut: ['https://www.alexandria-plus.com/', 'http://localhost:5173/'],
+            responseType: 'code'
+          }
+        }
       }
     }
   });

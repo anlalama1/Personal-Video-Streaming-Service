@@ -38,7 +38,7 @@ export class SystemGovernanceStack extends cdk.Stack {
     // 1. Isolated "Nuclear Option" System Factory Reset Lambda
     this.nuclearResetLambda = new lambda.Function(this, 'NuclearResetFunction', {
       functionName: 'StreamingService-NuclearResetFunction',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'nuclearReset.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       timeout: cdk.Duration.minutes(15), // Extended 15-minute timeout for multi-resource purges

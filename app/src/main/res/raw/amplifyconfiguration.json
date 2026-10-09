@@ -19,7 +19,9 @@
                 "Auth": {
                     "Default": {
                         "authenticationFlowType": "USER_PASSWORD_AUTH",
-                        "socialProviders": [],
+                        "socialProviders": [
+                            "GOOGLE"
+                        ],
                         "usernameAttributes": [
                             "EMAIL"
                         ],
@@ -36,7 +38,18 @@
                         ],
                         "verificationMechanisms": [
                             "EMAIL"
-                        ]
+                        ],
+                        "OAuth": {
+                            "WebDomain": "alexandria-vault-68845a.auth.us-east-1.amazoncognito.com",
+                            "AppClientId": "4kj2ibamh4omfs0sidg9r5isbs",
+                            "SignInRedirectURI": "myapp://callback",
+                            "SignOutRedirectURI": "myapp://logout",
+                            "Scopes": [
+                                "email",
+                                "openid",
+                                "profile"
+                            ]
+                        }
                     }
                 }
             }

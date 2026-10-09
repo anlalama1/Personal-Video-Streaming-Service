@@ -1091,6 +1091,19 @@ This document tracks the high-level collaboration between the human developer an
     - Integrated **"Continue with Google"** buttons on Web ([`Auth.tsx`](file:///I:/Android%20Projects/app-viewer/src/pages/Auth.tsx)) and Android ([`LoginScreen.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/LoginScreen.kt) / [`AuthViewModel.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/auth/AuthViewModel.kt)).
 - **Outcome**: Delivered 1-click Google OAuth registration and social sign-in across Web and Android platforms.
 
+### 129. Infrastructure Optimization: Node.js 22.x Lambda Runtime Upgrade (Oct 8, 2026)
+- **Challenge**: AWS SDK v3 emitted `NodeVersionSupportWarning` stderr logs due to `NODEJS_20_X` runtime deprecation notices.
+- **AI Contribution**: 
+    - Upgraded all 5 AWS Lambda function definitions across [`ApiStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/ApiStack.ts), [`MediaProcessingStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/MediaProcessingStack.ts), and [`SystemGovernanceStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/SystemGovernanceStack.ts) to `lambda.Runtime.NODEJS_22_X`.
+- **Outcome**: Upgraded infrastructure runtime to Node.js 22.x and eliminated AWS SDK v3 deprecation warning logs across CloudWatch.
+
+### 130. OAuth Configuration Binding for Federated Social Sign-In (Oct 8, 2026)
+- **Challenge**: Clicking "Continue with Google" threw "The OAuth configuration is missing or invalid" because the client-side `loginWith.oauth` config blocks were missing in Amplify SDK settings.
+- **AI Contribution**: 
+    - Added `loginWith.oauth` configuration (domain, scopes, redirect URIs) to `Amplify.configure` in [`AuthContext.tsx`](file:///I:/Android%20Projects/app-viewer/src/context/AuthContext.tsx#L25-L40).
+    - Configured `OAuth` and `socialProviders` blocks in [`amplifyconfiguration.json`](file:///I:/Android%20Projects/app/src/main/res/raw/amplifyconfiguration.json#L20-L40) for Android.
+- **Outcome**: Enabled smooth, error-free Google OAuth 2.0 social sign-in redirects across Web and Mobile.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

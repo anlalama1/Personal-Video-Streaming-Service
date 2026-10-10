@@ -11,8 +11,8 @@
                 },
                 "CognitoUserPool": {
                     "Default": {
-                        "PoolId": "us-east-1_sYrH0wtEB",
-                        "AppClientId": "4kj2ibamh4omfs0sidg9r5isbs",
+                        "PoolId": "us-east-1_wBV6jIHMf",
+                        "AppClientId": "3ldo27gcimmtkuo1n6lgb2kmsi",
                         "Region": "us-east-1"
                     }
                 },
@@ -41,7 +41,7 @@
                         ],
                         "OAuth": {
                             "WebDomain": "alexandria-vault-668616.auth.us-east-1.amazoncognito.com",
-                            "AppClientId": "4kj2ibamh4omfs0sidg9r5isbs",
+                            "AppClientId": "3ldo27gcimmtkuo1n6lgb2kmsi",
                             "SignInRedirectURI": "myapp://callback",
                             "SignOutRedirectURI": "myapp://logout",
                             "Scopes": [

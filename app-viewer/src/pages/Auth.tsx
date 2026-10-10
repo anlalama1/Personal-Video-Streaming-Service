@@ -39,8 +39,7 @@ const Auth = () => {
         await confirmSignUp({ username: email, confirmationCode: code });
         const result = await signIn({
           username: email,
-          password,
-          options: { authFlowType: 'USER_PASSWORD_AUTH' }
+          password
         });
         if (!result.isSignedIn && result.nextStep.signInStep === 'CONFIRM_SIGN_UP') {
           setNeedsVerification(true);
@@ -51,7 +50,7 @@ const Auth = () => {
         if (result.isSignedIn) setNeedsVerification(false);
       } else if (isLogin) {
         try {
-          const result = await signIn({ username: email, password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
+          const result = await signIn({ username: email, password });
           if (!result.isSignedIn && result.nextStep.signInStep === 'CONFIRM_SIGN_UP') {
             setNeedsVerification(true);
             setError('This account is not confirmed. Enter the verification code sent to your email.');
@@ -74,8 +73,7 @@ const Auth = () => {
           if (result.isSignUpComplete) {
             const signInResult = await signIn({
               username: email,
-              password,
-              options: { authFlowType: 'USER_PASSWORD_AUTH' }
+              password
             });
             if (!signInResult.isSignedIn && signInResult.nextStep.signInStep === 'CONFIRM_SIGN_UP') {
               setNeedsVerification(true);
@@ -89,7 +87,7 @@ const Auth = () => {
         } catch (signUpError: unknown) {
           if (!isExistingUserError(signUpError)) throw signUpError;
           try {
-            const result = await signIn({ username: email, password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
+            const result = await signIn({ username: email, password });
             if (!result.isSignedIn && result.nextStep.signInStep === 'CONFIRM_SIGN_UP') {
               setNeedsVerification(true);
               setError('This account is not confirmed. Enter the verification code sent to your email.');

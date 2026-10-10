@@ -19,14 +19,14 @@ const api = axios.create({
 
 /**
  * Axios Request Interceptor: Automatically fetches current Amplify Auth session
- * and injects the cryptographically signed JWT ID Token into the 'Authorization: Bearer' header.
+ * and injects the cryptographically signed JWT ID Token into the Authorization header.
  */
 api.interceptors.request.use(async (config) => {
   try {
     const session = await fetchAuthSession();
     const idToken = session.tokens?.idToken?.toString();
     if (idToken) {
-      config.headers.Authorization = `Bearer ${idToken}`;
+      config.headers.Authorization = idToken;
     }
   } catch (err) {
     console.warn('No active session, proceeding without token');

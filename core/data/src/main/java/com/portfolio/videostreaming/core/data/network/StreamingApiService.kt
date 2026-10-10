@@ -306,7 +306,7 @@ object StreamingApi {
 
             val idToken = cognitoSession?.userPoolTokensResult?.value?.idToken
             if (idToken != null) {
-                requestBuilder.addHeader("Authorization", "Bearer $idToken")
+                requestBuilder.header("Authorization", idToken)
             } else {
                 Log.w("StreamingApi", "No ID Token found in Cognito session. Auth header omitted.")
             }

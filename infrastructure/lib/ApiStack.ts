@@ -74,6 +74,7 @@ export class ApiStack extends cdk.Stack {
     props.table.grantReadData(this.logPlayLambda);
     props.mediaBucket.grantPut(scribeLambda);
     scribeLambda.addToRolePolicy(new iam.PolicyStatement({
+      sid: 'CustomerCognitoUserManagement',
       actions: [
         'cognito-idp:AdminGetUser',
         'cognito-idp:AdminUpdateUserAttributes',

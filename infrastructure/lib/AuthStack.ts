@@ -159,8 +159,7 @@ export class AuthStack extends cdk.Stack {
         .withStandardAttributes({ email: true })
         .withCustomAttributes('familyId', 'isAdmin', 'isApproved'),
       writeAttributes: new cognito.ClientAttributes()
-        .withStandardAttributes({ email: true })
-        .withCustomAttributes('familyId'),
+        .withStandardAttributes({ email: true }),
       authFlows: {
         userPassword: true,
         userSrp: true,
@@ -186,8 +185,7 @@ export class AuthStack extends cdk.Stack {
         .withStandardAttributes({ email: true })
         .withCustomAttributes('familyId', 'isAdmin', 'isApproved'),
       writeAttributes: new cognito.ClientAttributes()
-        .withStandardAttributes({ email: true })
-        .withCustomAttributes('familyId'),
+        .withStandardAttributes({ email: true }),
       authFlows: {
         userPassword: true,
         userSrp: true,

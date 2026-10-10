@@ -13,6 +13,7 @@ import PlayerPage from './pages/PlayerPage';
 import MediaDetails from './pages/MediaDetails';
 import ConsumerUpload from './pages/ConsumerUpload';
 import Auth from './pages/Auth';
+import VaultOnboarding from './pages/VaultOnboarding';
 import VaultAdmin from './pages/VaultAdmin';
 import Navbar from './components/AppNavbar';
 import UploadDrawer from './components/UploadDrawer';
@@ -47,14 +48,16 @@ const AppContent = () => {
     return <Auth />;
   }
 
-  if (!userProfile.familyId || (!userProfile.isApproved && !userProfile.isAdmin)) {
+  if (!userProfile.familyId) {
+    return <VaultOnboarding />;
+  }
+
+  if (!userProfile.isApproved && !userProfile.isAdmin) {
     return (
       <div className="min-h-screen bg-heritage-black text-heritage-parchment flex flex-col items-center justify-center gap-4 p-8 text-center">
         <h1 className="text-2xl font-black uppercase text-heritage-gold">Access Pending</h1>
         <p className="max-w-md text-heritage-400">
-          {userProfile.familyId
-            ? 'A Family Vault administrator must approve your membership before you can view the catalog.'
-            : 'This account does not have a valid Family Vault assignment.'}
+          A Family Vault administrator must approve your membership before you can view the catalog.
         </p>
         <button onClick={() => void signOut()} className="rounded-xl bg-heritage-gold px-5 py-3 font-black text-heritage-black">Sign Out</button>
       </div>

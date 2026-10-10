@@ -37,7 +37,8 @@ import com.portfolio.videostreaming.ui.theme.Stone400
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
-    onNavigateToSignUp: () -> Unit
+    onNavigateToSignUp: () -> Unit,
+    onNavigateToVerification: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -115,7 +116,17 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            if (authState is AuthState.Error) {
+            if (authState is AuthState.NeedsVerification) {
+                Text(
+                    text = "This account needs email verification before you can sign in.",
+                    color = Amber500,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                TextButton(onClick = onNavigateToVerification) {
+                    Text("ENTER VERIFICATION CODE", color = Amber500, fontWeight = FontWeight.Bold)
+                }
+            } else if (authState is AuthState.Error) {
                 Text(
                     text = (authState as AuthState.Error).message,
                     color = Color.Red,
@@ -129,13 +140,13 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = authState !is AuthState.Loading,
+                enabled = authState !is AuthState.Loading && authState !is AuthState.NeedsVerification,
                 colors = ButtonDefaults.buttonColors(containerColor = Amber500)
             ) {
                 if (authState is AuthState.Loading) {
                     CircularProgressIndicator(color = HeritageBlack, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("SIGN IN", color = HeritageBlack, fontWeight = FontWeight.Black)
+                    Text(if (authState is AuthState.NeedsVerification) "VERIFICATION REQUIRED" else "SIGN IN", color = HeritageBlack, fontWeight = FontWeight.Black)
                 }
             }
 
@@ -164,6 +175,7 @@ fun LoginScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = authState !is AuthState.NeedsVerification && authState !is AuthState.Loading,
                 border = BorderStroke(1.dp, Parchment.copy(alpha = 0.3f))
             ) {
                 Text("CONTINUE WITH GOOGLE", color = Parchment, fontWeight = FontWeight.Black, fontSize = 11.sp)

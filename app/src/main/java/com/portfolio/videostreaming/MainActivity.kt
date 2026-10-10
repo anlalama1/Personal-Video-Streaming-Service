@@ -57,6 +57,7 @@ import com.portfolio.videostreaming.ui.auth.AuthState
 import com.portfolio.videostreaming.ui.auth.AuthViewModel
 import com.portfolio.videostreaming.ui.auth.LoginScreen
 import com.portfolio.videostreaming.ui.auth.SignupScreen
+import com.portfolio.videostreaming.ui.auth.VaultOnboardingScreen
 import com.portfolio.videostreaming.ui.components.AlexandriaBottomBar
 import com.portfolio.videostreaming.ui.components.AlexandriaNavbar
 import com.portfolio.videostreaming.ui.components.BottomNavItem
@@ -125,6 +126,12 @@ class MainActivity : ComponentActivity() {
                             is AuthState.SignedIn -> {
                                 MainAppContent(authViewModel)
                             }
+                            is AuthState.NeedsVerification -> {
+                                SignupScreen(
+                                    viewModel = authViewModel,
+                                    onNavigateToLogin = { authViewModel.cancelVerification() }
+                                )
+                            }
                             is AuthState.Loading -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     CircularProgressIndicator(color = Amber500)
@@ -136,7 +143,8 @@ class MainActivity : ComponentActivity() {
                                     composable(Screen.Login.route) {
                                         LoginScreen(
                                             viewModel = authViewModel,
-                                            onNavigateToSignUp = { navController.navigate(Screen.Signup.route) }
+                                            onNavigateToSignUp = { navController.navigate(Screen.Signup.route) },
+                                            onNavigateToVerification = { navController.navigate(Screen.Signup.route) }
                                         )
                                     }
                                     composable(Screen.Signup.route) {
@@ -162,6 +170,15 @@ class MainActivity : ComponentActivity() {
         val isApproved by authViewModel.isApproved.collectAsState()
         val isAdmin by authViewModel.isAdmin.collectAsState()
         val familyId by authViewModel.familyId.collectAsState()
+        val newFamilyCode by authViewModel.newFamilyCode.collectAsState()
+        if (!newFamilyCode.isNullOrBlank()) {
+            VaultOnboardingScreen(authViewModel, onSignOut = { authViewModel.signOut() })
+            return
+        }
+        if (familyId.isNullOrBlank()) {
+            VaultOnboardingScreen(authViewModel, onSignOut = { authViewModel.signOut() })
+            return
+        }
         if (!isApproved && !isAdmin) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -169,9 +186,6 @@ class MainActivity : ComponentActivity() {
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
             ) {
                 Text("Family vault access is pending administrator approval.", color = Color.White)
-                if (familyId.isNullOrBlank()) {
-                    Text("This account has no family vault assignment.", color = Color.White)
-                }
                 Button(onClick = { authViewModel.signOut() }) {
                     Text("Sign out")
                 }

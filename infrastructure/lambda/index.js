@@ -23,6 +23,7 @@ const {
     ListUsersCommand
 } = require("@aws-sdk/client-cognito-identity-provider");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const { randomBytes } = require("crypto");
 
 // Initialize AWS SDK v3 Clients outside the handler for TCP connection reuse across warm Lambda invocations.
 const ddbClient = new DynamoDBClient({});
@@ -92,6 +93,10 @@ exports.handler = async (event) => {
             return await handleListVaultMembers(claims);
         } else if (path === '/vault/members' && method === 'POST') {
             return await handleRegisterVaultMember(claims);
+        } else if (path === '/vault/join' && method === 'POST') {
+            return await handleJoinVault(event, claims);
+        } else if (path === '/vault/create' && method === 'POST') {
+            return await handleCreateVault(claims);
         } else if (path === '/vault/members/approve' && method === 'POST') {
             return await handleManageVaultMember(event, claims, 'approve');
         } else if (path === '/vault/members/promote' && method === 'POST') {
@@ -843,29 +848,15 @@ async function handleRegisterVaultMember(claims) {
     }
 
     const tableName = process.env.TABLE_NAME;
-    const bootstrapKey = {
-        PK: `VAULT#${familyId}`,
-        SK: 'GOVERNANCE#BOOTSTRAP'
-    };
-    let isBootstrapAdmin = false;
-    try {
-        await docClient.send(new PutCommand({
-            TableName: tableName,
-            Item: { ...bootstrapKey, bootstrapSub: sub, createdAt: Date.now() },
-            ConditionExpression: 'attribute_not_exists(PK)'
-        }));
-        isBootstrapAdmin = true;
-    } catch (error) {
-        if (error.name !== 'ConditionalCheckFailedException') {
-            throw error;
-        }
-        const bootstrap = await docClient.send(new GetCommand({
-            TableName: tableName,
-            Key: bootstrapKey,
-            ConsistentRead: true
-        }));
-        isBootstrapAdmin = bootstrap.Item?.bootstrapSub === sub;
-    }
+    const bootstrap = await docClient.send(new GetCommand({
+        TableName: tableName,
+        Key: {
+            PK: `VAULT#${familyId}`,
+            SK: 'GOVERNANCE#BOOTSTRAP'
+        },
+        ConsistentRead: true
+    }));
+    const isBootstrapAdmin = bootstrap.Item?.bootstrapSub === sub;
 
     const updates = {};
     if (isBootstrapAdmin) {
@@ -880,40 +871,202 @@ async function handleRegisterVaultMember(claims) {
         }
     }
 
+    if (Object.keys(updates).length) {
+        await cognitoClient.send(new AdminUpdateUserAttributesCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Username: username,
+            UserAttributes: Object.entries(updates).map(([Name, Value]) => ({ Name, Value }))
+        }));
+    }
+    const isAdmin = isBootstrapAdmin || getAttribute(existingUser, 'custom:isAdmin') === 'true';
+    const isApproved = isBootstrapAdmin || getAttribute(existingUser, 'custom:isApproved') === 'true';
+    await setVaultMemberState(sub, familyId, isAdmin, isApproved, memberRecord?.accessDisabled === true);
+
+    return response(200, {
+        success: true,
+        isAdmin,
+        isApproved,
+        message: isAdmin
+            ? "Family vault administrator access confirmed."
+            : isApproved
+                ? "Family vault membership confirmed."
+                : "Family vault membership is awaiting administrator approval."
+    });
+}
+
+function getAuthenticatedVaultUser(claims) {
+    if (!claims.sub || !claims['cognito:username']) {
+        return null;
+    }
+    return {
+        sub: claims.sub,
+        username: claims['cognito:username']
+    };
+}
+
+async function handleJoinVault(event, claims) {
+    const identity = getAuthenticatedVaultUser(claims);
+    const { familyCode } = JSON.parse(event.body || '{}');
+    const familyId = typeof familyCode === 'string' ? familyCode.trim().toUpperCase() : '';
+    if (!identity || !/^[A-Za-z0-9_-]{1,64}$/.test(familyId)) {
+        return response(400, { error: "A valid family vault code is required." });
+    }
+    if (claims['custom:familyId']) {
+        return response(409, { error: "This account is already assigned to a family vault." });
+    }
+
+    const existingMember = await getMemberRecord(identity.sub);
+    if (existingMember) {
+        return response(409, { error: "This account is already bound to a family vault." });
+    }
+
+    const vault = await docClient.send(new GetCommand({
+        TableName: process.env.TABLE_NAME,
+        Key: { PK: `VAULT#${familyId}`, SK: 'GOVERNANCE#BOOTSTRAP' },
+        ConsistentRead: true
+    }));
+    if (!vault.Item) {
+        return response(404, { error: "That family vault code was not found." });
+    }
+
+    const memberKey = { PK: `VAULT_MEMBER#${identity.sub}`, SK: 'IDENTITY' };
     try {
-        if (Object.keys(updates).length) {
-            await cognitoClient.send(new AdminUpdateUserAttributesCommand({
-                UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
-                Username: username,
-                UserAttributes: Object.entries(updates).map(([Name, Value]) => ({ Name, Value }))
-            }));
-        }
-        const isAdmin = isBootstrapAdmin || getAttribute(existingUser, 'custom:isAdmin') === 'true';
-        const isApproved = isBootstrapAdmin || getAttribute(existingUser, 'custom:isApproved') === 'true';
-        await setVaultMemberState(sub, familyId, isAdmin, isApproved, memberRecord?.accessDisabled === true);
+        await docClient.send(new PutCommand({
+            TableName: process.env.TABLE_NAME,
+            Item: {
+                ...memberKey,
+                familyId,
+                isAdmin: false,
+                isApproved: false,
+                accessDisabled: false,
+                createdAt: Date.now()
+            },
+            ConditionExpression: 'attribute_not_exists(PK)'
+        }));
     } catch (error) {
-        if (isBootstrapAdmin) {
-            try {
-                await docClient.send(new DeleteCommand({
-                    TableName: tableName,
-                    Key: bootstrapKey,
-                    ConditionExpression: 'bootstrapSub = :sub',
-                    ExpressionAttributeValues: { ':sub': sub }
-                }));
-            } catch (cleanupError) {
-                console.error('Failed to release vault bootstrap claim after Cognito update error', cleanupError);
-            }
+        if (error.name === 'ConditionalCheckFailedException') {
+            return response(409, { error: "This account already has a family vault membership request." });
         }
         throw error;
     }
 
-    return response(200, {
+    try {
+        await cognitoClient.send(new AdminUpdateUserAttributesCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Username: identity.username,
+            UserAttributes: [
+                { Name: 'custom:familyId', Value: familyId },
+                { Name: 'custom:isAdmin', Value: 'false' },
+                { Name: 'custom:isApproved', Value: 'false' }
+            ]
+        }));
+    } catch (error) {
+        await docClient.send(new DeleteCommand({
+            TableName: process.env.TABLE_NAME,
+            Key: memberKey,
+            ConditionExpression: 'familyId = :familyId',
+            ExpressionAttributeValues: { ':familyId': familyId }
+        }));
+        throw error;
+    }
+
+    return response(202, {
         success: true,
-        isAdmin: isBootstrapAdmin || getAttribute(existingUser, 'custom:isAdmin') === 'true',
-        isApproved: isBootstrapAdmin || getAttribute(existingUser, 'custom:isApproved') === 'true',
-        message: isBootstrapAdmin
-            ? "This account is the first administrator for the family vault."
-            : "Family vault membership is awaiting administrator approval."
+        familyId,
+        isAdmin: false,
+        isApproved: false,
+        message: "Your request was sent to the family vault administrator for approval."
+    });
+}
+
+async function handleCreateVault(claims) {
+    const identity = getAuthenticatedVaultUser(claims);
+    if (!identity) {
+        return response(401, { error: "A confirmed, authenticated account is required." });
+    }
+    if (claims['custom:familyId'] || await getMemberRecord(identity.sub)) {
+        return response(409, { error: "This account is already assigned to a family vault." });
+    }
+
+    const tableName = process.env.TABLE_NAME;
+    const memberKey = { PK: `VAULT_MEMBER#${identity.sub}`, SK: 'IDENTITY' };
+    let familyId;
+    let bootstrapKey;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+        familyId = randomBytes(5).toString('hex').toUpperCase();
+        bootstrapKey = { PK: `VAULT#${familyId}`, SK: 'GOVERNANCE#BOOTSTRAP' };
+        try {
+            await docClient.send(new PutCommand({
+                TableName: tableName,
+                Item: { ...bootstrapKey, familyId, bootstrapSub: identity.sub, createdAt: Date.now() },
+                ConditionExpression: 'attribute_not_exists(PK)'
+            }));
+            break;
+        } catch (error) {
+            if (error.name !== 'ConditionalCheckFailedException') throw error;
+            if (attempt === 4) throw error;
+        }
+    }
+
+    try {
+        await docClient.send(new PutCommand({
+            TableName: tableName,
+            Item: {
+                ...memberKey,
+                familyId,
+                isAdmin: true,
+                isApproved: true,
+                accessDisabled: false,
+                createdAt: Date.now()
+            },
+            ConditionExpression: 'attribute_not_exists(PK)'
+        }));
+        await cognitoClient.send(new AdminUpdateUserAttributesCommand({
+            UserPoolId: process.env.CUSTOMER_USER_POOL_ID,
+            Username: identity.username,
+            UserAttributes: [
+                { Name: 'custom:familyId', Value: familyId },
+                { Name: 'custom:isAdmin', Value: 'true' },
+                { Name: 'custom:isApproved', Value: 'true' }
+            ]
+        }));
+    } catch (error) {
+        try {
+            await docClient.send(new DeleteCommand({
+                TableName: tableName,
+                Key: memberKey,
+                ConditionExpression: 'familyId = :familyId',
+                ExpressionAttributeValues: { ':familyId': familyId }
+            }));
+        } catch (cleanupError) {
+            if (cleanupError.name !== 'ConditionalCheckFailedException' && cleanupError.name !== 'ResourceNotFoundException') {
+                console.error('Failed to clean up new vault member record', cleanupError);
+            }
+        }
+        try {
+            await docClient.send(new DeleteCommand({
+                TableName: tableName,
+                Key: bootstrapKey,
+                ConditionExpression: 'bootstrapSub = :sub',
+                ExpressionAttributeValues: { ':sub': identity.sub }
+            }));
+        } catch (cleanupError) {
+            if (cleanupError.name !== 'ConditionalCheckFailedException' && cleanupError.name !== 'ResourceNotFoundException') {
+                console.error('Failed to clean up new vault bootstrap record', cleanupError);
+            }
+        }
+        if (error.name === 'ConditionalCheckFailedException') {
+            return response(409, { error: "This account is already assigned to a family vault." });
+        }
+        throw error;
+    }
+
+    return response(201, {
+        success: true,
+        familyId,
+        isAdmin: true,
+        isApproved: true,
+        message: "Family vault created. You are its administrator."
     });
 }
 

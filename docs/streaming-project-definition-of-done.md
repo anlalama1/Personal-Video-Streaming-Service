@@ -135,7 +135,7 @@ The project is **done** when all of the following are true:
 - [x] **DynamoDB Tenant Registry**: Provisioned `/tenants` REST endpoints backed by Single-Table Design (`PK = "TENANTS_REGISTRY"`, `SK = "TENANT#<familyId>"`).
 - [x] **Cryptographic Tenancy Enforcement**: Enforced `claims['custom:familyId']` extraction in Lambda (`index.js`), guaranteeing data isolation between family vaults.
 - [x] **Demetrius Tenant Operations**: Integrated `/admin/tenants` registry page and on-the-fly vault provisioning drawers in Demetrius (`app-admin`).
-- [x] **Mandatory Family Vault Registration**: Enforced mandatory Family Code validation for consumer sign-ups on Desktop Viewer (`app-viewer`) and Android Viewer.
+- [x] **Decoupled Customer Onboarding**: Authenticate and confirm the customer identity first; then allow a server-validated join request (pending administrator approval) or creation of a new vault with the creator as administrator.
 - [x] **Authenticated Identity & Token Inspection**: Decoded Cognito ID Token payloads (`session.tokens.idToken.payload`) to display authenticated user emails and family partition keys across web and mobile clients.
 
 ### Milestone 30 — Durable Auth (Google Registration, Unconfirmed Rerouting & Resend Code)

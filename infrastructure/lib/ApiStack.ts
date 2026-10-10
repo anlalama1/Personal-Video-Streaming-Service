@@ -124,6 +124,9 @@ export class ApiStack extends cdk.Stack {
     const dualAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'DualAuthorizer', {
       cognitoUserPools: [props.adminUserPool, props.customerUserPool]
     });
+    const customerAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CustomerAuthorizer', {
+      cognitoUserPools: [props.customerUserPool]
+    });
 
     // 5. REST Endpoint Route Binding
     const catalog = api.root.addResource('catalog');
@@ -146,6 +149,8 @@ export class ApiStack extends cdk.Stack {
     const members = vault.addResource('members');
     members.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
     members.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    vault.addResource('join').addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: customerAuthorizer });
+    vault.addResource('create').addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: customerAuthorizer });
     for (const action of ['approve', 'promote', 'demote', 'ban', 'reject']) {
       members.addResource(action).addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
     }

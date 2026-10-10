@@ -158,7 +158,13 @@ data class VaultActionResponse(
     val success: Boolean = false,
     val isAdmin: Boolean = false,
     val isApproved: Boolean = false,
+    val familyId: String? = null,
     val message: String = ""
+)
+
+@Serializable
+data class FamilyCodeRequest(
+    val familyCode: String
 )
 
 @Serializable
@@ -197,6 +203,12 @@ interface StreamingApiService {
 
     @POST("vault/members")
     suspend fun registerVaultMember(): VaultActionResponse
+
+    @POST("vault/join")
+    suspend fun joinVault(@Body request: FamilyCodeRequest): VaultActionResponse
+
+    @POST("vault/create")
+    suspend fun createVault(): VaultActionResponse
 
     @POST("vault/members/approve")
     suspend fun approveVaultMember(@Body request: VaultMemberActionRequest): VaultActionResponse

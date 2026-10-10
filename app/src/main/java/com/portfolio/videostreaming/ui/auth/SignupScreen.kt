@@ -1,9 +1,6 @@
 package com.portfolio.videostreaming.ui.auth
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,185 +8,126 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.portfolio.videostreaming.ui.theme.Amber500
 import com.portfolio.videostreaming.ui.theme.HeritageBlack
 import com.portfolio.videostreaming.ui.theme.Parchment
 
-/**
- * ============================================================================
- * Registration & Family Code Validation Screen
- * ============================================================================
- * Enterprise Architecture Strategy: Mandatory Tenancy Validation.
- * Enforces mandatory Family Code inputs provided by digitization shop operators,
- * supporting 15-minute verification code expiration and resend code capabilities.
- */
 @Composable
 fun SignupScreen(
     viewModel: AuthViewModel,
     onNavigateToLogin: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf(viewModel.pendingEmail.value) }
     var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var familyId by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var resendStatusMessage by remember { mutableStateOf<String?>(null) }
 
     val authState by viewModel.authState.collectAsState()
+    val pendingEmail by viewModel.pendingEmail.collectAsState()
+    val verificationError by viewModel.verificationError.collectAsState()
+    var verificationStep by remember { mutableStateOf(authState is AuthState.NeedsVerification) }
+    val isVerifying = verificationStep
+
+    LaunchedEffect(authState) {
+        if (authState is AuthState.NeedsVerification) verificationStep = true
+    }
+
+    LaunchedEffect(pendingEmail) {
+        if (pendingEmail.isNotBlank()) email = pendingEmail
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
+            modifier = Modifier.fillMaxSize().padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = if (authState is AuthState.NeedsVerification) "Verify your Account" else "Join Family Vault",
+                text = if (isVerifying) "Verify your account" else "Create an account",
                 color = Parchment,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black
             )
-
             Spacer(modifier = Modifier.height(8.dp))
-
             Text(
-                text = if (authState is AuthState.NeedsVerification)
-                    "Enter the 6-digit code sent to your email (Expires in 15 mins)."
+                text = if (isVerifying)
+                    "Enter the email verification code to continue."
                 else
-                    "Enter the Family Code provided by your digitization shop operator.",
-                color = Parchment.copy(alpha = 0.6f),
+                    "Create your account first. You can join or create a family vault after signing in.",
+                color = Parchment.copy(alpha = 0.65f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            if (authState is AuthState.NeedsVerification) {
-                // Email Verification Pass
+            if (isVerifying) {
+                Text("Verification email: $pendingEmail", color = Parchment, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = verificationCode,
                     onValueChange = { verificationCode = it },
-                    label = { Text("6-Digit Verification Code") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
+                    label = { Text("Verification code") },
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                val displayError = errorMessage
-                if (displayError != null) {
-                    Text(
-                        text = displayError,
-                        color = Color.Red,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                val error = verificationError ?: errorMessage
+                if (error != null) {
+                    Text(error, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                 }
-
+                resendStatusMessage?.let {
+                    Text(it, color = Parchment, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { viewModel.confirmSignUp(email, verificationCode, password) },
+                    onClick = { viewModel.confirmSignUp(pendingEmail, verificationCode) },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
+                    enabled = authState !is AuthState.Loading,
                     colors = ButtonDefaults.buttonColors(containerColor = Amber500)
                 ) {
-                    Text("VERIFY & LAUNCH", color = HeritageBlack, fontWeight = FontWeight.Black)
+                    if (authState is AuthState.Loading) {
+                        CircularProgressIndicator(color = HeritageBlack, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("VERIFY & CONTINUE", color = HeritageBlack, fontWeight = FontWeight.Black)
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 TextButton(
                     onClick = {
-                        if (email.isBlank()) {
-                            errorMessage = "Please enter your email address above to resend code."
-                            return@TextButton
-                        }
-                        viewModel.resendSignUpCode(email) { _, msg ->
-                            resendStatusMessage = msg
+                        viewModel.resendSignUpCode(pendingEmail) { success, message ->
+                            if (success) resendStatusMessage = message else errorMessage = message
                         }
                     }
                 ) {
-                    Text("Resend Verification Code", color = Amber500, fontWeight = FontWeight.Bold)
+                    Text("Resend verification code", color = Amber500, fontWeight = FontWeight.Bold)
                 }
-
-                if (resendStatusMessage != null) {
-                    Text(
-                        text = resendStatusMessage!!,
-                        color = Parchment,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                TextButton(onClick = onNavigateToLogin) {
-                    Text("Back to Sign In", color = Parchment.copy(alpha = 0.7f))
-                }
-
             } else {
-                // User Credentials & Mandatory Family Code Input
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email Address") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
+                    label = { Text("Email address") },
+                    modifier = Modifier.fillMaxWidth()
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
-
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Password") },
-                    modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                                tint = Parchment.copy(alpha = 0.6f)
-                            )
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = familyId,
-                    onValueChange = { familyId = it },
-                    label = { Text("Family Code (Required)") },
-                    placeholder = { Text("e.g. FAM_LALAMA") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber500)
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                val displayError = errorMessage ?: (authState as? AuthState.Error)?.message
-                if (displayError != null) {
-                    Text(
-                        text = displayError,
-                        color = Color.Red,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                val error = errorMessage ?: (authState as? AuthState.Error)?.message
+                if (error != null) {
+                    Text(error, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                 }
-
+                Spacer(modifier = Modifier.height(24.dp))
                 Button(
                     onClick = {
-                        if (familyId.isBlank()) {
-                            errorMessage = "A valid Family Code from your shop operator is required."
-                            return@Button
-                        }
                         errorMessage = null
-                        viewModel.signUp(email, password, familyId.trim().uppercase())
+                        if (email.isBlank() || password.isBlank()) {
+                            errorMessage = "Enter an email address and password."
+                        } else {
+                            viewModel.signUp(email.trim(), password)
+                        }
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     enabled = authState !is AuthState.Loading,
@@ -198,15 +136,14 @@ fun SignupScreen(
                     if (authState is AuthState.Loading) {
                         CircularProgressIndicator(color = HeritageBlack, modifier = Modifier.size(24.dp))
                     } else {
-                        Text("JOIN VAULT", color = HeritageBlack, fontWeight = FontWeight.Black)
+                        Text("CREATE ACCOUNT", color = HeritageBlack, fontWeight = FontWeight.Black)
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                TextButton(onClick = onNavigateToLogin) {
-                    Text("Already registered? Sign In", color = Amber500)
-                }
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(onClick = onNavigateToLogin) {
+                Text("Back to sign in", color = Parchment.copy(alpha = 0.7f))
             }
         }
     }

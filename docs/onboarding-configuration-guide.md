@@ -22,6 +22,7 @@ When onboarding to a new AWS account, update the four configuration files below 
 After running initial CDK synthesis/deployment (`npx cdk deploy --all` or CodePipeline `Synth`), extract the output from CloudFormation stack **`Prod-AuthStack`**:
 * **`PoolId`**: Extract `CustomerUserPoolId` output (e.g., `"us-east-1_XXXXX"`).
 * **`AppClientId`**: Extract `CustomerAndroidClientId` output (e.g., `"450aib3rtv77sglvalkneruf9c"`).
+* **`WebDomain`**: Extract `CustomerHostedUIDomain` output and use it as the OAuth `WebDomain` value in `amplifyconfiguration.json`.
 * **`Region`**: Target AWS Region (e.g., `"us-east-1"`).
 
 ```json
@@ -155,6 +156,28 @@ URLs configured in `AuthStack.ts`. Keep the client secret in Secrets Manager;
 the CDK stack references it dynamically and does not store it in source code.
 Deploy the Auth stack after creating the secret. The deployment's CloudFormation
 execution role must be allowed to read the secret.
+
+## 👪 Customer authentication and vault onboarding
+
+Customer identity registration is separate from family vault membership on both
+Android and the Desktop Viewer:
+
+1. Users sign in with email/password or Google without entering a family code.
+   New email/password accounts must confirm the Cognito email code before
+   proceeding. An unconfirmed account returned during sign-in is routed to the
+   same verification-code screen, which can resend the code. Google-federated
+   accounts are normally confirmed by Cognito as part of federation.
+2. After authentication, users can request to join an existing vault or create
+   one. A join request assigns the family code server-side and remains pending
+   until a vault administrator approves it using the existing member controls.
+3. Creating a vault generates a unique family code and grants the creator
+   approved administrator membership.
+
+The authorized `POST /vault/join` and `POST /vault/create` API operations perform
+membership assignment. Cognito app clients must not be allowed to write
+`custom:familyId`; the API updates membership attributes after checking the
+authenticated identity and vault code. Deploy both the Auth and API stacks when
+changing these client permissions or onboarding endpoints.
 
 ---
 

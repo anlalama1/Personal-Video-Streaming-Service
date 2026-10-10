@@ -10,6 +10,7 @@ import com.amplifyframework.auth.options.AuthFetchSessionOptions
 import com.amplifyframework.auth.options.AuthSignUpOptions
 import com.amplifyframework.auth.result.AuthSignInResult
 import com.amplifyframework.core.Amplify
+import com.portfolio.videostreaming.core.data.network.FamilyCodeRequest
 import com.portfolio.videostreaming.core.data.network.StreamingApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +53,22 @@ class AuthViewModel : ViewModel() {
 
     private val _isApproved = MutableStateFlow(false)
     val isApproved = _isApproved.asStateFlow()
+
+    private val _pendingEmail = MutableStateFlow("")
+    val pendingEmail = _pendingEmail.asStateFlow()
+
+    private val _pendingPassword = MutableStateFlow("")
+    private val _verificationError = MutableStateFlow<String?>(null)
+    val verificationError = _verificationError.asStateFlow()
+
+    private val _onboardingLoading = MutableStateFlow(false)
+    val onboardingLoading = _onboardingLoading.asStateFlow()
+
+    private val _onboardingError = MutableStateFlow<String?>(null)
+    val onboardingError = _onboardingError.asStateFlow()
+
+    private val _newFamilyCode = MutableStateFlow<String?>(null)
+    val newFamilyCode = _newFamilyCode.asStateFlow()
 
     init {
         checkSession()
@@ -101,7 +118,7 @@ class AuthViewModel : ViewModel() {
                                 { error -> Log.e("AuthVM", "Failed to refresh vault membership claims", error) }
                             )
                         } catch (error: Exception) {
-                            Log.e("AuthVM", "Failed to initialize family vault membership", error)
+                            Log.e("AuthVM", "Failed to synchronize vault membership", error)
                         }
                     }
                 }
@@ -115,6 +132,9 @@ class AuthViewModel : ViewModel() {
      * Intercepts unconfirmed account state and automatically re-routes to verification code screen.
      */
     fun signIn(email: String, pword: String) {
+        _pendingEmail.value = email
+        _pendingPassword.value = pword
+        _verificationError.value = null
         _authState.value = AuthState.Loading
         Amplify.Auth.signIn(email, pword,
             { result ->
@@ -132,9 +152,11 @@ class AuthViewModel : ViewModel() {
             },
             { error ->
                 val errMessage = error.message ?: ""
-                if (errMessage.contains("UserNotConfirmedException", ignoreCase = true) ||
+                if (error.javaClass.simpleName.contains("UserNotConfirmed", ignoreCase = true) ||
+                    errMessage.contains("UserNotConfirmedException", ignoreCase = true) ||
                     errMessage.contains("not confirmed", ignoreCase = true)) {
                     Log.w("AuthVM", "Unconfirmed user sign in attempt -> Rerouting to Verification Screen")
+                    _verificationError.value = null
                     _authState.value = AuthState.NeedsVerification
                 } else {
                     _authState.value = AuthState.Error(errMessage.ifBlank { "Sign in failed" })
@@ -166,14 +188,16 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Registers a new user with email and custom:familyId tenancy attribute.
+     * Registers a new Cognito user. Vault membership is assigned after authentication.
      */
-    fun signUp(email: String, pword: String, familyId: String) {
+    fun signUp(email: String, pword: String) {
+        _pendingEmail.value = email
+        _pendingPassword.value = pword
+        _verificationError.value = null
         _authState.value = AuthState.Loading
         
         val options = AuthSignUpOptions.builder()
             .userAttribute(AuthUserAttributeKey.email(), email)
-            .userAttribute(AuthUserAttributeKey.custom("custom:familyId"), familyId)
             .build()
 
         Amplify.Auth.signUp(email, pword, options,
@@ -212,19 +236,80 @@ class AuthViewModel : ViewModel() {
      * Confirms registration with 6-digit email verification code, automatically signing in upon completion.
      */
     fun confirmSignUp(email: String, code: String, password: String? = null) {
+        _verificationError.value = null
         _authState.value = AuthState.Loading
         Amplify.Auth.confirmSignUp(email, code,
             { _ ->
-                if (!password.isNullOrBlank()) {
-                    signIn(email, password)
+                val signInPassword = password ?: _pendingPassword.value
+                if (signInPassword.isNotBlank()) {
+                    signIn(email, signInPassword)
                 } else {
                     _authState.value = AuthState.SignedOut
                 }
             },
             { error ->
-                _authState.value = AuthState.Error(error.message ?: "Verification failed")
+                _verificationError.value = error.message ?: "Verification failed"
+                _authState.value = AuthState.NeedsVerification
             }
         )
+    }
+
+    fun cancelVerification() {
+        _pendingEmail.value = ""
+        _pendingPassword.value = ""
+        _verificationError.value = null
+        _authState.value = AuthState.SignedOut
+    }
+
+    fun joinVault(familyCode: String) {
+        submitVaultAction {
+            withContext(Dispatchers.IO) {
+                StreamingApi.service.joinVault(FamilyCodeRequest(familyCode.trim().uppercase()))
+            }
+            _onboardingError.value = null
+            refreshSessionAndCheck()
+        }
+    }
+
+    fun createVault() {
+        submitVaultAction {
+            val result = withContext(Dispatchers.IO) { StreamingApi.service.createVault() }
+            _newFamilyCode.value = result.familyId
+            _onboardingError.value = null
+            refreshSessionAndCheck()
+        }
+    }
+
+    fun dismissNewFamilyCode() {
+        _newFamilyCode.value = null
+    }
+
+    private fun refreshSessionAndCheck() {
+        Amplify.Auth.fetchAuthSession(
+            AuthFetchSessionOptions.builder()
+                .forceRefresh(true)
+                .build(),
+            { checkSession() },
+            { error ->
+                Log.e("AuthVM", "Failed to refresh auth claims after vault onboarding", error)
+                checkSession()
+            }
+        )
+    }
+
+    private fun submitVaultAction(action: suspend () -> Unit) {
+        _onboardingLoading.value = true
+        _onboardingError.value = null
+        viewModelScope.launch {
+            try {
+                action()
+            } catch (error: Exception) {
+                Log.e("AuthVM", "Vault onboarding failed", error)
+                _onboardingError.value = error.message ?: "Could not complete vault setup."
+            } finally {
+                _onboardingLoading.value = false
+            }
+        }
     }
 
     /**
@@ -237,6 +322,9 @@ class AuthViewModel : ViewModel() {
             _familyId.value = null
             _isAdmin.value = false
             _isApproved.value = false
+            _pendingEmail.value = ""
+            _pendingPassword.value = ""
+            _newFamilyCode.value = null
         }
     }
 }

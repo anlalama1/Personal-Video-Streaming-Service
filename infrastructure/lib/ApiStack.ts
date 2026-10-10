@@ -127,60 +127,64 @@ export class ApiStack extends cdk.Stack {
     const customerAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CustomerAuthorizer', {
       cognitoUserPools: [props.customerUserPool]
     });
+    const scribeIntegration = () => new apigateway.LambdaIntegration(scribeLambda, {
+      allowTestInvoke: false,
+      scopePermissionToMethod: false,
+    });
 
     // 5. REST Endpoint Route Binding
     const catalog = api.root.addResource('catalog');
-    catalog.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    catalog.addMethod('GET', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const genres = api.root.addResource('genres');
-    genres.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
-    genres.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    genres.addMethod('GET', scribeIntegration(), { authorizer: dualAuthorizer });
+    genres.addMethod('POST', scribeIntegration(), { authorizer: adminAuthorizer });
 
     const catalogPublish = catalog.addResource('publish');
-    catalogPublish.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    catalogPublish.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const videoResource = catalog.addResource('{videoId}');
     const familyResource = videoResource.addResource('{familyId}');
-    familyResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    familyResource.addMethod('DELETE', scribeIntegration(), { authorizer: dualAuthorizer });
     const rejectResource = familyResource.addResource('reject');
-    rejectResource.addMethod('DELETE', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    rejectResource.addMethod('DELETE', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const vault = api.root.addResource('vault');
     const members = vault.addResource('members');
-    members.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
-    members.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
-    vault.addResource('join').addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: customerAuthorizer });
-    vault.addResource('create').addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: customerAuthorizer });
+    members.addMethod('GET', scribeIntegration(), { authorizer: dualAuthorizer });
+    members.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
+    vault.addResource('join').addMethod('POST', scribeIntegration(), { authorizer: customerAuthorizer });
+    vault.addResource('create').addMethod('POST', scribeIntegration(), { authorizer: customerAuthorizer });
     for (const action of ['approve', 'promote', 'demote', 'ban', 'reject']) {
-      members.addResource(action).addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+      members.addResource(action).addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
     }
     const vaultVideos = vault.addResource('videos');
     const vaultVideo = vaultVideos.addResource('{videoId}');
-    vaultVideo.addMethod('PUT', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    vaultVideo.addMethod('PUT', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const deviceToken = vault.addResource('device-token');
-    deviceToken.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    deviceToken.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const ingest = api.root.addResource('ingest');
-    ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    ingest.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const tenants = api.root.addResource('tenants');
-    tenants.addMethod('GET', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
-    tenants.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: adminAuthorizer });
+    tenants.addMethod('GET', scribeIntegration(), { authorizer: adminAuthorizer });
+    tenants.addMethod('POST', scribeIntegration(), { authorizer: adminAuthorizer });
 
     const upload = api.root.addResource('upload');
 
     const start = upload.addResource('start');
-    start.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    start.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const part = upload.addResource('part');
-    part.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    part.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const complete = upload.addResource('complete');
-    complete.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    complete.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const fail = upload.addResource('fail');
-    fail.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+    fail.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
 
     const play = api.root.addResource('play');
     play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda));

@@ -25,7 +25,9 @@ const Auth = () => {
   const [code, setCode] = useState('');
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(
+    () => new URLSearchParams(window.location.search).get('error_description') || ''
+  );
   const [resendMsg, setResendMsg] = useState('');
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -54,6 +56,8 @@ const Auth = () => {
           if (!result.isSignedIn && result.nextStep.signInStep === 'CONFIRM_SIGN_UP') {
             setNeedsVerification(true);
             setError('This account is not confirmed. Enter the verification code sent to your email.');
+          } else if (!result.isSignedIn) {
+            setError(`Sign-in was not completed. Cognito requires: ${result.nextStep.signInStep}.`);
           }
         } catch (signInError: unknown) {
           if (isUnconfirmedUserError(signInError)) {
@@ -91,6 +95,8 @@ const Auth = () => {
             if (!result.isSignedIn && result.nextStep.signInStep === 'CONFIRM_SIGN_UP') {
               setNeedsVerification(true);
               setError('This account is not confirmed. Enter the verification code sent to your email.');
+            } else if (!result.isSignedIn) {
+              setError(`Sign-in was not completed. Cognito requires: ${result.nextStep.signInStep}.`);
             }
           } catch (existingUserSignInError: unknown) {
             if (isUnconfirmedUserError(existingUserSignInError)) {

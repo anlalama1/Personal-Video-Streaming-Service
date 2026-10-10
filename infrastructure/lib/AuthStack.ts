@@ -147,6 +147,9 @@ export class AuthStack extends cdk.Stack {
       clientId: googleClientId,
       clientSecretValue: googleClientSecret,
       scopes: ['openid', 'email', 'profile'],
+      attributeMapping: {
+        email: cognito.ProviderAttribute.GOOGLE_EMAIL,
+      },
     });
 
     this.customerWebClient = this.customerUserPool.addClient('CustomerWebClient', {

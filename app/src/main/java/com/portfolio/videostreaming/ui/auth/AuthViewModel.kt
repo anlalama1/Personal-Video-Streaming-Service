@@ -151,6 +151,7 @@ class AuthViewModel : ViewModel() {
                 }
             },
             { error ->
+                Log.e("AuthVM", "Cognito sign-in failed (${error.javaClass.simpleName})", error)
                 val errMessage = error.message ?: ""
                 if (error.javaClass.simpleName.contains("UserNotConfirmed", ignoreCase = true) ||
                     errMessage.contains("UserNotConfirmedException", ignoreCase = true) ||

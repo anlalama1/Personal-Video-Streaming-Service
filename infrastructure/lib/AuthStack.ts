@@ -142,7 +142,7 @@ export class AuthStack extends cdk.Stack {
     const googleClientSecret = cdk.SecretValue.secretsManager(googleOAuthSecretName, {
       jsonField: 'client_secret',
     });
-    new cognito.UserPoolIdentityProviderGoogle(this, 'CustomerGoogleIdentityProvider', {
+    const customerGoogleIdentityProvider = new cognito.UserPoolIdentityProviderGoogle(this, 'CustomerGoogleIdentityProvider', {
       userPool: this.customerUserPool,
       clientId: googleClientId,
       clientSecretValue: googleClientSecret,
@@ -174,6 +174,7 @@ export class AuthStack extends cdk.Stack {
         logoutUrls: ['https://www.alexandria-plus.com/', 'http://localhost:5173/'],
       },
     });
+    this.customerWebClient.node.addDependency(customerGoogleIdentityProvider);
 
     this.customerAndroidClient = this.customerUserPool.addClient('CustomerAndroidClient', {
       userPoolClientName: 'Alexandria-Android-Client',
@@ -200,6 +201,7 @@ export class AuthStack extends cdk.Stack {
         logoutUrls: ['myapp://logout'],
       },
     });
+    this.customerAndroidClient.node.addDependency(customerGoogleIdentityProvider);
 
     // Alias customer pool for backwards compatibility
     this.userPool = this.customerUserPool;

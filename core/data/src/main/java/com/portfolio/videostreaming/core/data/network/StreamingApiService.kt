@@ -133,6 +133,11 @@ data class CompleteUploadResponse(
 )
 
 @Serializable
+data class RegisterDeviceTokenRequest(
+    val deviceToken: String
+)
+
+@Serializable
 data class VaultMemberDto(
     val username: String,
     val email: String = "",
@@ -213,6 +218,9 @@ interface StreamingApiService {
         @Path("videoId") videoId: String,
         @Body request: VaultVideoMetadataRequest
     ): VaultActionResponse
+
+    @POST("vault/device-token")
+    suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest)
 
     @DELETE("catalog/{videoId}/{familyId}")
     suspend fun deleteVaultVideo(

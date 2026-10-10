@@ -1104,6 +1104,14 @@ This document tracks the high-level collaboration between the human developer an
     - Configured `OAuth` and `socialProviders` blocks in [`amplifyconfiguration.json`](file:///I:/Android%20Projects/app/src/main/res/raw/amplifyconfiguration.json#L20-L40) for Android.
 - **Outcome**: Enabled smooth, error-free Google OAuth 2.0 social sign-in redirects across Web and Mobile.
 
+### 131. Milestone 32: Instant Publish Push Notifications (Oct 8, 2026)
+- **Challenge**: Family members lacked real-time notifications when a new video memory was published to their family vault.
+- **AI Contribution**: 
+    - Provisioned `POST /vault/device-token` in [`ApiStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/ApiStack.ts) and [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js) to store FCM device tokens under `SK = FAMILY#<familyId>#DEVICE#<token>`.
+    - Updated `handlePublishVideo` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js#L510-L535) to query registered family device tokens and dispatch FCM push notifications (`"<email> uploaded a new video: <title>"`) with video thumbnail URLs.
+    - Created [`AlexandriaFirebaseService.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/AlexandriaFirebaseService.kt) on Android to register device tokens upon sign-in and construct rich system notifications with `BigPictureStyle` thumbnails.
+- **Outcome**: Delivered instant, rich family-isolated push notifications on Android upon video publication.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

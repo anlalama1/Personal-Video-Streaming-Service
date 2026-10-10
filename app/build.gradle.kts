@@ -40,41 +40,43 @@ android {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-    implementation("androidx.core:core-ktx:1.19.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
-    implementation("androidx.compose.runtime:runtime-livedata")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
-    implementation("androidx.navigation:navigation-compose:2.10.0")
-    implementation("androidx.activity:activity-compose:1.13.0")
-    implementation(platform("androidx.compose:compose-bom:2026.08.00"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.runtime.livedata)
 
     // Shared Core Modules
     implementation(project(":core:data"))
 
     // Image Loading
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation(libs.coil.compose)
+
+    // Push Notifications
+    implementation(libs.firebase.messaging.ktx)
 
     // Authentication
-    implementation("com.amplifyframework:aws-auth-cognito:2.42.0")
+    implementation(libs.aws.auth.cognito)
 
-    val media3Version = "1.11.0"
-    implementation("androidx.media3:media3-exoplayer:$media3Version")
-    implementation("androidx.media3:media3-exoplayer-hls:$media3Version")
-    implementation("androidx.media3:media3-ui:$media3Version")
-    implementation("androidx.media3:media3-session:$media3Version")
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.session)
 
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.3.0")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2026.08.00"))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

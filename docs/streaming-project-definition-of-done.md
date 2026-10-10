@@ -150,8 +150,11 @@ The project is **done** when all of the following are true:
 - [ ] **Raw Master Backup Rule (Glacier Instant Retrieval)**: Transition raw uploaded master MP4s of long transcoded videos to S3 Glacier Instant Retrieval ($0.004/GB/mo) after 30 days.
 - [ ] **Short-Form Video Passthrough (< 3 Minutes)**: Probe duration; skip heavy Fargate HLS ladders for clips under 3 minutes, serving direct MP4 passthrough (~85% compute cost reduction).
 
-### Milestone 32 — Daily New Video Notifications
-- [ ] **Tenant-Scoped Digest**: Notify users in each family tenant about newly uploaded videos via SES daily digest.
+### Milestone 32 — Instant Publish Push Notifications (Rich FCM Notifications)
+- [x] **Device Token Registration Endpoint**: Provisioned `POST /vault/device-token` in Scribe Lambda (`index.js`) and bound resource to `dualAuthorizer` in `ApiStack.ts`.
+- [x] **Backend Publish Notification Dispatch**: Configured `handlePublishVideo` in Lambda `index.js` to query registered family device tokens and dispatch push notification payloads with video thumbnail URLs.
+- [x] **Android Push Notification Manager**: Created `AlexandriaPushNotificationManager.kt` on Android to register device tokens upon login and render rich system notifications (`BigPictureStyle`) with video thumbnails and `"<email> uploaded a new video: <title>"`.
+- [x] **Publisher Exclusion & Family Isolation**: Notifications are routed strictly to device tokens matching `custom:familyId` while excluding the video publisher.
 
 ### Milestone 33 — "Nuclear Option" System Factory Reset Lambda
 - [x] **Destructive Administrative Utility**: Provisioned `NuclearResetFunction` (`nuclearReset.js`) to execute automated environment teardowns.

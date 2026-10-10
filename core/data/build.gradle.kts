@@ -28,21 +28,21 @@ android {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-    implementation("androidx.core:core-ktx:1.19.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     
     // DataStore (Persistent Storage)
-    implementation("androidx.datastore:datastore-preferences:1.2.1")
+    implementation(libs.androidx.datastore.preferences)
     
     // Networking & Serialization
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation(libs.retrofit)
+    implementation(libs.okhttp)
+    implementation(libs.retrofit.kotlinx.serialization.converter)
+    implementation(libs.kotlinx.serialization.json)
 
     // Authentication
-    implementation("com.amplifyframework:aws-auth-cognito:2.42.0")
+    implementation(libs.aws.auth.cognito)
 
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
 }

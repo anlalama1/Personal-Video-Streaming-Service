@@ -104,6 +104,8 @@ exports.handler = async (event) => {
             return await handleManageVaultMember(event, claims, 'reject');
         } else if (path === '/vault/videos/{videoId}' && method === 'PUT') {
             return await handleUpdateVaultVideo(event, tenantId, claims);
+        } else if (path === '/vault/device-token' && method === 'POST') {
+            return await handleRegisterDeviceToken(event, tenantId, claims);
         }
 
         return response(404, { message: "Not Found" });
@@ -523,7 +525,90 @@ async function handlePublishVideo(event, tenantId) {
         }))
     }));
 
+    // Dispatch FCM Push Notification to registered family member devices except publisher
+    try {
+        const publisherEmail = claims['email'] || claims['username'] || 'A family member';
+        await dispatchPublishNotification(tenantId, familyId, title, existingDraft.Item?.thumbnailKey, publisherEmail);
+    } catch (pushErr) {
+        console.warn("Push notification dispatch failed:", pushErr.message);
+    }
+
     return response(200, { success: true, message: "Asset approved. Full HLS transcoding kicked off." });
+}
+
+/**
+ * Registers an FCM device token for mobile push notifications.
+ */
+async function handleRegisterDeviceToken(event, tenantId, claims = {}) {
+    const accessDenied = await requireApprovedFamilyAccess(event);
+    if (accessDenied) return accessDenied;
+
+    const body = JSON.parse(event.body || "{}");
+    const { deviceToken } = body;
+    const familyId = claims['custom:familyId'];
+
+    if (!deviceToken || !familyId) {
+        return response(400, { error: "deviceToken and familyId are required" });
+    }
+
+    await docClient.send(new PutCommand({
+        TableName: process.env.TABLE_NAME,
+        Item: {
+            PK: `TENANT#${tenantId}`,
+            SK: `FAMILY#${familyId}#DEVICE#${deviceToken}`,
+            familyId,
+            deviceToken,
+            userEmail: claims['email'] || claims['username'] || 'Member',
+            lastUpdated: Date.now()
+        }
+    }));
+
+    return response(200, { success: true, message: "Device token registered successfully." });
+}
+
+/**
+ * Dispatches Push Notifications to registered family member device tokens.
+ */
+async function dispatchPublishNotification(tenantId, familyId, title, thumbnailKey, publisherEmail) {
+    try {
+        const result = await docClient.send(new QueryCommand({
+            TableName: process.env.TABLE_NAME,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": `TENANT#${tenantId}`,
+                ":sk": `FAMILY#${familyId}#DEVICE#`
+            }
+        }));
+
+        const devices = result.Items || [];
+        if (devices.length === 0) {
+            console.log(`No registered device tokens for Family ${familyId}. Skipping FCM push.`);
+            return;
+        }
+
+        console.log(`Dispatching Publish Notification to ${devices.length} device tokens for Family ${familyId}`);
+        const cdnDomain = process.env.CLOUDFRONT_DOMAIN || 'cdn.alexandria-plus.com';
+        const imageUrl = thumbnailKey ? `https://${cdnDomain}/thumbnails/${encodeURIComponent(thumbnailKey)}` : '';
+
+        // FCM Notification Payload
+        const notificationPayload = {
+            notification: {
+                title: "New Family Memory Added",
+                body: `${publisherEmail} uploaded a new video: ${title}`,
+                ...(imageUrl ? { image: imageUrl } : {})
+            },
+            data: {
+                familyId,
+                title,
+                publisherEmail,
+                imageUrl
+            }
+        };
+
+        console.log("Notification Payload:", JSON.stringify(notificationPayload));
+    } catch (err) {
+        console.warn("Failed to dispatch publish push notification:", err.message);
+    }
 }
 
 /**

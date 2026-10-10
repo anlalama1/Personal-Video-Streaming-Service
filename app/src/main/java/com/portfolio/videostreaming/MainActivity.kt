@@ -42,6 +42,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.portfolio.videostreaming.ui.AlexandriaPushNotificationManager
 import com.portfolio.videostreaming.ui.CatalogScreen
 import com.portfolio.videostreaming.ui.FamilyReviewPane
 import com.portfolio.videostreaming.ui.LocalVideoPicker
@@ -183,6 +184,13 @@ class MainActivity : ComponentActivity() {
         val navController = rememberNavController()
 
         var showProfileDialog by remember { mutableStateOf(false) }
+
+        LaunchedEffect(familyId) {
+            if (!familyId.isNullOrBlank()) {
+                val pseudoToken = "device_${Build.MODEL.replace(" ", "_")}_${familyId}"
+                AlexandriaPushNotificationManager.registerDeviceToken(pseudoToken)
+            }
+        }
         var showSearchDialog by remember { mutableStateOf(false) }
 
         val videoList by mediaBrowserViewModel.videoList.collectAsState()

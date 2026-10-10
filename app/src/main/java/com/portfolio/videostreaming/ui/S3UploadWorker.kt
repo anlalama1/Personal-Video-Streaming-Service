@@ -37,7 +37,7 @@ class S3UploadWorker(
     private val httpClient = OkHttpClient()
 
     override suspend fun doWork(): Result {
-        val uriStrings = inputData.getStringArray(KEY_VIDEO_URIS)
+        val uriStrings = inputData.getNullableStringArray(KEY_VIDEO_URIS)
         if (uriStrings.isNullOrEmpty()) {
             return Result.failure(workDataOf(KEY_ERROR to "No videos were selected."))
         }
@@ -204,16 +204,14 @@ class S3UploadWorker(
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = applicationContext.getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Background uploads",
-                    NotificationManager.IMPORTANCE_LOW
-                )
+        val manager = applicationContext.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                "Background uploads",
+                NotificationManager.IMPORTANCE_LOW
             )
-        }
+        )
     }
 
     companion object {

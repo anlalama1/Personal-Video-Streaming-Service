@@ -153,6 +153,9 @@ export class ApiStack extends cdk.Stack {
     const vaultVideo = vaultVideos.addResource('{videoId}');
     vaultVideo.addMethod('PUT', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 
+    const deviceToken = vault.addResource('device-token');
+    deviceToken.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
+
     const ingest = api.root.addResource('ingest');
     ingest.addMethod('POST', new apigateway.LambdaIntegration(scribeLambda), { authorizer: dualAuthorizer });
 

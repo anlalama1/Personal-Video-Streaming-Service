@@ -117,12 +117,12 @@ export class ApiStack extends cdk.Stack {
 
     // 4. Decoupled Authorizer Definitions
     // Admin Authorizer: Strictly for Demetrius Shop Operator endpoints
-    const adminAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'AdminAuthorizer', {
+    const adminAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'AdminAuthorizerV2', {
       cognitoUserPools: [props.adminUserPool]
     });
 
     // Dual Authorizer: Allows both Shop Admins and Family Customers for catalog browsing
-    const dualAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'DualAuthorizer', {
+    const dualAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'DualAuthorizerV2', {
       cognitoUserPools: [props.adminUserPool, props.customerUserPool]
     });
     const customerAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CustomerAuthorizer', {

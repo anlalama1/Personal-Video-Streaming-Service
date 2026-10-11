@@ -81,7 +81,6 @@ class AuthViewModel : ViewModel() {
         Amplify.Auth.fetchAuthSession(
             { session ->
                 if (session.isSignedIn) {
-                    _authState.value = AuthState.SignedIn
                     fetchUserAttributes()
                 } else {
                     _authState.value = AuthState.SignedOut
@@ -115,15 +114,24 @@ class AuthViewModel : ViewModel() {
                             Amplify.Auth.fetchAuthSession(
                                 AuthFetchSessionOptions.builder().forceRefresh(true).build(),
                                 { fetchUserAttributes(registerMembership = false) },
-                                { error -> Log.e("AuthVM", "Failed to refresh vault membership claims", error) }
+                                { error ->
+                                    Log.e("AuthVM", "Failed to refresh vault membership claims", error)
+                                    _authState.value = AuthState.SignedIn
+                                }
                             )
                         } catch (error: Exception) {
                             Log.e("AuthVM", "Failed to synchronize vault membership", error)
+                            _authState.value = AuthState.SignedIn
                         }
                     }
+                } else {
+                    _authState.value = AuthState.SignedIn
                 }
             },
-            { error -> Log.e("AuthVM", "Failed to fetch attributes", error) }
+            { error ->
+                Log.e("AuthVM", "Failed to fetch attributes", error)
+                _authState.value = AuthState.Error(error.message ?: "Could not load your account details")
+            }
         )
     }
 
@@ -139,7 +147,6 @@ class AuthViewModel : ViewModel() {
         Amplify.Auth.signIn(email, pword,
             { result ->
                 if (result.isSignedIn) {
-                    _authState.value = AuthState.SignedIn
                     fetchUserAttributes()
                 } else {
                     val stepName = result.nextStep.signInStep.name
@@ -175,7 +182,6 @@ class AuthViewModel : ViewModel() {
             activity,
             { result: AuthSignInResult ->
                 if (result.isSignedIn) {
-                    _authState.value = AuthState.SignedIn
                     fetchUserAttributes()
                 } else {
                     _authState.value = AuthState.Error("Google sign-in incomplete: ${result.nextStep}")

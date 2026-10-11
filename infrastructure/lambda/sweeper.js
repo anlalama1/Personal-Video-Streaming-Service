@@ -28,6 +28,22 @@ const SOURCE_BUCKET = process.env.SOURCE_BUCKET;
 const THUMBNAIL_BUCKET = process.env.THUMBNAIL_BUCKET;
 const DEST_BUCKET = process.env.DEST_BUCKET;
 
+// Accept both legacy numeric timestamps and the new readable UTC values.
+const toEpochMilliseconds = (value, epochMs) => {
+    if (Number.isFinite(epochMs)) return epochMs;
+    if (Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+};
+
+const createTimestamp = (epochMs = Date.now()) => ({
+    iso: new Date(epochMs).toISOString(),
+    epochMs
+});
+
 /**
  * Emits Structured JSON for AWS CloudWatch Embedded Metric Format (EMF).
  */
@@ -106,7 +122,7 @@ exports.handler = async (event) => {
             // 1. Two-Phase Hard Purge Phase
             if (status === "DELETED") {
                 counts.DELETED++;
-                const deletedAt = item.deletedAt || 0;
+                const deletedAt = toEpochMilliseconds(item.deletedAt, item.deletedAtEpochMs);
                 const hoursSinceDeletion = (now - deletedAt) / (1000 * 60 * 60);
 
                 if (hoursSinceDeletion >= RETENTION_PERIOD_HOURS) {
@@ -151,17 +167,18 @@ exports.handler = async (event) => {
             const TEN_MINUTES_MS = 10 * 60 * 1000;
 
             if (!item.hlsKey && (effectiveStatus === "INGESTED" || effectiveStatus === "FAILED")) {
-                const lastUpdated = item.lastUpdated || 0;
+                const lastUpdated = toEpochMilliseconds(item.lastUpdated, item.lastUpdatedEpochMs);
                 if (now - lastUpdated < TEN_MINUTES_MS) continue;
 
                 const retryCount = item.retryCount || 0;
                 if (retryCount >= 3) {
                     // Mark as FATAL after 3 failed retry attempts
+                    const timestamp = createTimestamp(now);
                     await ddb.send(new UpdateCommand({
                         TableName: TABLE_NAME,
                         Key: { PK: item.PK, SK: item.SK },
-                        UpdateExpression: "set transcodeStatus = :s, lastUpdated = :t",
-                        ExpressionAttributeValues: { ":s": "FATAL", ":t": now }
+                        UpdateExpression: "set transcodeStatus = :s, lastUpdated = :t, lastUpdatedEpochMs = :epoch",
+                        ExpressionAttributeValues: { ":s": "FATAL", ":t": timestamp.iso, ":epoch": timestamp.epochMs }
                     }));
                     continue;
                 }

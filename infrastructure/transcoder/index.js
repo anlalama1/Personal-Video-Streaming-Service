@@ -22,6 +22,12 @@ const VIDEO_ID = process.env.VIDEO_ID;
 const CONTAINER_MODE = process.env.CONTAINER_MODE || "TRANSCODE_HLS";
 const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID;
 
+// Store readable UTC timestamps while retaining numeric values for time arithmetic.
+const createTimestamp = () => {
+    const epochMs = Date.now();
+    return { iso: new Date(epochMs).toISOString(), epochMs };
+};
+
 async function getApprovedGenres() {
     try {
         const result = await db.send(new QueryCommand({
@@ -83,11 +89,12 @@ async function run() {
     } catch (err) {
         console.error("Fargate Worker task failed:", err);
         try {
+            const timestamp = createTimestamp();
             await db.send(new UpdateCommand({
                 TableName: TABLE_NAME,
                 Key: dbKey,
-                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t REMOVE processingMode",
-                ExpressionAttributeValues: { ":s": "FAILED", ":t": Date.now() }
+                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, lastUpdatedEpochMs = :epoch REMOVE processingMode",
+                ExpressionAttributeValues: { ":s": "FAILED", ":t": timestamp.iso, ":epoch": timestamp.epochMs }
             }));
         } catch (dbErr) {
             console.error("Failed to update status to FAILED in DynamoDB:", dbErr);
@@ -120,14 +127,16 @@ async function handleThumbnailOnly(localInput, dbKey) {
         Body: fs.readFileSync(thumbnailPath),
         ContentType: "image/jpeg"
     }));
+    const timestamp = createTimestamp();
     await db.send(new UpdateCommand({
         TableName: TABLE_NAME,
         Key: dbKey,
-        UpdateExpression: "SET thumbnailKey = :thumbnail, transcodeStatus = :status, lastUpdated = :updated REMOVE processingMode",
+        UpdateExpression: "SET thumbnailKey = :thumbnail, transcodeStatus = :status, lastUpdated = :updated, lastUpdatedEpochMs = :epoch REMOVE processingMode",
         ExpressionAttributeValues: {
             ":thumbnail": thumbnailKey,
             ":status": "REVIEW_PENDING",
-            ":updated": Date.now()
+            ":updated": timestamp.iso,
+            ":epoch": timestamp.epochMs
         }
     }));
 }
@@ -276,10 +285,11 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
         }));
 
         console.log("Staging draft attributes and advancing status to REVIEW_PENDING...");
+        const timestamp = createTimestamp();
         await db.send(new UpdateCommand({
             TableName: TABLE_NAME,
             Key: dbKey,
-            UpdateExpression: "SET thumbnailKey = :tk, transcodeStatus = :s, aiTitle = :at, aiGenre = :ag, genre = :g, aiDescription = :ad, aiTags = :atg, lastUpdated = :t REMOVE processingMode",
+            UpdateExpression: "SET thumbnailKey = :tk, transcodeStatus = :s, aiTitle = :at, aiGenre = :ag, genre = :g, aiDescription = :ad, aiTags = :atg, lastUpdated = :t, lastUpdatedEpochMs = :epoch REMOVE processingMode",
             ExpressionAttributeValues: {
                 ":tk": thumbnailS3Key,
                 ":s": "REVIEW_PENDING",
@@ -288,7 +298,8 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
                 ":g": aiMetadata.genre || approvedGenres[0],
                 ":ad": aiMetadata.description || "No description generated.",
                 ":atg": aiMetadata.tags || [],
-                ":t": Date.now()
+                ":t": timestamp.iso,
+                ":epoch": timestamp.epochMs
             }
         }));
     } else {
@@ -340,14 +351,16 @@ async function handleHlsTranscode(localInput, dbKey) {
     await uploadFolder(outputDir, s3Prefix);
 
     console.log("Updating video item to COMPLETED state...");
+    const timestamp = createTimestamp();
     await db.send(new UpdateCommand({
         TableName: TABLE_NAME,
         Key: dbKey,
-        UpdateExpression: "SET hlsKey = :h, transcodeStatus = :s, lastUpdated = :t",
+        UpdateExpression: "SET hlsKey = :h, transcodeStatus = :s, lastUpdated = :t, lastUpdatedEpochMs = :epoch",
         ExpressionAttributeValues: {
             ":h": `${VIDEO_ID}_hls`,
             ":s": "COMPLETED",
-            ":t": Date.now()
+            ":t": timestamp.iso,
+            ":epoch": timestamp.epochMs
         }
     }));
 }

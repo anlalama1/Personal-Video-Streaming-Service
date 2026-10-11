@@ -67,10 +67,13 @@ const Home = () => {
   // Clock-Drift Proof Recency Window Filter: Evaluated relative to the latest upload in the vault
   const maxLastUpdated = Math.max(...videos.map(v => Number(v.lastUpdated || 0)), 0);
   const recencyThresholdMs = CONFIG.RECENTLY_ADDED_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
+  const newestFirstVideos = [...videos].sort(
+    (a, b) => Number(b.lastUpdated || 0) - Number(a.lastUpdated || 0)
+  );
 
   const recentlyAddedVideos = maxLastUpdated > 0
-    ? videos.filter(video => video.lastUpdated && (maxLastUpdated - Number(video.lastUpdated)) <= recencyThresholdMs)
-    : videos.slice(0, 5);
+    ? newestFirstVideos.filter(video => video.lastUpdated && (maxLastUpdated - Number(video.lastUpdated)) <= recencyThresholdMs)
+    : newestFirstVideos.slice(0, 5);
 
   // Category buckets strictly matching DynamoDB genre registry
   const videosByGenre = videos.reduce((acc, video) => {

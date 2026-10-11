@@ -30,6 +30,12 @@ const s3 = new S3Client({});
 const bedrock = new BedrockRuntimeClient({});
 const MAX_LAMBDA_VIDEO_BYTES = 256 * 1024 * 1024;
 
+// Store readable UTC timestamps while retaining numeric values for retry checks.
+const createTimestamp = () => {
+    const epochMs = Date.now();
+    return { iso: new Date(epochMs).toISOString(), epochMs };
+};
+
 /**
  * Sanitizes raw filenames into URL-safe, lowercase video identifiers.
  */
@@ -90,14 +96,16 @@ async function generateThumbnailInLambda({ bucket, key, eTag, tenantId, familyId
             Body: fs.readFileSync(thumbnailPath),
             ContentType: "image/jpeg"
         }));
+        const timestamp = createTimestamp();
         await ddb.send(new UpdateCommand({
             TableName: process.env.TABLE_NAME,
             Key: dbKey,
-            UpdateExpression: "SET thumbnailKey = :thumbnail, transcodeStatus = :status, lastUpdated = :updated REMOVE processingMode",
+            UpdateExpression: "SET thumbnailKey = :thumbnail, transcodeStatus = :status, lastUpdated = :updated, lastUpdatedEpochMs = :epoch REMOVE processingMode",
             ExpressionAttributeValues: {
                 ":thumbnail": thumbnailKey,
                 ":status": "REVIEW_PENDING",
-                ":updated": Date.now()
+                ":updated": timestamp.iso,
+                ":epoch": timestamp.epochMs
             }
         }));
     } finally {
@@ -195,10 +203,11 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
             ContentType: "image/jpeg"
         }));
         const genre = approvedGenres.includes(metadata.genre) ? metadata.genre : approvedGenres[0];
+        const timestamp = createTimestamp();
         await ddb.send(new UpdateCommand({
             TableName: process.env.TABLE_NAME,
             Key: dbKey,
-            UpdateExpression: "SET thumbnailKey = :thumbnail, transcodeStatus = :status, aiTitle = :title, aiGenre = :genre, genre = :genre, aiDescription = :description, aiTags = :tags, lastUpdated = :updated REMOVE processingMode",
+            UpdateExpression: "SET thumbnailKey = :thumbnail, transcodeStatus = :status, aiTitle = :title, aiGenre = :genre, genre = :genre, aiDescription = :description, aiTags = :tags, lastUpdated = :updated, lastUpdatedEpochMs = :epoch REMOVE processingMode",
             ExpressionAttributeValues: {
                 ":thumbnail": thumbnailKey,
                 ":status": "REVIEW_PENDING",
@@ -206,7 +215,8 @@ Return a JSON object with exactly four fields: "title" (a short, specific title)
                 ":genre": genre,
                 ":description": metadata.description.trim(),
                 ":tags": Array.isArray(metadata.tags) ? metadata.tags : [],
-                ":updated": Date.now()
+                ":updated": timestamp.iso,
+                ":epoch": timestamp.epochMs
             }
         }));
     } finally {
@@ -265,13 +275,15 @@ exports.handler = async (event) => {
         };
 
         try {
+            const timestamp = createTimestamp();
             await ddb.send(new UpdateCommand({
                 TableName: process.env.TABLE_NAME,
                 Key: dbKey,
-                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t",
+                UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, lastUpdatedEpochMs = :epoch",
                 ExpressionAttributeValues: {
                     ":s": "TRANSCODING",
-                    ":t": Date.now()
+                    ":t": timestamp.iso,
+                    ":epoch": timestamp.epochMs
                 }
             }));
         } catch (dbErr) {
@@ -379,11 +391,12 @@ exports.handler = async (event) => {
                     }
                     console.log(`AI metadata route for ${videoId}: ${objectInfo.size} bytes -> ${useLambda ? "Lambda" : "Fargate"}`);
                     try {
+                        const timestamp = createTimestamp();
                         await ddb.send(new UpdateCommand({
                             TableName: process.env.TABLE_NAME,
                             Key: dbKey,
-                            UpdateExpression: "SET transcodeStatus = :processing, lastUpdated = :updated, processingMode = :mode",
-                            ConditionExpression: "transcodeStatus = :uploading OR transcodeStatus = :failed OR transcodeStatus = :ingested OR (transcodeStatus = :processing AND processingMode = :lambda AND lastUpdated < :stale)",
+                            UpdateExpression: "SET transcodeStatus = :processing, lastUpdated = :updated, lastUpdatedEpochMs = :epoch, processingMode = :mode",
+                            ConditionExpression: "transcodeStatus = :uploading OR transcodeStatus = :failed OR transcodeStatus = :ingested OR (transcodeStatus = :processing AND processingMode = :lambda AND ((attribute_not_exists(lastUpdatedEpochMs) AND lastUpdated < :stale) OR lastUpdatedEpochMs < :stale))",
                             ExpressionAttributeValues: {
                                 ":processing": "PROCESSING",
                                 ":uploading": "UPLOADING",
@@ -391,8 +404,9 @@ exports.handler = async (event) => {
                                 ":ingested": "INGESTED",
                                 ":lambda": "LAMBDA",
                                 ":mode": useLambda ? "LAMBDA" : "FARGATE",
-                                ":updated": Date.now(),
-                                ":stale": Date.now() - 11 * 60 * 1000
+                                ":updated": timestamp.iso,
+                                ":epoch": timestamp.epochMs,
+                                ":stale": timestamp.epochMs - 11 * 60 * 1000
                             }
                         }));
                     } catch (stateErr) {
@@ -415,13 +429,15 @@ exports.handler = async (event) => {
                             console.log(`Started keyframe-based AI metadata extraction for ${videoId}: ${taskArn}`);
                         }
                     } catch (launchErr) {
+                        const timestamp = createTimestamp();
                         await ddb.send(new UpdateCommand({
                             TableName: process.env.TABLE_NAME,
                             Key: dbKey,
-                            UpdateExpression: "SET transcodeStatus = :failed, lastUpdated = :updated REMOVE processingMode",
+                            UpdateExpression: "SET transcodeStatus = :failed, lastUpdated = :updated, lastUpdatedEpochMs = :epoch REMOVE processingMode",
                             ExpressionAttributeValues: {
                                 ":failed": "FAILED",
-                                ":updated": Date.now()
+                                ":updated": timestamp.iso,
+                                ":epoch": timestamp.epochMs
                             }
                         }));
                         throw launchErr;
@@ -436,21 +452,23 @@ exports.handler = async (event) => {
                 const processingMode = useLambda ? "THUMBNAIL_LAMBDA" : "THUMBNAIL_FARGATE";
 
                 try {
+                    const timestamp = createTimestamp();
                     await ddb.send(new UpdateCommand({
                         TableName: process.env.TABLE_NAME,
                         Key: dbKey,
-                        UpdateExpression: "SET transcodeStatus = :processing, lastUpdated = :updated, processingMode = :mode, videoKey = :videoKey, familyId = :familyId",
-                        ConditionExpression: "transcodeStatus = :uploading OR transcodeStatus = :failed OR transcodeStatus = :ingested OR (transcodeStatus = :processing AND processingMode = :mode AND lastUpdated < :stale)",
+                        UpdateExpression: "SET transcodeStatus = :processing, lastUpdated = :updated, lastUpdatedEpochMs = :epoch, processingMode = :mode, videoKey = :videoKey, familyId = :familyId",
+                        ConditionExpression: "transcodeStatus = :uploading OR transcodeStatus = :failed OR transcodeStatus = :ingested OR (transcodeStatus = :processing AND processingMode = :mode AND ((attribute_not_exists(lastUpdatedEpochMs) AND lastUpdated < :stale) OR lastUpdatedEpochMs < :stale))",
                         ExpressionAttributeValues: {
                             ":processing": "PROCESSING",
                             ":uploading": "UPLOADING",
                             ":failed": "FAILED",
                             ":ingested": "INGESTED",
                             ":mode": processingMode,
-                            ":updated": Date.now(),
+                            ":updated": timestamp.iso,
+                            ":epoch": timestamp.epochMs,
                             ":videoKey": key,
                             ":familyId": familyId,
-                            ":stale": Date.now() - 60 * 60 * 1000
+                            ":stale": timestamp.epochMs - 60 * 60 * 1000
                         }
                     }));
                 } catch (stateErr) {
@@ -474,13 +492,15 @@ exports.handler = async (event) => {
                         console.log(`Started Fargate thumbnail generation for ${videoId}: ${taskArn}`);
                     }
                 } catch (thumbnailErr) {
+                    const timestamp = createTimestamp();
                     await ddb.send(new UpdateCommand({
                         TableName: process.env.TABLE_NAME,
                         Key: dbKey,
-                        UpdateExpression: "SET transcodeStatus = :failed, lastUpdated = :updated REMOVE processingMode",
+                        UpdateExpression: "SET transcodeStatus = :failed, lastUpdated = :updated, lastUpdatedEpochMs = :epoch REMOVE processingMode",
                         ExpressionAttributeValues: {
                             ":failed": "FAILED",
-                            ":updated": Date.now()
+                            ":updated": timestamp.iso,
+                            ":epoch": timestamp.epochMs
                         }
                     }));
                     throw thumbnailErr;

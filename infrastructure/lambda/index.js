@@ -45,6 +45,22 @@ const response = (statusCode, body) => ({
     body: JSON.stringify(body)
 });
 
+// Store readable UTC timestamps while retaining numeric values for time arithmetic.
+const createTimestamp = () => {
+    const epochMs = Date.now();
+    return { iso: new Date(epochMs).toISOString(), epochMs };
+};
+
+const toEpochMilliseconds = (value, epochMs) => {
+    if (Number.isFinite(epochMs)) return epochMs;
+    if (Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+};
+
 /**
  * Main Lambda Entry Point (API Gateway Proxy Event Router)
  */
@@ -264,7 +280,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
             videoKey: item.videoKey || '',
             thumbnailKey,
             familyId: itemFamilyId,
-            lastUpdated: item.lastUpdated || 0
+            lastUpdated: toEpochMilliseconds(item.lastUpdated, item.lastUpdatedEpochMs)
         };
     };
 
@@ -293,6 +309,7 @@ async function handleIngest(event, tenantId) {
     // If useAi is true, set status to UPLOADING so Fargate Bedrock task runs upon S3 upload completion.
     const initialStatus = status || (useAi ? "UPLOADING" : "REVIEW_PENDING");
 
+    const timestamp = createTimestamp();
     await docClient.send(new PutCommand({
         TableName: process.env.TABLE_NAME,
         Item: {
@@ -306,7 +323,8 @@ async function handleIngest(event, tenantId) {
             thumbnailKey: "",
             transcodeStatus: initialStatus,
             useAi: useAi === true,
-            lastUpdated: Date.now(),
+            lastUpdated: timestamp.iso,
+            lastUpdatedEpochMs: timestamp.epochMs,
             retryCount: 0
         }
     }));
@@ -407,6 +425,7 @@ async function handleFailMultipart(event, tenantId) {
     }
 
     try {
+        const timestamp = createTimestamp();
         await docClient.send(new UpdateCommand({
             TableName: process.env.TABLE_NAME,
             Key: {
@@ -414,11 +433,12 @@ async function handleFailMultipart(event, tenantId) {
                 SK: `FAMILY#${targetFamilyId}#VIDEO#${videoId}`
             },
             ConditionExpression: "transcodeStatus = :uploading",
-            UpdateExpression: "SET transcodeStatus = :failed, lastUpdated = :now",
+            UpdateExpression: "SET transcodeStatus = :failed, lastUpdated = :now, lastUpdatedEpochMs = :epoch",
             ExpressionAttributeValues: {
                 ":uploading": "UPLOADING",
                 ":failed": "UPLOAD_FAILED",
-                ":now": Date.now()
+                ":now": timestamp.iso,
+                ":epoch": timestamp.epochMs
             }
         }));
     } catch (err) {
@@ -499,6 +519,7 @@ async function handlePublishVideo(event, tenantId) {
     }
 
     // Write the published record under the target familyId
+    const timestamp = createTimestamp();
     await docClient.send(new PutCommand({
         TableName: tableName,
         Item: {
@@ -513,7 +534,8 @@ async function handlePublishVideo(event, tenantId) {
             tags: tags || [],
             transcodeStatus: "TRANSCODING",
             videoKey,
-            lastUpdated: Date.now()
+            lastUpdated: timestamp.iso,
+            lastUpdatedEpochMs: timestamp.epochMs
         }
     }));
 
@@ -556,6 +578,7 @@ async function handleRegisterDeviceToken(event, tenantId, claims = {}) {
         return response(400, { error: "deviceToken and familyId are required" });
     }
 
+    const timestamp = createTimestamp();
     await docClient.send(new PutCommand({
         TableName: process.env.TABLE_NAME,
         Item: {
@@ -564,7 +587,8 @@ async function handleRegisterDeviceToken(event, tenantId, claims = {}) {
             familyId,
             deviceToken,
             userEmail: claims['email'] || claims['username'] || 'Member',
-            lastUpdated: Date.now()
+            lastUpdated: timestamp.iso,
+            lastUpdatedEpochMs: timestamp.epochMs
         }
     }));
 
@@ -634,17 +658,19 @@ async function handleDeleteVideo(event, tenantId) {
 
     console.log(`DELETE: Soft-deleting ${videoId} for Tenant ${tenantId}`);
 
+    const timestamp = createTimestamp();
     await docClient.send(new UpdateCommand({
         TableName: tableName,
         Key: {
             PK: `TENANT#${tenantId}`,
             SK: `FAMILY#${familyId}#VIDEO#${videoId}`
         },
-        UpdateExpression: "SET transcodeStatus = :s, deletedAt = :t, lastUpdated = :lu",
+        UpdateExpression: "SET transcodeStatus = :s, deletedAt = :t, deletedAtEpochMs = :epoch, lastUpdated = :lu, lastUpdatedEpochMs = :epoch",
         ExpressionAttributeValues: {
             ":s": "DELETED",
-            ":t": Date.now(),
-            ":lu": Date.now()
+            ":t": timestamp.iso,
+            ":lu": timestamp.iso,
+            ":epoch": timestamp.epochMs
         }
     }));
 
@@ -715,7 +741,7 @@ async function ensureVaultMemberRecord(sub, familyId) {
                 isAdmin: false,
                 isApproved: false,
                 accessDisabled: false,
-                createdAt: Date.now()
+                createdAt: createTimestamp().iso
             },
             ConditionExpression: 'attribute_not_exists(PK)'
         }));
@@ -939,7 +965,7 @@ async function handleJoinVault(event, claims) {
                 isAdmin: false,
                 isApproved: false,
                 accessDisabled: false,
-                createdAt: Date.now()
+                createdAt: createTimestamp().iso
             },
             ConditionExpression: 'attribute_not_exists(PK)'
         }));
@@ -996,9 +1022,10 @@ async function handleCreateVault(claims) {
         familyId = randomBytes(5).toString('hex').toUpperCase();
         bootstrapKey = { PK: `VAULT#${familyId}`, SK: 'GOVERNANCE#BOOTSTRAP' };
         try {
+            const timestamp = createTimestamp();
             await docClient.send(new PutCommand({
                 TableName: tableName,
-                Item: { ...bootstrapKey, familyId, bootstrapSub: identity.sub, createdAt: Date.now() },
+                Item: { ...bootstrapKey, familyId, bootstrapSub: identity.sub, createdAt: timestamp.iso },
                 ConditionExpression: 'attribute_not_exists(PK)'
             }));
             break;
@@ -1017,7 +1044,7 @@ async function handleCreateVault(claims) {
                 isAdmin: true,
                 isApproved: true,
                 accessDisabled: false,
-                createdAt: Date.now()
+                createdAt: createTimestamp().iso
             },
             ConditionExpression: 'attribute_not_exists(PK)'
         }));
@@ -1302,13 +1329,14 @@ async function handleUpdateVaultVideo(event, tenantId, claims) {
     }
 
     try {
+        const timestamp = createTimestamp();
         await docClient.send(new UpdateCommand({
             TableName: process.env.TABLE_NAME,
             Key: {
                 PK: targetItem.PK,
                 SK: targetItem.SK
             },
-            UpdateExpression: 'SET #title = :title, #genre = :genre, #releaseYear = :year, #description = :description, #tags = :tags, #lastUpdated = :updated',
+            UpdateExpression: 'SET #title = :title, #genre = :genre, #releaseYear = :year, #description = :description, #tags = :tags, #lastUpdated = :updated, lastUpdatedEpochMs = :epoch',
             ConditionExpression: '#transcodeStatus = :completed',
             ExpressionAttributeNames: {
                 '#title': 'title',
@@ -1325,7 +1353,8 @@ async function handleUpdateVaultVideo(event, tenantId, claims) {
                 ':year': String(releaseYear),
                 ':description': description,
                 ':tags': tags,
-                ':updated': Date.now(),
+                ':updated': timestamp.iso,
+                ':epoch': timestamp.epochMs,
                 ':completed': 'COMPLETED'
             }
         }));

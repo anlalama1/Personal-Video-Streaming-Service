@@ -1112,6 +1112,14 @@ This document tracks the high-level collaboration between the human developer an
     - Created [`AlexandriaFirebaseService.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/AlexandriaFirebaseService.kt) on Android to register device tokens upon sign-in and construct rich system notifications with `BigPictureStyle` thumbnails.
 - **Outcome**: Delivered instant, rich family-isolated push notifications on Android upon video publication.
 
+### 132. Milestone 34: CloudFront Signed Cookies & Media Authorization (Oct 8, 2026)
+- **Challenge**: Unauthenticated viewers could play HLS video streams directly if they possessed the CloudFront `.m3u8` playlist URL because CloudFront OAC only secured S3 origin access, not CDN viewer requests.
+- **AI Contribution**: 
+    - Provisioned CloudFront RSA `PublicKey` and `KeyGroup` in [`StorageStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/StorageStack.ts) and bound `trustedKeyGroups` to `/hls/*` behavior.
+    - Provisioned `POST /play/session` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js) to verify Cognito `custom:familyId` authorization and return short-lived CloudFront Signed Cookies.
+    - Updated [`VideoPlayerViewModel.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/VideoPlayerViewModel.kt) on Android to request play authorization sessions and pass signed cookies via `DefaultHttpDataSource.Factory` to Media3 ExoPlayer.
+- **Outcome**: Delivered strict CDN-level playback authorization, preventing link leaks and unauthorized video downloads across mobile and web clients.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

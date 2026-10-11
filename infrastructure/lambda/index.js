@@ -504,8 +504,11 @@ async function handlePublishVideo(event, tenantId) {
             PK: `TENANT#${tenantId}`,
             SK: `FAMILY#${sourceFamilyId}#VIDEO#${videoId}`
         },
-        ProjectionExpression: "thumbnailKey"
+        ProjectionExpression: "thumbnailKey, videoKey"
     }));
+    if (!existingDraft.Item || existingDraft.Item.videoKey !== videoKey) {
+        return response(404, { error: "The uploaded source video was not found in the selected family." });
+    }
 
     // If familyId was reassigned on the Review Board (e.g. from PUBLIC to FAM_LALAMA)
     if (oldFamilyId && oldFamilyId !== familyId) {
@@ -1656,10 +1659,17 @@ async function handlePlaySession(event, tenantId, claims) {
     } while (lastEvaluatedKey);
 
     const playableItems = candidates.filter(item =>
-        item.transcodeStatus === "COMPLETED" &&
         (item.deletedAt === undefined || item.deletedAt === null) &&
-        typeof item.hlsKey === "string" &&
-        item.hlsKey.length > 0 &&
+        (
+            (item.transcodeStatus === "COMPLETED" &&
+                typeof item.hlsKey === "string" &&
+                item.hlsKey.length > 0) ||
+            (item.transcodeStatus === "TRANSCODING" &&
+                typeof item.videoKey === "string" &&
+                item.videoKey.length > 0 &&
+                isSafeMediaObjectKey(item.videoKey) &&
+                ["PUBLIC", familyId].includes(item.videoKey.split("/")[0]))
+        ) &&
         item.PK?.startsWith("TENANT#")
     );
     const item = playableItems.find(candidate =>
@@ -1667,7 +1677,7 @@ async function handlePlaySession(event, tenantId, claims) {
         (!isShopAdmin || requestedTenantId === tenantId)
     );
     if (!item) {
-        return response(404, { error: "No completed video matching this family and tenant was found." });
+        return response(404, { error: "No playable published video matching this family and tenant was found." });
     }
 
     const signingKeys = await getSigningKeys();
@@ -1676,7 +1686,17 @@ async function handlePlaySession(event, tenantId, claims) {
     }
 
     const itemTenantId = item.PK.slice("TENANT#".length);
-    const resourceUrl = `https://${cdnDomain}/hls/${itemTenantId}/${familyId}/${encodeURIComponent(item.hlsKey)}/*`;
+    let playbackUrl;
+    let resourceUrl;
+    if (item.hlsKey && item.transcodeStatus === "COMPLETED") {
+        playbackUrl = `https://${cdnDomain}/hls/${itemTenantId}/${familyId}/${encodeURIComponent(item.hlsKey)}/master.m3u8`;
+        resourceUrl = `https://${cdnDomain}/hls/${itemTenantId}/${familyId}/${encodeURIComponent(item.hlsKey)}/*`;
+    } else {
+        const encodeUrlPath = path => path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+        const encodedVideoKey = encodeUrlPath(item.videoKey);
+        playbackUrl = `https://${cdnDomain}/media/${encodedVideoKey}`;
+        resourceUrl = playbackUrl;
+    }
     const generatedCookies = generateSignedCookies(resourceUrl, signingKeys.keyPairId, signingKeys.privateKeyPem);
     const { Expires: expiresAt, ...signedCookies } = generatedCookies;
 
@@ -1685,7 +1705,14 @@ async function handlePlaySession(event, tenantId, claims) {
         familyId,
         tenantId: itemTenantId,
         cdnDomain,
+        playbackUrl,
         expiresAt,
         signedCookies
     });
+}
+
+function isSafeMediaObjectKey(key) {
+    return key.length <= 1024 &&
+        !key.startsWith('/') &&
+        key.split('/').every(segment => segment.length > 0 && segment !== '.' && segment !== '..');
 }

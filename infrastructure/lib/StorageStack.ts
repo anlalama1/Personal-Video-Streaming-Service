@@ -276,6 +276,8 @@ export class StorageStack extends cdk.Stack {
           origin: new origins.S3Origin(this.mediaBucket),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          responseHeadersPolicy: hlsCorsPolicy,
+          trustedKeyGroups: [this.keyGroup],
           functionAssociations: [{
             function: rewriteFunction,
             eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,

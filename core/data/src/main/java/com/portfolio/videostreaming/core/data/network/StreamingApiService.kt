@@ -86,6 +86,7 @@ data class PlaySessionResponse(
     val familyId: String,
     val cdnDomain: String,
     val tenantId: String = "",
+    val playbackUrl: String = "",
     val expiresAt: Long = 0L,
     val signedCookies: Map<String, String> = emptyMap()
 )

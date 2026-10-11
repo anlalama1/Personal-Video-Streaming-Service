@@ -198,3 +198,8 @@ This section documents the "Why" behind our engineering choices, representing Le
 *   **Constraint**: Automated media detection and ingestion will occur **only while the Alexandria+ app is in the foreground**.
 *   **Reasoning**: To balance ease-of-use with battery and system performance, the platform will mirror the behavior of tier-1 apps like Google Photos. By restricting "The Great Intake" to active sessions, we eliminate background battery drain concerns and ensure the user is aware of the network/compute activity.
 *   **Implementation**: Utilize `ProcessLifecycleOwner` or active `Activity` lifecycle states to trigger camera-roll scanning, rather than persistent background `WorkManager` workers.
+
+### 23. Security & Delivery: Media Authorization via CloudFront Signed Cookies
+*   **Decision**: **CloudFront Trusted Key Groups with Signed Cookies for `/hls/*`**.
+*   **Trade-off**: Additional play session API handshake vs. **Absolute Media Privacy & Link Leak Protection**.
+*   **Reasoning**: Private S3 buckets with Origin Access Control (OAC) prevent direct S3 URL access, but do not prevent unauthorized playback if a CDN HLS URL (`https://.../hls/.../master.m3u8`) is shared or intercepted. By enforcing CloudFront `trustedKeyGroups` on `/hls/*` and issuing short-lived signed cookies (`CloudFront-Policy`, `CloudFront-Signature`, `CloudFront-Key-Pair-Id`) verified against the user's Cognito `custom:familyId`, we ensure that only authenticated vault members can access HLS manifests and video segments.

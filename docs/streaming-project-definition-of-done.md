@@ -158,6 +158,12 @@ The project is **done** when all of the following are true:
 
 ### Milestone 33 — "Nuclear Option" System Factory Reset Lambda
 - [x] **Destructive Administrative Utility**: Provisioned `NuclearResetFunction` (`nuclearReset.js`) to execute automated environment teardowns.
+
+### Milestone 34 — Media Authorization & CDN Security (CloudFront Signed Cookies)
+- [x] **CloudFront Key Group Provisioning**: Provisioned RSA 2048-bit `cloudfront.PublicKey` and `cloudfront.KeyGroup` in `StorageStack.ts`, stored key credentials in SSM Parameter Store (`/alexandria/cloudfront/*`), and enforced `trustedKeyGroups` on `/hls/*` distribution behavior.
+- [x] **Play Session & Cookie Issuance API**: Provisioned `POST /play/session` in Lambda `index.js`, verifying user `custom:familyId` authorization before issuing short-lived CloudFront Signed Cookies (`CloudFront-Policy`, `CloudFront-Signature`, `CloudFront-Key-Pair-Id`).
+- [x] **Android Media3 Cookie Injection**: Updated `VideoPlayerViewModel.kt` to request play authorization sessions and configure `DefaultHttpDataSource.Factory` with explicit `Cookie` request properties for all HLS manifest and segment HTTP requests.
+- [x] **Desktop / Web Viewer Playback Security**: Updated `app-viewer` player to fetch CloudFront signed cookies / play sessions before stream initialization.
 - [x] **Safety Handshake Protocol**: Enforced mandatory confirmation payload key (`confirmReset: "CONFIRM_SYSTEM_FACTORY_RESET_ALEXANDRIA"`), aborting without execution if missing.
 - [x] **Multi-Resource Purging**: Recursively purges all objects across S3 buckets (`SOURCE`, `THUMBNAIL`, `DEST`), DynamoDB `VideoMetadataTable`, and Cognito User Pools.
 - [x] **API Gateway Route Isolation**: Isolated reset Lambda from public API Gateway routes, requiring manual invocation via AWS CLI or AWS Console.

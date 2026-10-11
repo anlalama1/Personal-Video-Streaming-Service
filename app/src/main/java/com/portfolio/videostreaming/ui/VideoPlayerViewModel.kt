@@ -100,9 +100,8 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
                 Log.e("VideoPlayerVM", "Failed to log play event", e)
             }
 
-            val (uriTenantId, uriFamilyId) = extractPlaybackPath(uriString)
-            val resolvedFamilyId = familyId.ifBlank { uriFamilyId }
-            val resolvedTenantId = tenantId.ifBlank { uriTenantId }
+            val resolvedFamilyId = familyId
+            val resolvedTenantId = tenantId
             if (resolvedFamilyId.isBlank() || resolvedTenantId.isBlank() || videoId.isBlank()) {
                 _viewState.update {
                     it.copy(isBuffering = false, error = "Unable to identify the video vault. Please reload the catalog.")
@@ -124,8 +123,11 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
                 if (cookiesHeader.isBlank()) {
                     throw IllegalStateException("Playback authorization returned no signed cookies.")
                 }
+                if (sessionResponse.playbackUrl.isBlank()) {
+                    throw IllegalStateException("Playback authorization returned no media URL.")
+                }
                 _viewState.update { it.copy(error = null) }
-                setupAndPlayMedia(uriString, cookiesHeader)
+                setupAndPlayMedia(sessionResponse.playbackUrl, cookiesHeader)
             } catch (e: Exception) {
                 Log.e("VideoPlayerVM", "Failed to obtain CloudFront playback authorization", e)
                 _viewState.update {
@@ -156,18 +158,6 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
         exoPlayer.setMediaSource(mediaSource)
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
-    }
-
-    private fun extractPlaybackPath(uriString: String): Pair<String, String> {
-        val hlsIdx = uriString.indexOf("/hls/")
-        if (hlsIdx != -1) {
-            val pathAfter = uriString.substring(hlsIdx + 5)
-            val parts = pathAfter.split("/")
-            if (parts.size >= 3 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
-                return parts[0] to parts[1]
-            }
-        }
-        return "" to ""
     }
 
     private fun handleTogglePlay() {

@@ -27,9 +27,10 @@ const PlayerPage = () => {
   useEffect(() => {
     if (!video || !videoRef.current) return;
 
-    // Initialize Shaka Player instance
-    const player = new shaka.Player(videoRef.current);
+    let player: InstanceType<typeof shaka.Player> | null = null;
     let cookieDomain = new URL(video.videoUrl).hostname;
+    let cookiePath = '/hls';
+    let cancelled = false;
 
     // Install browser polyfills for MSE / EME compatibility
     shaka.polyfill.installAll();
@@ -47,23 +48,33 @@ const PlayerPage = () => {
           familyId: video.familyId,
           tenantId: video.tenantId
         });
-        const { signedCookies, expiresAt } = session.data;
+        const { signedCookies, expiresAt, playbackUrl } = session.data;
+        if (cancelled) return;
         cookieDomain = session.data.cdnDomain;
+        if (!playbackUrl) throw new Error('Playback authorization returned no media URL.');
+        cookiePath = playbackUrl.includes('/media/') ? '/media' : '/hls';
         const cookieNames = ['CloudFront-Policy', 'CloudFront-Signature', 'CloudFront-Key-Pair-Id'];
         if (!cookieDomain || !cookieNames.every(name => signedCookies?.[name])) {
           throw new Error('Playback authorization returned incomplete signed cookies.');
         }
         const expiry = expiresAt ? `; Expires=${new Date(expiresAt * 1000).toUTCString()}` : '';
         cookieNames.forEach(name => {
-          document.cookie = `${name}=${signedCookies[name]}; Domain=${cookieDomain}; Path=/hls; Secure; SameSite=None${expiry}`;
+          document.cookie = `${name}=${signedCookies[name]}; Domain=${cookieDomain}; Path=${cookiePath}; Secure; SameSite=None${expiry}`;
         });
-        player.getNetworkingEngine()?.registerRequestFilter((
-          _type: number,
-          request: { allowCrossSiteCredentials: boolean }
-        ) => {
-          request.allowCrossSiteCredentials = true;
-        });
-        await player.load(video.videoUrl);
+        if (playbackUrl.toLowerCase().includes('.m3u8')) {
+          player = new shaka.Player(videoRef.current!);
+          player.getNetworkingEngine()?.registerRequestFilter((
+            _type: number,
+            request: { allowCrossSiteCredentials?: boolean }
+          ) => {
+            request.allowCrossSiteCredentials = true;
+          });
+          await player.load(playbackUrl);
+        } else {
+          videoRef.current!.crossOrigin = 'use-credentials';
+          videoRef.current!.src = playbackUrl;
+          videoRef.current!.load();
+        }
         console.log('Video loaded successfully into Shaka');
       } catch (err) {
         console.error('Shaka Player Error:', err);
@@ -74,11 +85,17 @@ const PlayerPage = () => {
     initPlayer();
 
     return () => {
+      cancelled = true;
       // Destroy Shaka Player instance on component unmount
-      player.destroy();
+      if (player) void player.destroy();
       ['CloudFront-Policy', 'CloudFront-Signature', 'CloudFront-Key-Pair-Id'].forEach(name => {
-        document.cookie = `${name}=; Domain=${cookieDomain}; Path=/hls; Secure; SameSite=None; Max-Age=0`;
+        document.cookie = `${name}=; Domain=${cookieDomain}; Path=${cookiePath}; Secure; SameSite=None; Max-Age=0`;
       });
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
+      }
     };
   }, [video]);
 

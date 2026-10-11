@@ -27,7 +27,7 @@ data class PlayerViewState(
  * User Intents (Actions) that can be dispatched to the PlayerViewModel.
  */
 sealed class PlayerIntent {
-    data class LoadVideo(val videoId: String, val videoUri: String) : PlayerIntent()
+    data class LoadVideo(val videoId: String, val videoUri: String, val familyId: String = "") : PlayerIntent()
     object TogglePlay : PlayerIntent()
     data class SeekTo(val position: Long) : PlayerIntent()
     object Rewind : PlayerIntent()

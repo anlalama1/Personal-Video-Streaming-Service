@@ -7,6 +7,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as crypto from 'crypto';
 import { Config } from '../bin/config';
 
 export class StorageStack extends cdk.Stack {
@@ -17,6 +19,8 @@ export class StorageStack extends cdk.Stack {
   public readonly adminPortalBucket: s3.IBucket;
   public readonly viewerPortalBucket: s3.IBucket;
   public readonly distribution: cloudfront.IDistribution;
+  public readonly keyGroup: cloudfront.KeyGroup;
+  public readonly publicKey: cloudfront.PublicKey;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -106,6 +110,34 @@ export class StorageStack extends cdk.Stack {
         signingBehavior: 'always',
         signingProtocol: 'sigv4',
       },
+    });
+
+    // 3b. CloudFront Key Pair & Trusted Key Group for Playback Authorization
+    const rsaKeys = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    });
+
+    this.publicKey = new cloudfront.PublicKey(this, 'HlsSigningPublicKey', {
+      encodedKey: rsaKeys.publicKey,
+      comment: 'Alexandria CloudFront HLS Signing Public Key',
+    });
+
+    this.keyGroup = new cloudfront.KeyGroup(this, 'HlsTrustedKeyGroup', {
+      items: [this.publicKey],
+      comment: 'Alexandria CloudFront HLS Trusted Key Group',
+    });
+
+    // Store Key Pair ID and Private Key in SSM Parameter Store for Scribe Lambda
+    new ssm.StringParameter(this, 'HlsKeyPairIdParam', {
+      parameterName: '/alexandria/cloudfront/key-pair-id',
+      stringValue: this.publicKey.publicKeyId,
+    });
+
+    new ssm.StringParameter(this, 'HlsPrivateKeyParam', {
+      parameterName: '/alexandria/cloudfront/hls-private-key',
+      stringValue: rsaKeys.privateKey,
     });
 
     // 4. Edge Functions (The Scribe's Gate)
@@ -209,6 +241,7 @@ export class StorageStack extends cdk.Stack {
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
           responseHeadersPolicy: hlsCorsPolicy,
+          trustedKeyGroups: [this.keyGroup],
           functionAssociations: [{
             function: rewriteFunction,
             eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,

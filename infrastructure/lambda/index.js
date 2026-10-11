@@ -22,6 +22,7 @@ const {
     AdminUserGlobalSignOutCommand,
     ListUsersCommand
 } = require("@aws-sdk/client-cognito-identity-provider");
+const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { randomBytes } = require("crypto");
 
@@ -31,6 +32,7 @@ const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({});
 const lambdaClient = new LambdaClient({});
 const cognitoClient = new CognitoIdentityProviderClient({});
+const ssmClient = new SSMClient({});
 
 /**
  * Standardized HTTP response helper with cross-origin CORS headers enabled.
@@ -127,6 +129,8 @@ exports.handler = async (event) => {
             return await handleUpdateVaultVideo(event, tenantId, claims);
         } else if (path === '/vault/device-token' && method === 'POST') {
             return await handleRegisterDeviceToken(event, tenantId, claims);
+        } else if (path === '/play/session' && method === 'POST') {
+            return await handlePlaySession(event, claims);
         }
 
         return response(404, { message: "Not Found" });
@@ -1543,3 +1547,98 @@ exports.logPlayHandler = async (event) => {
         return response(500, { error: err.message });
     }
 };
+
+/**
+ * Cached SSM parameters for CloudFront Signed Cookies
+ */
+let cachedKeyPairId = null;
+let cachedPrivateKeyPem = null;
+
+async function getSigningKeys() {
+    if (cachedKeyPairId && cachedPrivateKeyPem) {
+        return { keyPairId: cachedKeyPairId, privateKeyPem: cachedPrivateKeyPem };
+    }
+    try {
+        const keyIdRes = await ssmClient.send(new GetParameterCommand({ Name: "/alexandria/cloudfront/key-pair-id" }));
+        const privKeyRes = await ssmClient.send(new GetParameterCommand({ Name: "/alexandria/cloudfront/hls-private-key" }));
+        cachedKeyPairId = keyIdRes.Parameter.Value;
+        cachedPrivateKeyPem = privKeyRes.Parameter.Value;
+        return { keyPairId: cachedKeyPairId, privateKeyPem: cachedPrivateKeyPem };
+    } catch (err) {
+        console.error("Failed to load CloudFront signing keys from SSM", err);
+        return null;
+    }
+}
+
+function cloudfrontBase64(str) {
+    return str
+        .replace(/\+/g, "-")
+        .replace(/=/g, "_")
+        .replace(/\//g, "~");
+}
+
+function generateSignedCookies(resourceUrl, keyPairId, privateKeyPem, expiresInSeconds = 43200) {
+    const expires = Math.floor(Date.now() / 1000) + expiresInSeconds;
+    const policy = {
+        Statement: [
+            {
+                Resource: resourceUrl,
+                Condition: {
+                    DateLessThan: {
+                        "AWS:EpochTime": expires
+                    }
+                }
+            }
+        ]
+    };
+
+    const policyString = JSON.stringify(policy);
+    const policyBase64 = cloudfrontBase64(Buffer.from(policyString).toString("base64"));
+
+    const sign = require("crypto").createSign("RSA-SHA1");
+    sign.update(policyString);
+    const signatureBase64 = cloudfrontBase64(sign.sign(privateKeyPem, "base64"));
+
+    return {
+        "CloudFront-Policy": policyBase64,
+        "CloudFront-Signature": signatureBase64,
+        "CloudFront-Key-Pair-Id": keyPairId,
+        "Expires": expires
+    };
+}
+
+/**
+ * Handles creation of authorized playback sessions and CloudFront Signed Cookies.
+ */
+async function handlePlaySession(event, claims) {
+    const body = JSON.parse(event.body || "{}");
+    const { videoId, familyId } = body;
+    const cdnDomain = process.env.CLOUDFRONT_DOMAIN || "alexandria-plus.com";
+
+    if (!videoId || !familyId) {
+        return response(400, { error: "videoId and familyId are required." });
+    }
+
+    const userFamilyId = claims["custom:familyId"];
+    const isShopAdmin = claims["custom:role"] === "ShopAdmin";
+
+    // Enforce Vault Isolation: User must belong to the video's vault or be ShopAdmin
+    if (!isShopAdmin && userFamilyId !== familyId) {
+        return response(403, { error: "Unauthorized: User does not belong to this vault." });
+    }
+
+    const signingKeys = await getSigningKeys();
+    if (!signingKeys) {
+        return response(500, { error: "Signing credentials unavailable." });
+    }
+
+    const resourceUrl = `https://${cdnDomain}/hls/${familyId}/*`;
+    const signedCookies = generateSignedCookies(resourceUrl, signingKeys.keyPairId, signingKeys.privateKeyPem);
+
+    return response(200, {
+        videoId,
+        familyId,
+        cdnDomain,
+        signedCookies
+    });
+}

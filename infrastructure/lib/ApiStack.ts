@@ -84,6 +84,11 @@ export class ApiStack extends cdk.Stack {
       ],
       resources: [props.customerUserPool.userPoolArn],
     }));
+    scribeLambda.addToRolePolicy(new iam.PolicyStatement({
+      sid: 'SsmReadCloudFrontSigningKeys',
+      actions: ['ssm:GetParameter', 'ssm:GetParameters'],
+      resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/alexandria/cloudfront/*`],
+    }));
     if (props.orchestratorLambda) {
       props.orchestratorLambda.grantInvoke(scribeLambda);
     }
@@ -189,6 +194,8 @@ export class ApiStack extends cdk.Stack {
 
     const play = api.root.addResource('play');
     play.addMethod('POST', new apigateway.LambdaIntegration(this.logPlayLambda));
+    const playSession = play.addResource('session');
+    playSession.addMethod('POST', scribeIntegration(), { authorizer: dualAuthorizer });
 
     // 6. Custom Domain Routing for API Gateway
     if (Config.useCustomDomain && Config.domainName) {

@@ -2,13 +2,18 @@ package com.portfolio.videostreaming.ui
 
 import android.app.Application
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.portfolio.videostreaming.core.data.network.PlayEventRequest
+import com.portfolio.videostreaming.core.data.network.PlaySessionRequest
 import com.portfolio.videostreaming.core.data.network.StreamingApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,7 +64,7 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
      */
     fun processIntent(intent: PlayerIntent) {
         when (intent) {
-            is PlayerIntent.LoadVideo -> handleLoadVideo(intent.videoId, intent.videoUri)
+            is PlayerIntent.LoadVideo -> handleLoadVideo(intent.videoId, intent.videoUri, intent.familyId)
             is PlayerIntent.TogglePlay -> handleTogglePlay()
             is PlayerIntent.SeekTo -> handleSeekTo(intent.position)
             is PlayerIntent.Rewind -> handleRewind()
@@ -68,27 +73,80 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     /**
-     * Loads media source into ExoPlayer and emits play telemetry to API Gateway.
+     * Loads media source into ExoPlayer, retrieves CloudFront signed cookies for vault authorization,
+     * and emits play telemetry to API Gateway.
      */
-    private fun handleLoadVideo(videoId: String, uriString: String) {
+    private fun handleLoadVideo(videoId: String, uriString: String, familyId: String = "") {
         if (currentUri == uriString) return
-        
+
         currentUri = uriString
-        _viewState.update { it.copy(videoId = videoId, videoUri = uriString) }
-        
-        // Asynchronously record playback telemetry event to API Gateway
+        _viewState.update { it.copy(videoId = videoId, videoUri = uriString, isBuffering = true) }
+
         viewModelScope.launch {
+            // Asynchronously record playback telemetry event to API Gateway
             try {
                 StreamingApi.service.logPlayEvent(PlayEventRequest(videoId))
             } catch (e: Exception) {
                 Log.e("VideoPlayerVM", "Failed to log play event", e)
             }
+
+            // Extract or use resolved family ID
+            val resolvedFamilyId = if (familyId.isNotBlank()) {
+                familyId
+            } else {
+                extractFamilyIdFromUri(uriString)
+            }
+
+            var cookiesHeader = ""
+            if (resolvedFamilyId.isNotBlank() && videoId.isNotBlank()) {
+                try {
+                    val sessionResponse = StreamingApi.service.createPlaySession(
+                        PlaySessionRequest(videoId = videoId, familyId = resolvedFamilyId)
+                    )
+                    if (sessionResponse.signedCookies.isNotEmpty()) {
+                        cookiesHeader = sessionResponse.signedCookies.entries.joinToString("; ") {
+                            "${it.key}=${it.value}"
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w("VideoPlayerVM", "Failed to fetch CloudFront play session cookies", e)
+                }
+            }
+
+            setupAndPlayMedia(uriString, cookiesHeader)
+        }
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun setupAndPlayMedia(uriString: String, cookiesHeader: String) {
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+
+        if (cookiesHeader.isNotBlank()) {
+            httpDataSourceFactory.setDefaultRequestProperties(mapOf("Cookie" to cookiesHeader))
         }
 
+        val mediaSourceFactory = DefaultMediaSourceFactory(getApplication<Application>())
+            .setDataSourceFactory(httpDataSourceFactory)
+
         val mediaItem = MediaItem.fromUri(uriString.toUri())
-        exoPlayer.setMediaItem(mediaItem)
+        val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+
+        exoPlayer.setMediaSource(mediaSource)
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
+    }
+
+    private fun extractFamilyIdFromUri(uriString: String): String {
+        val hlsIdx = uriString.indexOf("/hls/")
+        if (hlsIdx != -1) {
+            val pathAfter = uriString.substring(hlsIdx + 5)
+            val parts = pathAfter.split("/")
+            if (parts.isNotEmpty() && parts[0].isNotBlank()) {
+                return parts[0]
+            }
+        }
+        return ""
     }
 
     private fun handleTogglePlay() {

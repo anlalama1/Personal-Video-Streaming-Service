@@ -73,6 +73,20 @@ data class PlayEventRequest(
 )
 
 @Serializable
+data class PlaySessionRequest(
+    val videoId: String,
+    val familyId: String
+)
+
+@Serializable
+data class PlaySessionResponse(
+    val videoId: String,
+    val familyId: String,
+    val cdnDomain: String,
+    val signedCookies: Map<String, String> = emptyMap()
+)
+
+@Serializable
 data class IngestRequest(
     val title: String,
     val genre: String,
@@ -259,6 +273,11 @@ interface StreamingApiService {
     suspend fun logPlayEvent(
         @Body request: PlayEventRequest
     )
+
+    @POST("play/session")
+    suspend fun createPlaySession(
+        @Body request: PlaySessionRequest
+    ): PlaySessionResponse
 }
 
 /**

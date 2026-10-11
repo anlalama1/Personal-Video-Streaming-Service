@@ -154,6 +154,20 @@ export class StorageStack extends cdk.Stack {
       `),
     });
 
+    const hlsCorsPolicy = new cloudfront.ResponseHeadersPolicy(this, 'HlsCorsPolicy', {
+      corsBehavior: {
+        accessControlAllowCredentials: false,
+        accessControlAllowHeaders: ['*'],
+        accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
+        accessControlAllowOrigins: [
+          `https://${Config.domainName}`,
+          `https://www.${Config.domainName}`,
+        ],
+        accessControlMaxAge: cdk.Duration.hours(1),
+        originOverride: true,
+      },
+    });
+
     // 5. Unified Distribution
     this.distribution = new cloudfront.Distribution(this, 'StreamingDistribution', {
       comment: 'Unified CDN for Alexandria+ Ecosystem',
@@ -194,6 +208,7 @@ export class StorageStack extends cdk.Stack {
           origin: new origins.S3Origin(this.hlsBucket),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          responseHeadersPolicy: hlsCorsPolicy,
           functionAssociations: [{
             function: rewriteFunction,
             eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,

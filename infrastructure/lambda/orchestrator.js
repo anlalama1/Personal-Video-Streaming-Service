@@ -145,16 +145,16 @@ async function analyzeVideoInLambda({ bucket, key, eTag, fileName, tenantId, fam
         if (approvedGenres.length === 0) throw new Error("No genres are configured in the DynamoDB genre registry.");
 
         const genrePromptList = approvedGenres.map(genre => `- ${genre}`).join("\n");
-        const prompt = `Carefully inspect the attached 3-by-3 keyframe grid. It contains nine frames sampled evenly from the beginning through the end of the video, in reading order (left to right, top to bottom). Base your description on what is visibly present in these frames, not on assumptions from the filename.
+        const prompt = `Inspect the attached 3-by-3 keyframe grid, which shows nine moments sampled evenly from the beginning to the end of the video in reading order. Base your response on the frames; do not infer content from the filename.
 Original filename: "${path.basename(fileName)}"
 Create a concise metadata draft for a human editor to review.
-Identify the visible subjects, actions, setting, and meaningful changes between sampled moments. Be specific when details are recognizable, but do not invent identities, events, or context. If the visible content cannot be determined, say so rather than making a generic guess.
-The description must be no more than 3 sentences. Focus on visible details; avoid repetition, speculation, and flowery narration.
+Write the description like a short streaming-series episode synopsis: lead with the central moment, then describe what unfolds or changes across the video. Keep it engaging, specific, and grounded in the visible action. Do not list incidental details about the room, scenery, lighting, clothing, or camera unless they matter to the story. Do not invent identities, motives, events, or context. If the frames do not reveal what is happening, say that the content is unclear rather than guessing.
+Keep the description to 1 or 2 sentences, ideally under 40 words. Avoid repetition, scene-by-scene play-by-play, speculation, and flowery language.
 
 Select EXACTLY ONE genre from this approved Heritage Genre list:
 ${genrePromptList}
 
-Return a JSON object with exactly four fields: "title" (a short, specific title), "genre" (one exact string from the approved list), "description" (no more than 3 sentences), and "tags" (an array of relevant keywords). Do not include markdown or explanations outside the JSON object.`;
+Return a JSON object with exactly four fields: "title" (a short, specific title), "genre" (one exact string from the approved list), "description" (a concise, synopsis-style description of 1 or 2 sentences), and "tags" (an array of relevant keywords). Do not include markdown or explanations outside the JSON object.`;
         const response = await bedrock.send(new InvokeModelCommand({
             modelId: process.env.BEDROCK_MODEL_ID,
             contentType: "application/json",

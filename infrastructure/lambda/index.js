@@ -1561,7 +1561,7 @@ async function getSigningKeys() {
     }
     try {
         const keyIdRes = await ssmClient.send(new GetParameterCommand({ Name: "/alexandria/cloudfront/key-pair-id" }));
-        const privKeyRes = await ssmClient.send(new GetParameterCommand({ Name: "/alexandria/cloudfront/hls-private-key" }));
+        const privKeyRes = await ssmClient.send(new GetParameterCommand({ Name: "/alexandria/cloudfront/hls-private-key-v2" }));
         cachedKeyPairId = keyIdRes.Parameter.Value;
         cachedPrivateKeyPem = privKeyRes.Parameter.Value;
         return { keyPairId: cachedKeyPairId, privateKeyPem: cachedPrivateKeyPem };

@@ -4,11 +4,12 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import * as crypto from 'crypto';
+import * as custom_resources from 'aws-cdk-lib/custom-resources';
 import { Config } from '../bin/config';
 
 export class StorageStack extends cdk.Stack {
@@ -112,15 +113,73 @@ export class StorageStack extends cdk.Stack {
       },
     });
 
-    // 3b. CloudFront Key Pair & Trusted Key Group for Playback Authorization
-    const rsaKeys = crypto.generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-      publicKeyEncoding: { type: 'spki', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    // Generate the signer once at deployment time and retain it across CDK synths.
+    const privateKeyParameterName = '/alexandria/cloudfront/hls-private-key-v2';
+    const keyMaterialHandler = new lambda.Function(this, 'HlsSigningKeyMaterialHandler', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'index.handler',
+      timeout: cdk.Duration.seconds(30),
+      code: lambda.Code.fromInline(`
+        const { SSMClient, GetParameterCommand, PutParameterCommand } = require('@aws-sdk/client-ssm');
+        const { generateKeyPairSync, createPublicKey } = require('crypto');
+        const ssm = new SSMClient({});
+
+        exports.handler = async (event) => {
+          if (event.RequestType === 'Delete') {
+            return { PhysicalResourceId: 'alexandria-hls-signing-key' };
+          }
+
+          const parameterName = event.ResourceProperties.ParameterName;
+          let privateKey;
+          try {
+            const existing = await ssm.send(new GetParameterCommand({ Name: parameterName }));
+            privateKey = existing.Parameter.Value;
+          } catch (error) {
+            if (error.name !== 'ParameterNotFound') throw error;
+            const generated = generateKeyPairSync('rsa', {
+              modulusLength: 2048,
+              publicKeyEncoding: { type: 'spki', format: 'pem' },
+              privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+            });
+            privateKey = generated.privateKey;
+            await ssm.send(new PutParameterCommand({
+              Name: parameterName,
+              Type: 'String',
+              Value: privateKey,
+              Overwrite: true
+            }));
+          }
+
+          const publicKey = createPublicKey(privateKey).export({
+            type: 'spki',
+            format: 'pem'
+          }).toString();
+          return {
+            PhysicalResourceId: 'alexandria-hls-signing-key',
+            Data: { PublicKey: publicKey }
+          };
+        };
+      `),
+    });
+    keyMaterialHandler.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ssm:GetParameter', 'ssm:PutParameter'],
+      resources: [this.formatArn({
+        service: 'ssm',
+        resource: 'parameter',
+        resourceName: 'alexandria/cloudfront/hls-private-key-v2',
+      })],
+    }));
+    const keyMaterialProvider = new custom_resources.Provider(this, 'HlsSigningKeyMaterialProvider', {
+      onEventHandler: keyMaterialHandler,
+    });
+    const keyMaterial = new cdk.CustomResource(this, 'HlsSigningKeyMaterial', {
+      serviceToken: keyMaterialProvider.serviceToken,
+      properties: { ParameterName: privateKeyParameterName },
     });
 
-    this.publicKey = new cloudfront.PublicKey(this, 'HlsSigningPublicKey', {
-      encodedKey: rsaKeys.publicKey,
+    // Use a new logical ID to replace any key resource whose generated material changed per synth.
+    this.publicKey = new cloudfront.PublicKey(this, 'HlsSigningPublicKeyV2', {
+      encodedKey: keyMaterial.getAttString('PublicKey'),
       comment: 'Alexandria CloudFront HLS Signing Public Key',
     });
 
@@ -129,15 +188,10 @@ export class StorageStack extends cdk.Stack {
       comment: 'Alexandria CloudFront HLS Trusted Key Group',
     });
 
-    // Store Key Pair ID and Private Key in SSM Parameter Store for Scribe Lambda
+    // Store the CloudFront key ID for the Scribe Lambda; the private key is persisted by the custom resource.
     new ssm.StringParameter(this, 'HlsKeyPairIdParam', {
       parameterName: '/alexandria/cloudfront/key-pair-id',
       stringValue: this.publicKey.publicKeyId,
-    });
-
-    new ssm.StringParameter(this, 'HlsPrivateKeyParam', {
-      parameterName: '/alexandria/cloudfront/hls-private-key',
-      stringValue: rsaKeys.privateKey,
     });
 
     // 4. Edge Functions (The Scribe's Gate)

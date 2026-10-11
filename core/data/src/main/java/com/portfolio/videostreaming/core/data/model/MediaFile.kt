@@ -21,6 +21,7 @@ data class MediaFile(
     val aiTags: List<String> = emptyList(),
     val aiDescription: String = "",
     val familyId: String = "",
+    val tenantId: String = "",
     val videoKey: String = "",
     val lastUpdated: Long = 0L
 )

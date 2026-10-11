@@ -81,10 +81,12 @@ sealed class Screen(val route: String) {
     object LocalPicker : Screen("local_picker")
     object FamilyReview : Screen("family_review")
     object VaultAdmin : Screen("vault_admin")
-    object Player : Screen("player/{videoId}/{videoUri}") {
-        fun createRoute(videoId: String, videoUri: String): String {
+    object Player : Screen("player/{videoId}/{videoUri}/{familyId}/{tenantId}") {
+        fun createRoute(videoId: String, videoUri: String, familyId: String, tenantId: String): String {
             val encoded = URLEncoder.encode(videoUri, StandardCharsets.UTF_8.toString())
-            return "player/$videoId/$encoded"
+            val encodedFamilyId = URLEncoder.encode(familyId, StandardCharsets.UTF_8.toString())
+            val encodedTenantId = URLEncoder.encode(tenantId, StandardCharsets.UTF_8.toString())
+            return "player/$videoId/$encoded/$encodedFamilyId/$encodedTenantId"
         }
     }
 }
@@ -291,7 +293,7 @@ class MainActivity : ComponentActivity() {
                                 video = video,
                                 onBack = { navController.popBackStack() },
                                 onPlay = {
-                                    navController.navigate(Screen.Player.createRoute(video.id, video.videoUrl))
+                                    navController.navigate(Screen.Player.createRoute(video.id, video.videoUrl, video.familyId, video.tenantId))
                                 }
                             )
                         }
@@ -299,6 +301,8 @@ class MainActivity : ComponentActivity() {
                     composable(Screen.Player.route) { backStackEntry ->
                         val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
                         val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+                        val familyId = backStackEntry.arguments?.getString("familyId") ?: ""
+                        val tenantId = backStackEntry.arguments?.getString("tenantId") ?: ""
                         val playerViewModel: VideoPlayerViewModel = viewModel()
 
                         val viewState by playerViewModel.viewState.collectAsState()
@@ -313,8 +317,8 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        LaunchedEffect(videoId, videoUri) {
-                            playerViewModel.processIntent(PlayerIntent.LoadVideo(videoId, videoUri))
+                        LaunchedEffect(videoId, videoUri, familyId, tenantId) {
+                            playerViewModel.processIntent(PlayerIntent.LoadVideo(videoId, videoUri, familyId, tenantId))
                         }
 
                         VideoPlayer(

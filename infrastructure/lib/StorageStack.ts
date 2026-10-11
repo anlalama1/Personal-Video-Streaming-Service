@@ -188,7 +188,7 @@ export class StorageStack extends cdk.Stack {
 
     const hlsCorsPolicy = new cloudfront.ResponseHeadersPolicy(this, 'HlsCorsPolicy', {
       corsBehavior: {
-        accessControlAllowCredentials: false,
+        accessControlAllowCredentials: true,
         accessControlAllowHeaders: ['*'],
         accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
         accessControlAllowOrigins: [

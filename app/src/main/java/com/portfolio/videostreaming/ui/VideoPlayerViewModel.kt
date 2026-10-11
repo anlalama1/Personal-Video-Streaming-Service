@@ -7,6 +7,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -52,6 +53,13 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
                     )
                 }
             }
+
+            override fun onPlayerError(error: PlaybackException) {
+                Log.e("VideoPlayerVM", "Video playback failed", error)
+                _viewState.update {
+                    it.copy(isBuffering = false, error = "Video playback failed. Please try again.")
+                }
+            }
         })
     }
 
@@ -64,7 +72,7 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
      */
     fun processIntent(intent: PlayerIntent) {
         when (intent) {
-            is PlayerIntent.LoadVideo -> handleLoadVideo(intent.videoId, intent.videoUri, intent.familyId)
+            is PlayerIntent.LoadVideo -> handleLoadVideo(intent.videoId, intent.videoUri, intent.familyId, intent.tenantId)
             is PlayerIntent.TogglePlay -> handleTogglePlay()
             is PlayerIntent.SeekTo -> handleSeekTo(intent.position)
             is PlayerIntent.Rewind -> handleRewind()
@@ -76,11 +84,13 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
      * Loads media source into ExoPlayer, retrieves CloudFront signed cookies for vault authorization,
      * and emits play telemetry to API Gateway.
      */
-    private fun handleLoadVideo(videoId: String, uriString: String, familyId: String = "") {
+    private fun handleLoadVideo(videoId: String, uriString: String, familyId: String = "", tenantId: String = "") {
         if (currentUri == uriString) return
 
         currentUri = uriString
-        _viewState.update { it.copy(videoId = videoId, videoUri = uriString, isBuffering = true) }
+        _viewState.update {
+            it.copy(videoId = videoId, videoUri = uriString, isBuffering = true, error = null)
+        }
 
         viewModelScope.launch {
             // Asynchronously record playback telemetry event to API Gateway
@@ -90,30 +100,41 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
                 Log.e("VideoPlayerVM", "Failed to log play event", e)
             }
 
-            // Extract or use resolved family ID
-            val resolvedFamilyId = if (familyId.isNotBlank()) {
-                familyId
-            } else {
-                extractFamilyIdFromUri(uriString)
+            val (uriTenantId, uriFamilyId) = extractPlaybackPath(uriString)
+            val resolvedFamilyId = familyId.ifBlank { uriFamilyId }
+            val resolvedTenantId = tenantId.ifBlank { uriTenantId }
+            if (resolvedFamilyId.isBlank() || resolvedTenantId.isBlank() || videoId.isBlank()) {
+                _viewState.update {
+                    it.copy(isBuffering = false, error = "Unable to identify the video vault. Please reload the catalog.")
+                }
+                return@launch
             }
 
-            var cookiesHeader = ""
-            if (resolvedFamilyId.isNotBlank() && videoId.isNotBlank()) {
-                try {
-                    val sessionResponse = StreamingApi.service.createPlaySession(
-                        PlaySessionRequest(videoId = videoId, familyId = resolvedFamilyId)
+            try {
+                val sessionResponse = StreamingApi.service.createPlaySession(
+                    PlaySessionRequest(
+                        videoId = videoId,
+                        familyId = resolvedFamilyId,
+                        tenantId = resolvedTenantId
                     )
-                    if (sessionResponse.signedCookies.isNotEmpty()) {
-                        cookiesHeader = sessionResponse.signedCookies.entries.joinToString("; ") {
-                            "${it.key}=${it.value}"
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w("VideoPlayerVM", "Failed to fetch CloudFront play session cookies", e)
+                )
+                val cookiesHeader = sessionResponse.signedCookies
+                    .filterKeys { it in CLOUDFRONT_COOKIE_NAMES }
+                    .entries.joinToString("; ") { "${it.key}=${it.value}" }
+                if (cookiesHeader.isBlank()) {
+                    throw IllegalStateException("Playback authorization returned no signed cookies.")
+                }
+                _viewState.update { it.copy(error = null) }
+                setupAndPlayMedia(uriString, cookiesHeader)
+            } catch (e: Exception) {
+                Log.e("VideoPlayerVM", "Failed to obtain CloudFront playback authorization", e)
+                _viewState.update {
+                    it.copy(
+                        isBuffering = false,
+                        error = "Unable to authorize video playback. Please sign in again or contact your vault administrator."
+                    )
                 }
             }
-
-            setupAndPlayMedia(uriString, cookiesHeader)
         }
     }
 
@@ -137,16 +158,16 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
         exoPlayer.playWhenReady = true
     }
 
-    private fun extractFamilyIdFromUri(uriString: String): String {
+    private fun extractPlaybackPath(uriString: String): Pair<String, String> {
         val hlsIdx = uriString.indexOf("/hls/")
         if (hlsIdx != -1) {
             val pathAfter = uriString.substring(hlsIdx + 5)
             val parts = pathAfter.split("/")
-            if (parts.isNotEmpty() && parts[0].isNotBlank()) {
-                return parts[0]
+            if (parts.size >= 3 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
+                return parts[0] to parts[1]
             }
         }
-        return ""
+        return "" to ""
     }
 
     private fun handleTogglePlay() {
@@ -190,5 +211,10 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
 
     companion object {
         private const val SKIP_INCREMENT_MS = 10000L // 10-second seek increments
+        private val CLOUDFRONT_COOKIE_NAMES = setOf(
+            "CloudFront-Policy",
+            "CloudFront-Signature",
+            "CloudFront-Key-Pair-Id"
+        )
     }
 }

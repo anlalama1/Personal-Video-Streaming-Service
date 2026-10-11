@@ -86,6 +86,7 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                         aiTags = dto.aiTags ?: emptyList(),
                         aiDescription = dto.aiDescription.orEmpty(),
                         familyId = dto.familyId,
+                        tenantId = dto.tenantId,
                         videoKey = dto.videoKey,
                         lastUpdated = dto.lastUpdated
                     )
@@ -126,6 +127,7 @@ class MediaBrowserViewModel(application: Application) : AndroidViewModel(applica
                         aiTags = dto.aiTags ?: emptyList(),
                         aiDescription = dto.aiDescription.orEmpty(),
                         familyId = dto.familyId,
+                        tenantId = dto.tenantId,
                         videoKey = dto.videoKey
                     )
                 }

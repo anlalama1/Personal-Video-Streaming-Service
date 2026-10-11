@@ -130,7 +130,7 @@ exports.handler = async (event) => {
         } else if (path === '/vault/device-token' && method === 'POST') {
             return await handleRegisterDeviceToken(event, tenantId, claims);
         } else if (path === '/play/session' && method === 'POST') {
-            return await handlePlaySession(event, claims);
+            return await handlePlaySession(event, tenantId, claims);
         }
 
         return response(404, { message: "Not Found" });
@@ -284,6 +284,7 @@ async function handleGetCatalog(event, tenantId, claims = {}) {
             videoKey: item.videoKey || '',
             thumbnailKey,
             familyId: itemFamilyId,
+            tenantId: itemTenantId,
             lastUpdated: toEpochMilliseconds(item.lastUpdated, item.lastUpdatedEpochMs)
         };
     };
@@ -1610,21 +1611,63 @@ function generateSignedCookies(resourceUrl, keyPairId, privateKeyPem, expiresInS
 /**
  * Handles creation of authorized playback sessions and CloudFront Signed Cookies.
  */
-async function handlePlaySession(event, claims) {
+async function handlePlaySession(event, tenantId, claims) {
     const body = JSON.parse(event.body || "{}");
-    const { videoId, familyId } = body;
+    const { videoId, familyId, tenantId: requestedTenantId } = body;
     const cdnDomain = process.env.CLOUDFRONT_DOMAIN || "alexandria-plus.com";
 
-    if (!videoId || !familyId) {
-        return response(400, { error: "videoId and familyId are required." });
+    if (
+        typeof videoId !== "string" ||
+        videoId.trim().length === 0 ||
+        videoId.length > 256 ||
+        typeof familyId !== "string" ||
+        !/^(PUBLIC|[A-Za-z0-9_-]{1,64})$/.test(familyId) ||
+        typeof requestedTenantId !== "string" ||
+        !/^[A-Za-z0-9_-]{1,64}$/.test(requestedTenantId)
+    ) {
+        return response(400, { error: "A valid videoId, familyId, and tenantId are required." });
     }
 
-    const userFamilyId = claims["custom:familyId"];
     const isShopAdmin = claims["custom:role"] === "ShopAdmin";
-
-    // Enforce Vault Isolation: User must belong to the video's vault or be ShopAdmin
-    if (!isShopAdmin && userFamilyId !== familyId) {
+    const userFamilyId = isShopAdmin ? null : await getTrustedFamilyId(claims);
+    const isPublicVideoForMember = familyId === "PUBLIC" && Boolean(userFamilyId);
+    if (
+        (!isShopAdmin && !userFamilyId) ||
+        (!isShopAdmin && familyId !== userFamilyId && !isPublicVideoForMember)
+    ) {
         return response(403, { error: "Unauthorized: User does not belong to this vault." });
+    }
+
+    const candidates = [];
+    let lastEvaluatedKey;
+    do {
+        const result = await docClient.send(new QueryCommand({
+            TableName: process.env.TABLE_NAME,
+            IndexName: "FamilyCatalogIndex",
+            KeyConditionExpression: "familyId = :familyId AND SK = :videoKey",
+            ExpressionAttributeValues: {
+                ":familyId": familyId,
+                ":videoKey": `FAMILY#${familyId}#VIDEO#${videoId}`
+            },
+            ExclusiveStartKey: lastEvaluatedKey
+        }));
+        candidates.push(...(result.Items || []));
+        lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    const playableItems = candidates.filter(item =>
+        item.transcodeStatus === "COMPLETED" &&
+        (item.deletedAt === undefined || item.deletedAt === null) &&
+        typeof item.hlsKey === "string" &&
+        item.hlsKey.length > 0 &&
+        item.PK?.startsWith("TENANT#")
+    );
+    const item = playableItems.find(candidate =>
+        candidate.PK === `TENANT#${requestedTenantId}` &&
+        (!isShopAdmin || requestedTenantId === tenantId)
+    );
+    if (!item) {
+        return response(404, { error: "No completed video matching this family and tenant was found." });
     }
 
     const signingKeys = await getSigningKeys();
@@ -1632,13 +1675,17 @@ async function handlePlaySession(event, claims) {
         return response(500, { error: "Signing credentials unavailable." });
     }
 
-    const resourceUrl = `https://${cdnDomain}/hls/${familyId}/*`;
-    const signedCookies = generateSignedCookies(resourceUrl, signingKeys.keyPairId, signingKeys.privateKeyPem);
+    const itemTenantId = item.PK.slice("TENANT#".length);
+    const resourceUrl = `https://${cdnDomain}/hls/${itemTenantId}/${familyId}/${encodeURIComponent(item.hlsKey)}/*`;
+    const generatedCookies = generateSignedCookies(resourceUrl, signingKeys.keyPairId, signingKeys.privateKeyPem);
+    const { Expires: expiresAt, ...signedCookies } = generatedCookies;
 
     return response(200, {
         videoId,
         familyId,
+        tenantId: itemTenantId,
         cdnDomain,
+        expiresAt,
         signedCookies
     });
 }

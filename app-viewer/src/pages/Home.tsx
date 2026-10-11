@@ -21,6 +21,8 @@ interface MediaItem {
   releaseYear: string;
   thumbnailUrl: string;
   videoUrl: string;
+  familyId: string;
+  tenantId: string;
   description: string;
   tags: string[];
   lastUpdated?: number;

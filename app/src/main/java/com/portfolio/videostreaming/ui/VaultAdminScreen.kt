@@ -87,6 +87,7 @@ fun VaultAdminScreen(
                                 transcodeStatus = dto.transcodeStatus,
                                 useAi = dto.useAi,
                                 familyId = dto.familyId,
+                                tenantId = dto.tenantId,
                                 videoKey = dto.videoKey
                             )
                         }

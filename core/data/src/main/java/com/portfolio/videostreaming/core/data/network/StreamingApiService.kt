@@ -45,6 +45,7 @@ data class MediaItemDto(
     val aiTags: List<String>? = null,
     val aiDescription: String? = null,
     val familyId: String = "",
+    val tenantId: String = "",
     val videoKey: String = "",
     val lastUpdated: Long = 0L
 )
@@ -75,7 +76,8 @@ data class PlayEventRequest(
 @Serializable
 data class PlaySessionRequest(
     val videoId: String,
-    val familyId: String
+    val familyId: String,
+    val tenantId: String = ""
 )
 
 @Serializable
@@ -83,6 +85,8 @@ data class PlaySessionResponse(
     val videoId: String,
     val familyId: String,
     val cdnDomain: String,
+    val tenantId: String = "",
+    val expiresAt: Long = 0L,
     val signedCookies: Map<String, String> = emptyMap()
 )
 

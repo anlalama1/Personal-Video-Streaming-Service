@@ -197,7 +197,12 @@ export class AuthStack extends cdk.Stack {
         flows: {
           authorizationCodeGrant: true,
         },
-        scopes: [cognito.OAuthScope.EMAIL, cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
+        scopes: [
+          cognito.OAuthScope.EMAIL,
+          cognito.OAuthScope.OPENID,
+          cognito.OAuthScope.PROFILE,
+          cognito.OAuthScope.COGNITO_ADMIN,
+        ],
         callbackUrls: ['myapp://callback'],
         logoutUrls: ['myapp://logout'],
       },

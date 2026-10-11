@@ -178,6 +178,23 @@ class AuthViewModel : ViewModel() {
      */
     fun signInWithGoogle(activity: Activity) {
         _authState.value = AuthState.Loading
+        Amplify.Auth.fetchAuthSession(
+            { session ->
+                if (session.isSignedIn) {
+                    Log.i("AuthVM", "Cognito session already exists; resuming account loading")
+                    fetchUserAttributes()
+                } else {
+                    launchGoogleSignIn(activity)
+                }
+            },
+            { error ->
+                Log.e("AuthVM", "Could not check Cognito session before Google sign-in", error)
+                _authState.value = AuthState.Error(error.message ?: "Could not check your sign-in status")
+            }
+        )
+    }
+
+    private fun launchGoogleSignIn(activity: Activity) {
         Amplify.Auth.signInWithWebUI(
             activity,
             { result: AuthSignInResult ->
@@ -189,7 +206,20 @@ class AuthViewModel : ViewModel() {
             },
             { error: AuthException ->
                 Log.e("AuthVM", "Google social sign in failed", error)
-                _authState.value = AuthState.Error(error.message ?: "Google sign in failed")
+                Amplify.Auth.fetchAuthSession(
+                    { session ->
+                        if (session.isSignedIn) {
+                            Log.w("AuthVM", "Google sign-in returned an error, but a Cognito session is active")
+                            fetchUserAttributes()
+                        } else {
+                            _authState.value = AuthState.Error(error.message ?: "Google sign in failed")
+                        }
+                    },
+                    { sessionError ->
+                        Log.e("AuthVM", "Could not verify Cognito session after Google sign-in failed", sessionError)
+                        _authState.value = AuthState.Error(error.message ?: "Google sign in failed")
+                    }
+                )
             }
         )
     }

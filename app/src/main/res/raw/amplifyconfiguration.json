@@ -47,7 +47,8 @@
                             "Scopes": [
                                 "email",
                                 "openid",
-                                "profile"
+                                "profile",
+                                "aws.cognito.signin.user.admin"
                             ]
                         }
                     }

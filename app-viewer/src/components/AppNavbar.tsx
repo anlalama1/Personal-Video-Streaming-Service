@@ -150,6 +150,12 @@ const Navbar = () => {
             <Link to="/upload" className="cursor-pointer text-heritage-gold hover:text-heritage-gold/80 transition-colors flex items-center gap-1.5">
               <span>Upload</span>
             </Link>
+            {userProfile.isAdmin && (
+              <Link to="/vault-admin" className="cursor-pointer hover:text-heritage-gold transition-colors flex items-center gap-1.5">
+                <ShieldCheck size={16} />
+                <span>Admin</span>
+              </Link>
+            )}
 
             {/* Top-Right Search Trigger Button */}
             <button

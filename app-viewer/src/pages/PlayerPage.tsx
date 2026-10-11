@@ -57,7 +57,10 @@ const PlayerPage = () => {
         cookieNames.forEach(name => {
           document.cookie = `${name}=${signedCookies[name]}; Domain=${cookieDomain}; Path=/hls; Secure; SameSite=None${expiry}`;
         });
-        player.getNetworkingEngine()?.registerRequestFilter((_type, request) => {
+        player.getNetworkingEngine()?.registerRequestFilter((
+          _type: number,
+          request: { allowCrossSiteCredentials: boolean }
+        ) => {
           request.allowCrossSiteCredentials = true;
         });
         await player.load(video.videoUrl);

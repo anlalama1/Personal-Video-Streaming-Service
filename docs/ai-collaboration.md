@@ -1120,6 +1120,15 @@ This document tracks the high-level collaboration between the human developer an
     - Updated [`VideoPlayerViewModel.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/VideoPlayerViewModel.kt) on Android to request play authorization sessions and pass signed cookies via `DefaultHttpDataSource.Factory` to Media3 ExoPlayer.
 - **Outcome**: Delivered strict CDN-level playback authorization, preventing link leaks and unauthorized video downloads across mobile and web clients.
 
+### 133. Milestone 35: User Approval Request Notifications (Oct 8, 2026)
+- **Challenge**: Administrators were not alerted in real-time when new users requested membership to their family vault, and requestors lacked instant feedback upon approval.
+- **AI Contribution**: 
+    - Granted `ses:SendEmail` permissions in [`ApiStack.ts`](file:///I:/Android%20Projects/infrastructure/lib/ApiStack.ts).
+    - Updated `handleJoinVault` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js) to send transactional SES emails and FCM push notifications (`"VAULT_APPROVAL_REQUEST"`) to all vault administrators displaying requestor email and username.
+    - Added interactive "Approve" and "Reject" notification action buttons in [`AlexandriaFirebaseService.kt`](file:///I:/Android%20Projects/app/src/main/java/com/portfolio/videostreaming/ui/AlexandriaFirebaseService.kt) and registered `VaultActionBroadcastReceiver` in [`AndroidManifest.xml`](file:///I:/Android%20Projects/app/src/main/AndroidManifest.xml) for one-tap background approval/rejection.
+    - Updated `handleManageVaultMember` in [`index.js`](file:///I:/Android%20Projects/infrastructure/lambda/index.js) to dispatch SES confirmation emails and FCM push notifications (`"VAULT_APPROVAL_CONFIRMED"`) to requestors upon approval.
+- **Outcome**: Enabled real-time email & mobile push notification alerts for vault membership requests with one-tap system notification action buttons.
+
 ## Future Work / Stretch Goals
 - **Custom Media Engine**: Implement a low-level renderer using `MediaCodec` and `AudioTrack` to demonstrate deep internal knowledge of video synchronization.
 - **ABR & Codec Overlays**: Implement real-time monitoring of bitrate and codec switching to prove deep HLS/DASH expertise.

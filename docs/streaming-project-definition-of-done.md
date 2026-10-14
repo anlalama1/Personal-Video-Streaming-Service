@@ -164,6 +164,13 @@ The project is **done** when all of the following are true:
 - [x] **Play Session & Cookie Issuance API**: Provisioned `POST /play/session` in Lambda `index.js`, verifying user `custom:familyId` authorization before issuing short-lived CloudFront Signed Cookies (`CloudFront-Policy`, `CloudFront-Signature`, `CloudFront-Key-Pair-Id`).
 - [x] **Android Media3 Cookie Injection**: Updated `VideoPlayerViewModel.kt` to request play authorization sessions and configure `DefaultHttpDataSource.Factory` with explicit `Cookie` request properties for all HLS manifest and segment HTTP requests.
 - [x] **Desktop / Web Viewer Playback Security**: Updated `app-viewer` player to fetch CloudFront signed cookies / play sessions before stream initialization.
+
+### Milestone 35 — User Approval Request Notifications (SES Email & Mobile Push Actions)
+- [x] **Amazon SES IAM Permissions**: Granted `ses:SendEmail` permissions to `scribeLambda` in `ApiStack.ts`.
+- [x] **Membership Request Dispatch**: Updated `handleJoinVault` in `infrastructure/lambda/index.js` to send transactional SES emails and FCM push notifications (`"VAULT_APPROVAL_REQUEST"`) to all vault administrators displaying requestor email and username.
+- [x] **Android Interactive Notification Actions**: Updated `AlexandriaFirebaseService.kt` to construct system notifications with "Approve" and "Reject" action buttons directly in the Android notification drawer.
+- [x] **Background Action Receiver**: Registered `VaultActionBroadcastReceiver` in `AndroidManifest.xml` and `AlexandriaFirebaseService.kt` to execute `/vault/members/approve` or `/vault/members/reject` in the background when action buttons are tapped.
+- [x] **Approval Confirmation Dispatch**: Updated `handleManageVaultMember` in `index.js` to dispatch SES confirmation emails and FCM push notifications (`"VAULT_APPROVAL_CONFIRMED"`) to requestors upon administrator approval.
 - [x] **Safety Handshake Protocol**: Enforced mandatory confirmation payload key (`confirmReset: "CONFIRM_SYSTEM_FACTORY_RESET_ALEXANDRIA"`), aborting without execution if missing.
 - [x] **Multi-Resource Purging**: Recursively purges all objects across S3 buckets (`SOURCE`, `THUMBNAIL`, `DEST`), DynamoDB `VideoMetadataTable`, and Cognito User Pools.
 - [x] **API Gateway Route Isolation**: Isolated reset Lambda from public API Gateway routes, requiring manual invocation via AWS CLI or AWS Console.

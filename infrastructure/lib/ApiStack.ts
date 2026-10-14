@@ -89,6 +89,11 @@ export class ApiStack extends cdk.Stack {
       actions: ['ssm:GetParameter', 'ssm:GetParameters'],
       resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/alexandria/cloudfront/*`],
     }));
+    scribeLambda.addToRolePolicy(new iam.PolicyStatement({
+      sid: 'SesTransactionalEmailDispatch',
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'],
+    }));
     if (props.orchestratorLambda) {
       props.orchestratorLambda.grantInvoke(scribeLambda);
     }

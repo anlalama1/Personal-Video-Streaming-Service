@@ -23,6 +23,7 @@ const {
     ListUsersCommand
 } = require("@aws-sdk/client-cognito-identity-provider");
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
+const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { randomBytes } = require("crypto");
 
@@ -33,6 +34,7 @@ const s3Client = new S3Client({});
 const lambdaClient = new LambdaClient({});
 const cognitoClient = new CognitoIdentityProviderClient({});
 const ssmClient = new SSMClient({});
+const sesClient = new SESClient({});
 
 /**
  * Standardized HTTP response helper with cross-origin CORS headers enabled.
@@ -1004,6 +1006,29 @@ async function handleJoinVault(event, claims) {
         throw error;
     }
 
+    // Dispatch Notifications to Vault Administrators
+    try {
+        const requestorEmail = identity.email || claims['email'] || identity.username;
+        const requestorUsername = identity.username;
+        const { adminEmails } = await getVaultAdminDetails(familyId);
+
+        for (const adminEmail of adminEmails) {
+            if (adminEmail) {
+                await sendSesEmail(
+                    adminEmail,
+                    `[Alexandria+ Vault ${familyId}] Membership Request from ${requestorEmail}`,
+                    `<html><body style="font-family: sans-serif; background-color: #121212; color: #E0E0E0; padding: 20px;"><div style="max-width: 600px; margin: 0 auto; background: #1E1E1E; border: 1px solid #333; border-radius: 8px; padding: 24px;"><h2 style="color: #D4AF37; margin-top: 0;">Vault Membership Request</h2><p style="font-size: 16px;">A user has requested to join your Alexandria+ Family Vault (<strong>${familyId}</strong>).</p><div style="background: #2A2A2A; border-left: 4px solid #D4AF37; padding: 16px; margin: 20px 0; border-radius: 4px;"><p style="margin: 0; font-size: 15px;"><strong>Requestor Email:</strong> ${requestorEmail}</p><p style="margin: 8px 0 0 0; font-size: 15px;"><strong>Requestor Username:</strong> ${requestorUsername}</p></div><p style="font-size: 14px; color: #AAA;">Open the Alexandria+ Mobile App or Demetrius Admin Portal to Approve or Reject this request.</p></div></body></html>`
+                );
+            }
+        }
+
+        const headers = event.headers || {};
+        const tenantId = headers['x-tenant-id'] || headers['X-Tenant-Id'] || claims['custom:tenantId'] || 'PRIMARY_VAULT';
+        await dispatchVaultRequestNotification(tenantId, familyId, requestorEmail, requestorUsername);
+    } catch (notifyErr) {
+        console.warn("Failed to dispatch join vault notifications:", notifyErr.message);
+    }
+
     return response(202, {
         success: true,
         familyId,
@@ -1230,6 +1255,26 @@ async function handleManageVaultMember(event, claims, action) {
         action === 'promote' || isTargetAdmin,
         true
     );
+
+    // Dispatch Approval Notification to Requestor via SES and FCM
+    if (action === 'approve' || action === 'promote') {
+        try {
+            const targetEmail = attributes.email || username;
+            if (targetEmail) {
+                await sendSesEmail(
+                    targetEmail,
+                    `[Alexandria+ Vault ${familyId}] Membership Approved!`,
+                    `<html><body style="font-family: sans-serif; background-color: #121212; color: #E0E0E0; padding: 20px;"><div style="max-width: 600px; margin: 0 auto; background: #1E1E1E; border: 1px solid #333; border-radius: 8px; padding: 24px;"><h2 style="color: #D4AF37; margin-top: 0;">Membership Approved!</h2><p style="font-size: 16px;">Great news! Your request to join Family Vault <strong>${familyId}</strong> has been approved by an administrator.</p><p style="font-size: 15px;">You can now log in to the Alexandria+ Mobile App or Scroll Web Viewer to browse and stream your family media library.</p></div></body></html>`
+                );
+            }
+            const headers = event.headers || {};
+            const tenantId = headers['x-tenant-id'] || headers['X-Tenant-Id'] || claims['custom:tenantId'] || 'PRIMARY_VAULT';
+            await dispatchMemberApprovedNotification(tenantId, familyId, targetEmail, username);
+        } catch (approveNotifyErr) {
+            console.warn("Failed to dispatch member approval notification:", approveNotifyErr.message);
+        }
+    }
+
     return response(200, {
         success: true,
         message: action === 'promote'
@@ -1715,4 +1760,114 @@ function isSafeMediaObjectKey(key) {
     return key.length <= 1024 &&
         !key.startsWith('/') &&
         key.split('/').every(segment => segment.length > 0 && segment !== '.' && segment !== '..');
+}
+
+/**
+ * Dispatches transactional emails via Amazon SES.
+ */
+async function sendSesEmail(toAddress, subject, htmlBody, textBody) {
+    const fromAddress = process.env.FROM_EMAIL || "no-reply@alexandria-plus.com";
+    try {
+        await sesClient.send(new SendEmailCommand({
+            Source: `Alexandria+ Vault <${fromAddress}>`,
+            Destination: { ToAddresses: Array.isArray(toAddress) ? toAddress : [toAddress] },
+            Message: {
+                Subject: { Data: subject, Charset: "UTF-8" },
+                Body: {
+                    Html: { Data: htmlBody, Charset: "UTF-8" },
+                    Text: { Data: textBody || htmlBody.replace(/<[^>]+>/g, ''), Charset: "UTF-8" }
+                }
+            }
+        }));
+        console.log(`SES Email sent to ${toAddress}: "${subject}"`);
+    } catch (err) {
+        console.warn(`Failed to send SES email to ${toAddress}:`, err.message);
+    }
+}
+
+/**
+ * Retrieves email addresses and subscriber IDs of all active administrators for a Vault.
+ */
+async function getVaultAdminDetails(familyId) {
+    const adminEmails = [];
+    const adminSubs = [];
+    for await (const user of iterateCognitoUsers()) {
+        const attributes = Object.fromEntries((user.Attributes || []).map(attribute => [attribute.Name, attribute.Value]));
+        if (user.Enabled === false || attributes['custom:familyId'] !== familyId || !attributes.sub) continue;
+        const member = await getMemberRecord(attributes.sub);
+        if (member?.familyId === familyId && member.isAdmin === true && member.accessDisabled !== true) {
+            if (attributes.email) adminEmails.push(attributes.email);
+            adminSubs.push(attributes.sub);
+        }
+    }
+    return { adminEmails, adminSubs };
+}
+
+/**
+ * Dispatches Push Notifications for Membership Requests to Vault Administrators.
+ */
+async function dispatchVaultRequestNotification(tenantId, familyId, requestorEmail, requestorUsername) {
+    try {
+        const result = await docClient.send(new QueryCommand({
+            TableName: process.env.TABLE_NAME,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": `TENANT#${tenantId}`,
+                ":sk": `FAMILY#${familyId}#DEVICE#`
+            }
+        }));
+
+        const devices = result.Items || [];
+        if (devices.length === 0) return;
+
+        const notificationPayload = {
+            notification: {
+                title: "New Vault Membership Request",
+                body: `${requestorEmail} requested to join Vault ${familyId}`
+            },
+            data: {
+                type: "VAULT_APPROVAL_REQUEST",
+                familyId,
+                requestorEmail,
+                requestorUsername,
+                actions: "APPROVE_REJECT"
+            }
+        };
+        console.log("Vault Request Notification Payload:", JSON.stringify(notificationPayload));
+    } catch (err) {
+        console.warn("Failed to dispatch vault request push notification:", err.message);
+    }
+}
+
+/**
+ * Dispatches Push Notifications for Approved Vault Membership.
+ */
+async function dispatchMemberApprovedNotification(tenantId, familyId, targetEmail, targetUsername) {
+    try {
+        const result = await docClient.send(new QueryCommand({
+            TableName: process.env.TABLE_NAME,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": `TENANT#${tenantId}`,
+                ":sk": `FAMILY#${familyId}#DEVICE#`
+            }
+        }));
+
+        const devices = result.Items || [];
+        if (devices.length === 0) return;
+
+        const notificationPayload = {
+            notification: {
+                title: "Vault Access Approved!",
+                body: `Your request to join Vault ${familyId} has been approved.`
+            },
+            data: {
+                type: "VAULT_APPROVAL_CONFIRMED",
+                familyId
+            }
+        };
+        console.log("Member Approved Notification Payload:", JSON.stringify(notificationPayload));
+    } catch (err) {
+        console.warn("Failed to dispatch member approved push notification:", err.message);
+    }
 }

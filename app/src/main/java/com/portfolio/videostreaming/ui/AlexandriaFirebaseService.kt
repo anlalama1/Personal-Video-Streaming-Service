@@ -3,6 +3,7 @@ package com.portfolio.videostreaming.ui
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -15,6 +16,7 @@ import com.portfolio.videostreaming.MainActivity
 import com.portfolio.videostreaming.R
 import com.portfolio.videostreaming.core.data.network.RegisterDeviceTokenRequest
 import com.portfolio.videostreaming.core.data.network.StreamingApi
+import com.portfolio.videostreaming.core.data.network.VaultMemberActionRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,18 +43,82 @@ class AlexandriaFirebaseMessagingService : FirebaseMessagingService() {
         Log.d("FCMService", "FCM push message received: ${remoteMessage.data}")
 
         val data = remoteMessage.data
-        val title = data["title"] ?: remoteMessage.notification?.title ?: "New Family Memory Added"
-        val publisherEmail = data["publisherEmail"] ?: "A family member"
-        val videoTitle = data["title"] ?: "New Video"
-        val imageUrl = data["imageUrl"] ?: remoteMessage.notification?.imageUrl?.toString()
+        val messageType = data["type"] ?: ""
 
-        AlexandriaPushNotificationManager.showPublishNotification(
-            context = applicationContext,
-            title = title,
-            publisherEmail = publisherEmail,
-            videoTitle = videoTitle,
-            imageUrl = imageUrl
-        )
+        when (messageType) {
+            "VAULT_APPROVAL_REQUEST" -> {
+                val requestorEmail = data["requestorEmail"] ?: "A user"
+                val requestorUsername = data["requestorUsername"] ?: ""
+                val familyId = data["familyId"] ?: ""
+                AlexandriaPushNotificationManager.showVaultApprovalRequestNotification(
+                    context = applicationContext,
+                    requestorEmail = requestorEmail,
+                    requestorUsername = requestorUsername,
+                    familyId = familyId
+                )
+            }
+            "VAULT_APPROVAL_CONFIRMED" -> {
+                val familyId = data["familyId"] ?: ""
+                AlexandriaPushNotificationManager.showMemberApprovedNotification(
+                    context = applicationContext,
+                    familyId = familyId
+                )
+            }
+            else -> {
+                val title = data["title"] ?: remoteMessage.notification?.title ?: "New Family Memory Added"
+                val publisherEmail = data["publisherEmail"] ?: "A family member"
+                val videoTitle = data["title"] ?: "New Video"
+                val imageUrl = data["imageUrl"] ?: remoteMessage.notification?.imageUrl?.toString()
+
+                AlexandriaPushNotificationManager.showPublishNotification(
+                    context = applicationContext,
+                    title = title,
+                    publisherEmail = publisherEmail,
+                    videoTitle = videoTitle,
+                    imageUrl = imageUrl
+                )
+            }
+        }
+    }
+}
+
+/**
+ * BroadcastReceiver for handling interactive "Approve" / "Reject" actions directly from System Notification buttons.
+ */
+class VaultActionBroadcastReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action ?: return
+        val username = intent.getStringExtra(EXTRA_USERNAME) ?: return
+        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (notificationId != -1) {
+            notificationManager.cancel(notificationId)
+        }
+
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                if (action == ACTION_APPROVE_MEMBER) {
+                    StreamingApi.service.approveVaultMember(VaultMemberActionRequest(username))
+                    Log.d("VaultActionReceiver", "Member approved successfully: $username")
+                } else if (action == ACTION_REJECT_MEMBER) {
+                    StreamingApi.service.rejectVaultMember(VaultMemberActionRequest(username))
+                    Log.d("VaultActionReceiver", "Member rejected successfully: $username")
+                }
+            } catch (e: Exception) {
+                Log.e("VaultActionReceiver", "Failed to process vault action: $action for user $username", e)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    companion object {
+        const val ACTION_APPROVE_MEMBER = "com.portfolio.videostreaming.ACTION_APPROVE_MEMBER"
+        const val ACTION_REJECT_MEMBER = "com.portfolio.videostreaming.ACTION_REJECT_MEMBER"
+        const val EXTRA_USERNAME = "extra_username"
+        const val EXTRA_NOTIFICATION_ID = "extra_notification_id"
     }
 }
 
@@ -61,13 +127,16 @@ class AlexandriaFirebaseMessagingService : FirebaseMessagingService() {
  * Alexandria Push Notification Manager (Rich System Notifications)
  * ============================================================================
  * Enterprise Architecture Strategy: System Notification Builder.
- * Pre-fetches the CloudFront CDN thumbnail image on a background thread
- * and constructs an Android system notification using BigPictureStyle.
+ * Pre-fetches CloudFront thumbnails and constructs system notifications
+ * with interactive approval action buttons.
  */
 object AlexandriaPushNotificationManager {
 
     private const val CHANNEL_ID = "alexandria_publish_channel"
     private const val CHANNEL_NAME = "Family Vault Video Updates"
+
+    private const val APPROVAL_CHANNEL_ID = "alexandria_vault_approval_channel"
+    private const val APPROVAL_CHANNEL_NAME = "Vault Membership Requests"
 
     /**
      * Registers active FCM device token with Scribe Lambda.
@@ -84,6 +153,121 @@ object AlexandriaPushNotificationManager {
     }
 
     /**
+     * Displays a system notification for incoming Vault Membership Requests with "Approve" and "Reject" action buttons.
+     */
+    fun showVaultApprovalRequestNotification(
+        context: Context,
+        requestorEmail: String,
+        requestorUsername: String,
+        familyId: String
+    ) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channel = NotificationChannel(
+            APPROVAL_CHANNEL_ID,
+            APPROVAL_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Notifications when a user requests to join your family vault"
+        }
+        notificationManager.createNotificationChannel(channel)
+
+        val notificationId = (System.currentTimeMillis() % 10000).toInt()
+
+        val mainIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val mainPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            mainIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val approveIntent = Intent(context, VaultActionBroadcastReceiver::class.java).apply {
+            action = VaultActionBroadcastReceiver.ACTION_APPROVE_MEMBER
+            putExtra(VaultActionBroadcastReceiver.EXTRA_USERNAME, requestorUsername)
+            putExtra(VaultActionBroadcastReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+        }
+        val approvePendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId * 10 + 1,
+            approveIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val rejectIntent = Intent(context, VaultActionBroadcastReceiver::class.java).apply {
+            action = VaultActionBroadcastReceiver.ACTION_REJECT_MEMBER
+            putExtra(VaultActionBroadcastReceiver.EXTRA_USERNAME, requestorUsername)
+            putExtra(VaultActionBroadcastReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+        }
+        val rejectPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId * 10 + 2,
+            rejectIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val bodyText = "$requestorEmail requested to join Vault $familyId"
+
+        val notificationBuilder = NotificationCompat.Builder(context, APPROVAL_CHANNEL_ID)
+            .setSmallIcon(R.drawable.logo_flat)
+            .setContentTitle("New Vault Membership Request")
+            .setContentText(bodyText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
+            .setAutoCancel(true)
+            .setContentIntent(mainPendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .addAction(0, "Approve", approvePendingIntent)
+            .addAction(0, "Reject", rejectPendingIntent)
+
+        notificationManager.notify(notificationId, notificationBuilder.build())
+    }
+
+    /**
+     * Displays a system notification to the requestor when their membership is approved.
+     */
+    fun showMemberApprovedNotification(
+        context: Context,
+        familyId: String
+    ) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channel = NotificationChannel(
+            APPROVAL_CHANNEL_ID,
+            APPROVAL_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Notifications when your vault membership status changes"
+        }
+        notificationManager.createNotificationChannel(channel)
+
+        val mainIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val mainPendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            mainIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val bodyText = "Your request to join Vault $familyId has been approved."
+
+        val notificationBuilder = NotificationCompat.Builder(context, APPROVAL_CHANNEL_ID)
+            .setSmallIcon(R.drawable.logo_flat)
+            .setContentTitle("Vault Access Approved!")
+            .setContentText(bodyText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
+            .setAutoCancel(true)
+            .setContentIntent(mainPendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+
+        val notificationId = (System.currentTimeMillis() % 10000).toInt()
+        notificationManager.notify(notificationId, notificationBuilder.build())
+    }
+
+    /**
      * Renders a rich system notification bar item with BigPictureStyle thumbnail.
      */
     fun showPublishNotification(
@@ -95,7 +279,6 @@ object AlexandriaPushNotificationManager {
     ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Create Notification Channel
         val channel = NotificationChannel(
             CHANNEL_ID,
             CHANNEL_NAME,

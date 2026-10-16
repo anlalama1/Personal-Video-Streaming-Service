@@ -16,6 +16,7 @@ import androidx.work.workDataOf
 import com.portfolio.videostreaming.R
 import com.portfolio.videostreaming.core.data.network.CompleteUploadRequest
 import com.portfolio.videostreaming.core.data.network.CompletedPartDto
+import com.portfolio.videostreaming.core.data.network.FailUploadRequest
 import com.portfolio.videostreaming.core.data.network.IngestRequest
 import com.portfolio.videostreaming.core.data.network.PartUrlRequest
 import com.portfolio.videostreaming.core.data.network.StartUploadRequest
@@ -28,6 +29,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.io.InputStream
 import java.util.Calendar
 
 class S3UploadWorker(
@@ -73,79 +75,103 @@ class S3UploadWorker(
         require(videoSize > 0L) { "Unable to determine the selected video's size." }
         val totalParts = ((videoSize + CHUNK_SIZE - 1) / CHUNK_SIZE).toInt()
         val fileName = "mobile_memory_${System.currentTimeMillis()}_${fileIndex + 1}.mp4"
+        val videoId = fileName.removeSuffix(".mp4")
+        val targetFamilyId = inputData.getString(KEY_FAMILY_ID) ?: ""
         val year = Calendar.getInstance().get(Calendar.YEAR).toString()
-        val ingestResponse = StreamingApi.service.ingestMedia(
-            IngestRequest(
-                title = "Family Memory $year",
-                genre = "Miscellaneous",
-                releaseYear = year,
-                familyId = inputData.getString(KEY_FAMILY_ID),
-                videoFileName = fileName,
-                videoId = fileName.removeSuffix(".mp4"),
-                useAi = inputData.getBoolean(KEY_USE_AI, false),
-                status = "UPLOADING"
-            )
-        )
-        val s3Key = ingestResponse.videoKey
-        val uploadId = StreamingApi.service.startUpload(
-            StartUploadRequest(key = s3Key, contentType = "video/mp4")
-        ).uploadId
-        val completedParts = mutableListOf<CompletedPartDto>()
 
-        applicationContext.contentResolver.openInputStream(uri)?.use { inputStream ->
-            val buffer = ByteArray(CHUNK_SIZE)
-            var partNumber = 1
-            var uploadedBytes = 0L
-            while (uploadedBytes < videoSize) {
-                val expectedBytes = minOf(CHUNK_SIZE.toLong(), videoSize - uploadedBytes).toInt()
-                readFully(inputStream, buffer, expectedBytes)
-                val partData = if (expectedBytes == CHUNK_SIZE) buffer else buffer.copyOf(expectedBytes)
-                val partUrl = StreamingApi.service.getPartUrl(
-                    PartUrlRequest(
-                        key = s3Key,
-                        uploadId = uploadId,
-                        partNumber = partNumber,
-                        totalParts = totalParts
-                    )
-                ).uploadUrl
+        var activeS3Key: String? = null
+        var activeUploadId: String? = null
 
-                val response = withContext(Dispatchers.IO) {
-                    httpClient.newCall(
-                        Request.Builder()
-                            .url(partUrl)
-                            .put(partData.toRequestBody("video/mp4".toMediaType()))
-                            .build()
-                    ).execute()
-                }
-                response.use {
-                    if (!it.isSuccessful) {
-                        throw IOException("S3 upload failed with HTTP ${it.code}.")
-                    }
-                    val etag = it.header("ETag") ?: it.header("etag")
-                        ?: throw IOException("S3 did not return an ETag for part $partNumber.")
-                    val cleanEtag = if (etag.startsWith("\"")) etag else "\"$etag\""
-                    completedParts.add(CompletedPartDto(ETag = cleanEtag, PartNumber = partNumber))
-                }
-
-                uploadedBytes += expectedBytes
-                val progress = (uploadedBytes * 100 / videoSize).toInt()
-                val currentFile = fileIndex + 1
-                setProgress(
-                    workDataOf(
-                        KEY_CURRENT_FILE to currentFile,
-                        KEY_TOTAL_FILES to totalFiles,
-                        KEY_PROGRESS to progress
-                    )
+        try {
+            val ingestResponse = StreamingApi.service.ingestMedia(
+                IngestRequest(
+                    title = "Family Memory $year",
+                    genre = "Miscellaneous",
+                    releaseYear = year,
+                    familyId = targetFamilyId,
+                    videoFileName = fileName,
+                    videoId = videoId,
+                    useAi = inputData.getBoolean(KEY_USE_AI, false),
+                    status = "UPLOADING"
                 )
-                setForeground(foregroundInfo(currentFile, totalFiles, progress, true))
-                partNumber++
-            }
-        } ?: throw IOException("Unable to open the selected video.")
+            )
+            activeS3Key = ingestResponse.videoKey
+            activeUploadId = StreamingApi.service.startUpload(
+                StartUploadRequest(key = activeS3Key, contentType = "video/mp4")
+            ).uploadId
+            val completedParts = mutableListOf<CompletedPartDto>()
 
-        StreamingApi.service.completeUpload(
-            CompleteUploadRequest(key = s3Key, uploadId = uploadId, parts = completedParts)
-        )
-        Log.d(TAG, "Successfully uploaded $fileName to s3://$s3Key")
+            applicationContext.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val buffer = ByteArray(CHUNK_SIZE)
+                var partNumber = 1
+                var uploadedBytes = 0L
+                while (uploadedBytes < videoSize) {
+                    val expectedBytes = minOf(CHUNK_SIZE.toLong(), videoSize - uploadedBytes).toInt()
+                    readFully(inputStream, buffer, expectedBytes)
+                    val partData = if (expectedBytes == CHUNK_SIZE) buffer else buffer.copyOf(expectedBytes)
+                    val partUrl = StreamingApi.service.getPartUrl(
+                        PartUrlRequest(
+                            key = activeS3Key,
+                            uploadId = activeUploadId,
+                            partNumber = partNumber,
+                            totalParts = totalParts
+                        )
+                    ).uploadUrl
+
+                    val response = withContext(Dispatchers.IO) {
+                        httpClient.newCall(
+                            Request.Builder()
+                                .url(partUrl)
+                                .put(partData.toRequestBody("video/mp4".toMediaType()))
+                                .build()
+                        ).execute()
+                    }
+                    response.use {
+                        if (!it.isSuccessful) {
+                            throw IOException("S3 upload failed with HTTP ${it.code}.")
+                        }
+                        val etag = it.header("ETag") ?: it.header("etag")
+                            ?: throw IOException("S3 did not return an ETag for part $partNumber.")
+                        val cleanEtag = if (etag.startsWith("\"")) etag else "\"$etag\""
+                        completedParts.add(CompletedPartDto(ETag = cleanEtag, PartNumber = partNumber))
+                    }
+
+                    uploadedBytes += expectedBytes
+                    val progress = (uploadedBytes * 100 / videoSize).toInt()
+                    val currentFile = fileIndex + 1
+                    setProgress(
+                        workDataOf(
+                            KEY_CURRENT_FILE to currentFile,
+                            KEY_TOTAL_FILES to totalFiles,
+                            KEY_PROGRESS to progress
+                        )
+                    )
+                    setForeground(foregroundInfo(currentFile, totalFiles, progress, true))
+                    partNumber++
+                }
+            } ?: throw IOException("Unable to open the selected video.")
+
+            StreamingApi.service.completeUpload(
+                CompleteUploadRequest(key = activeS3Key, uploadId = activeUploadId, parts = completedParts)
+            )
+            Log.d(TAG, "Successfully uploaded $fileName to s3://$activeS3Key")
+        } catch (e: Exception) {
+            if (activeS3Key != null && activeUploadId != null) {
+                try {
+                    StreamingApi.service.failUpload(
+                        FailUploadRequest(
+                            videoId = videoId,
+                            familyId = targetFamilyId,
+                            key = activeS3Key,
+                            uploadId = activeUploadId
+                        )
+                    )
+                } catch (failErr: Exception) {
+                    Log.w(TAG, "Failed to send upload failure notification to server", failErr)
+                }
+            }
+            throw e
+        }
     }
 
     private fun getVideoSize(uri: Uri): Long {
@@ -166,7 +192,7 @@ class S3UploadWorker(
         } ?: -1L
     }
 
-    private fun readFully(input: java.io.InputStream, buffer: ByteArray, length: Int) {
+    private fun readFully(input: InputStream, buffer: ByteArray, length: Int) {
         var offset = 0
         while (offset < length) {
             val count = input.read(buffer, offset, length - offset)

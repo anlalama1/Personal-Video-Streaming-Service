@@ -33,6 +33,9 @@ export class StorageStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
       eventBridgeEnabled: true,
+      lifecycleRules: [{
+        abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
+      }],
       cors: [{
         allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
         allowedOrigins: ['*'],

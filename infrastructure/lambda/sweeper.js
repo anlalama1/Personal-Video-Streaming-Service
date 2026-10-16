@@ -15,7 +15,7 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand, UpdateCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
-const { S3Client, ListObjectsV2Command, DeleteObjectsCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, ListObjectsV2Command, DeleteObjectsCommand, DeleteObjectCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const sqs = new SQSClient({});
@@ -111,7 +111,7 @@ exports.handler = async (event) => {
         const fullScan = await ddb.send(new ScanCommand({ TableName: TABLE_NAME }));
         const allItems = fullScan.Items || [];
 
-        const counts = { TOTAL: allItems.length, COMPLETED: 0, TRANSCODING: 0, FAILED: 0, FATAL: 0, INGESTED: 0, DELETED: 0 };
+        const counts = { TOTAL: allItems.length, COMPLETED: 0, TRANSCODING: 0, FAILED: 0, FATAL: 0, INGESTED: 0, UPLOADING: 0, DELETED: 0 };
 
         for (const item of allItems) {
             // Skip non-video items
@@ -166,9 +166,35 @@ exports.handler = async (event) => {
             // 3. Automated Self-Healing Retry Loop
             const TEN_MINUTES_MS = 10 * 60 * 1000;
 
-            if (!item.hlsKey && (effectiveStatus === "INGESTED" || effectiveStatus === "FAILED")) {
+            if (!item.hlsKey && ["INGESTED", "FAILED", "UPLOADING"].includes(effectiveStatus)) {
                 const lastUpdated = toEpochMilliseconds(item.lastUpdated, item.lastUpdatedEpochMs);
                 if (now - lastUpdated < TEN_MINUTES_MS) continue;
+
+                if (effectiveStatus === "UPLOADING") {
+                    if (!item.videoKey) continue;
+                    try {
+                        await s3.send(new HeadObjectCommand({
+                            Bucket: SOURCE_BUCKET,
+                            Key: item.videoKey
+                        }));
+                    } catch (err) {
+                        if (err.name === "NotFound" || err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+                            const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+                            if (now - lastUpdated > FORTY_EIGHT_HOURS_MS) {
+                                console.log(`ABANDONED UPLOAD: ${item.SK} in UPLOADING state > 48h. Marking as UPLOAD_FAILED.`);
+                                const timestamp = createTimestamp(now);
+                                await ddb.send(new UpdateCommand({
+                                    TableName: TABLE_NAME,
+                                    Key: { PK: item.PK, SK: item.SK },
+                                    UpdateExpression: "SET transcodeStatus = :s, lastUpdated = :t, lastUpdatedEpochMs = :epoch",
+                                    ExpressionAttributeValues: { ":s": "UPLOAD_FAILED", ":t": timestamp.iso, ":epoch": timestamp.epochMs }
+                                }));
+                            }
+                            continue;
+                        }
+                        throw err;
+                    }
+                }
 
                 const retryCount = item.retryCount || 0;
                 if (retryCount >= 3) {
@@ -188,7 +214,7 @@ exports.handler = async (event) => {
                     QueueUrl: QUEUE_URL,
                     MessageBody: JSON.stringify({
                         detail: {
-                            bucket: { name: "retry" },
+                            bucket: { name: SOURCE_BUCKET },
                             object: { key: item.videoKey }
                         },
                         isRetry: true

@@ -129,6 +129,14 @@ data class PartUrlRequest(
 )
 
 @Serializable
+data class FailUploadRequest(
+    val videoId: String,
+    val familyId: String,
+    val key: String? = null,
+    val uploadId: String? = null
+)
+
+@Serializable
 data class PartUrlResponse(
     val uploadUrl: String
 )
@@ -273,6 +281,9 @@ interface StreamingApiService {
 
     @POST("upload/complete")
     suspend fun completeUpload(@Body request: CompleteUploadRequest): CompleteUploadResponse
+
+    @POST("upload/fail")
+    suspend fun failUpload(@Body request: FailUploadRequest)
 
     @POST("play")
     suspend fun logPlayEvent(
